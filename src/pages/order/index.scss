@@ -1,0 +1,66 @@
+.order-page {
+  background: #f9fafb;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, sans-serif;
+}
+
+.order-navbar {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 32rpx;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+  position: sticky;
+  top: 0;
+  z-index: 99;
+}
+
+.back-btn {
+  font-size: 36rpx;
+  color: #333;
+  margin-right: 24rpx;
+  cursor: pointer;
+}
+
+.nav-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #111;
+}
+
+.order-tabs {
+  .at-tabs__item {
+    font-size: 28rpx;
+    color: #666;
+  }
+
+  .at-tabs__item--active {
+    color: #2f855a;
+    font-weight: bold;
+  }
+
+  .at-tabs__item--active::after {
+    border-bottom: 4rpx solid #2f855a;
+    width: 60%;
+    margin: 0 auto;
+  }
+}
+
+.order-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 200rpx;
+  color: #999;
+}
+
+.empty-img {
+  width: 240rpx;
+  height: 240rpx;
+  opacity: 0.6;
+  margin-bottom: 24rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+}

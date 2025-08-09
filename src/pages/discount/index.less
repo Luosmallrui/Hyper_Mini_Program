@@ -1,0 +1,232 @@
+.discount-container {
+  background-color: #f5f5f5;
+  min-height: 100vh;
+  padding-bottom: 50px;
+
+  .banner {
+    padding: 10px;
+
+    .banner-img {
+      width: 100%;
+      border-radius: 10px;
+    }
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background-color: #fff;
+    padding: 15px 0;
+    margin: 10px;
+    border-radius: 10px;
+
+    .feature-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+
+      .feature-icon {
+        width: 60px;
+        height: 60px;
+        margin-bottom: 5px;
+      }
+
+      .feature-name {
+        font-size: 14px;
+        color: #333;
+      }
+    }
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: #fff;
+    margin: 10px;
+    border-radius: 10px;
+
+    .section-title {
+      font-size: 18px;
+      font-weight: bold;
+      position: relative;
+      padding-left: 10px;
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 16px;
+        background-color: #e44d26;
+        border-radius: 2px;
+      }
+    }
+
+    .section-more {
+      font-size: 14px;
+      color: #999;
+    }
+  }
+
+  .promo-scroll {
+    white-space: nowrap; /* 确保卡片在同一行排列 */
+    padding: 15px 10px;
+    background-color: #fff;
+    margin: 0 10px;
+    border-radius: 10px;
+    overflow-x: auto; /* 确保内容溢出时显示横向滚动条 */
+    -webkit-overflow-scrolling: touch; /* 优化移动端滚动体验 */
+    scrollbar-width: none; /* 隐藏滚动条（可选） */
+
+    &::-webkit-scrollbar {
+      display: none; /* 隐藏WebKit浏览器滚动条（可选） */
+    }
+
+    .promo-card {
+      display: inline-block;
+      width: 200px; /* 固定卡片宽度 */
+      margin-right: 15px; /* 确保卡片间距 */
+      position: relative;
+      vertical-align: top; /* 确保所有卡片顶部对齐 */
+      box-sizing: border-box; /* 确保内边距和边框不影响总宽度 */
+      height: 200px; /* 固定卡片高度，防止内容高度不一致导致错位 */
+
+      &:last-child {
+        margin-right: 0;
+      }
+
+      .promo-tag {
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-color: #e44d26;
+        color: white;
+        padding: 3px 8px;
+        font-size: 12px;
+        border-radius: 0 0 10px 0;
+      }
+
+      .product-img {
+        width: 100%;
+        height: 150px;
+        border-radius: 8px;
+      }
+
+      .product-name {
+        font-size: 14px;
+        margin: 5px 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .price-container {
+        display: flex;
+        align-items: center;
+
+        .current-price {
+          font-size: 16px;
+          color: #e44d26;
+          font-weight: bold;
+          margin-right: 5px;
+        }
+
+        .original-price {
+          font-size: 12px;
+          color: #999;
+          text-decoration: line-through;
+        }
+      }
+
+      .stock-container {
+        font-size: 12px;
+        color: #666;
+      }
+    }
+  }
+
+  .group-buy-list {
+    background-color: #fff;
+    margin: 0 10px;
+    border-radius: 10px;
+    padding: 10px;
+
+    .group-buy-card {
+      display: flex;
+      padding: 10px;
+      border-bottom: 1px solid #f0f0f0;
+      position: relative;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .group-buy-img {
+        width: 100px;
+        height: 100px;
+        border-radius: 8px;
+        margin-right: 10px;
+      }
+
+      .group-buy-info {
+        flex: 1;
+
+        .product-title {
+          font-size: 14px;
+          margin-bottom: 5px;
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 2;
+          overflow: hidden;
+        }
+
+        .spec-container {
+          display: flex;
+          margin-bottom: 5px;
+
+          .spec {
+            font-size: 12px;
+            color: #666;
+            margin-right: 10px;
+            background-color: #f5f5f5;
+            padding: 2px 5px;
+            border-radius: 3px;
+          }
+        }
+
+        .price-container {
+          display: flex;
+          align-items: center;
+
+          .group-price {
+            font-size: 18px;
+            color: #e44d26;
+            font-weight: bold;
+            margin-right: 10px;
+          }
+
+          .original-price {
+            font-size: 14px;
+            color: #999;
+            text-decoration: line-through;
+          }
+        }
+      }
+
+      .group-buy-btn {
+        position: absolute;
+        right: 10px;
+        bottom: 10px;
+        background: linear-gradient(90deg, #ff7e5f, #e44d26);
+        color: white;
+        padding: 5px 15px;
+        border-radius: 15px;
+        font-size: 14px;
+      }
+    }
+  }
+}

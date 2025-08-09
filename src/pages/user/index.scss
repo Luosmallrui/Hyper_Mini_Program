@@ -1,0 +1,213 @@
+.user-page {
+  min-height: 100vh;
+  background: linear-gradient(to bottom, #f0f9ff, #ffffff);
+  padding-bottom: 200px; // 为底部导航栏留出空间
+}
+
+.header {
+  position: relative;
+  background: linear-gradient(to right, #dcfce7, #f0f9ff);
+  padding: 80px 32px 48px;
+
+  .header-buttons {
+    position: absolute;
+    top: 32px;
+    right: 32px;
+    display: flex;
+    gap: 16px;
+
+    .member-btn {
+      padding: 16px 32px;
+      border-radius: 50px;
+      font-size: 28px;
+      font-weight: 500;
+      border: none;
+
+      &.normal {
+        background: #22c55e;
+        color: white;
+      }
+
+      &.premium {
+        background: #16a34a;
+        color: white;
+      }
+    }
+  }
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    margin-top: 64px;
+
+    .avatar {
+      width: 128px;
+      height: 128px;
+      background: #d1d5db;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .avatar-icon {
+        font-size: 64px;
+      }
+    }
+
+    .username {
+      font-size: 42px;
+      font-weight: bold;
+      color: #1f2937;
+    }
+  }
+}
+
+.vip-banner {
+  margin: 0 32px -24px;
+  background: linear-gradient(to right, #374151, #4b5563);
+  border-radius: 24px 24px 0 0;
+  padding: 32px;
+
+  .vip-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    .vip-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+
+      .vip-icon {
+        width: 48px;
+        height: 48px;
+        background: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+      }
+
+      .vip-text {
+        font-weight: 500;
+        color: white;
+        font-size: 32px;
+      }
+    }
+
+    .vip-button {
+      background: #fbbf24;
+      color: #374151;
+      padding: 16px 48px;
+      border-radius: 50px;
+      font-size: 28px;
+      font-weight: bold;
+      border: none;
+    }
+  }
+}
+
+.stats-container {
+  margin: 0 32px;
+  background: white;
+  border-radius: 0 0 24px 24px;
+  padding: 48px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 48px;
+
+    .stat-item {
+      text-align: center;
+
+      .stat-value {
+        font-size: 48px;
+        font-weight: bold;
+        color: #1f2937;
+        display: block;
+        margin-bottom: 8px;
+      }
+
+      .stat-label {
+        font-size: 28px;
+        color: #6b7280;
+        display: block;
+        margin-bottom: 16px;
+      }
+
+      .stat-action {
+        font-size: 24px;
+        color: #9ca3af;
+        border: 1px solid #e5e7eb;
+        border-radius: 50px;
+        padding: 8px 24px;
+        background: transparent;
+      }
+    }
+  }
+}
+
+.section-container {
+  margin: 32px;
+  background: white;
+  border-radius: 24px;
+  padding: 48px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+
+  &.last-section {
+    margin-bottom: 64px;
+  }
+
+  .section-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 48px;
+
+    .grid-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      border-radius: 16px;
+      transition: background-color 0.3s;
+
+      &:active {
+        background: #f9fafb;
+      }
+
+      .item-icon {
+        font-size: 48px;
+      }
+
+      .item-label {
+        font-size: 28px;
+        color: #1f2937;
+        text-align: center;
+      }
+    }
+  }
+}
+
+// 响应式适配
+@media screen and (max-width: 750px) {
+  .stats-container .stats-grid {
+    gap: 32px;
+  }
+
+  .section-container .section-grid {
+    gap: 32px;
+
+    .grid-item .item-icon {
+      font-size: 40px;
+    }
+
+    .grid-item .item-label {
+      font-size: 24px;
+    }
+  }
+}

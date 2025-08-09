@@ -1,0 +1,721 @@
+.premium-home {
+  background: linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 100%);
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* 沉浸式顶部 */
+.immersive-header {
+  position: relative;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(20px);
+}
+
+.status-bar {
+  padding: 24px 32px 16px;
+
+  .location-pin {
+    display: flex;
+    align-items: center;
+
+    .pin-icon {
+      font-size: 32px;
+      margin-right: 12px;
+    }
+
+    .city-name {
+      color: white;
+      font-size: 32px;
+      font-weight: 600;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+  }
+}
+
+.search-section {
+  padding: 0 32px 24px;
+}
+
+.premium-search {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 50px;
+  padding: 20px 32px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+
+  .search-icon {
+    font-size: 28px;
+    margin-right: 16px;
+    opacity: 0.7;
+  }
+
+  .search-field {
+    flex: 1;
+    font-size: 28px;
+    color: #333;
+    background: transparent;
+    border: none;
+
+    &::placeholder {
+      color: #999;
+    }
+  }
+
+  .search-button {
+    color: #666;
+    font-size: 26px;
+    font-weight: 500;
+    padding: 8px 16px;
+  }
+}
+
+/* 英雄横幅 */
+.hero-banner {
+  position: relative;
+  height: 400px;
+  margin: 0 32px;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+
+  .hero-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(45deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.1) 100%);
+  }
+
+  .banner-indicators {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+
+    .indicator {
+      width: 40px;
+      height: 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.3);
+      transition: all 0.3s ease;
+
+      &.active {
+        background: white;
+        width: 60px;
+      }
+    }
+  }
+}
+
+/* 动物展示区 */
+.animal-showcase {
+  padding: 48px 32px 32px;
+}
+
+.showcase-grid {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 16px;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.animal-card {
+  position: relative;
+  min-width: 240px;
+  height: 160px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+
+  .animal-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .animal-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+    padding: 32px 20px 16px;
+
+    .animal-name {
+      color: white;
+      font-size: 24px;
+      font-weight: 600;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+  }
+}
+
+/* 烹饪方式 */
+.cooking-methods {
+  background: white;
+  margin: 24px 32px;
+  border-radius: 32px;
+  padding: 32px 24px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.1);
+}
+
+.methods-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.method-card {
+  flex: 1;
+  text-align: center;
+}
+
+.method-image-container {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 16px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+
+  .method-bg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .method-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .method-name {
+      color: white;
+      font-size: 28px;
+      font-weight: bold;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+  }
+}
+
+/* 火锅局横幅 */
+.hotpot-banner {
+  padding: 24px 32px;
+}
+
+.banner-card {
+  position: relative;
+  height: 200px;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(255, 107, 107, 0.3);
+
+  .banner-bg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .banner-content {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.9) 0%, rgba(239, 68, 68, 0.8) 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    .banner-title {
+      color: white;
+      font-size: 48px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      text-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .banner-subtitle {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 32px;
+      font-weight: 300;
+      letter-spacing: 4px;
+    }
+  }
+
+  .banner-dot {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    opacity: 0.8;
+  }
+}
+
+/* 推广区域 */
+/* 推广区域 */
+.promotion-area {
+  display: flex;
+  gap: 16px;
+  padding: 32px;
+  margin-bottom: 120px;
+}
+
+.promo-left,
+.promo-right {
+  flex: 1;
+}
+
+/* 新人专享卡片 */
+.newbie-card {
+  position: relative;
+  height: 160px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(251, 191, 36, 0.3);
+
+  .newbie-bg-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+  }
+
+  .newbie-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.9) 0%, rgba(245, 158, 11, 0.8) 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 24px;
+    z-index: 2;
+
+    .promo-title {
+      color: white;
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+
+    .promo-subtitle {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 12px;
+    }
+
+    .promo-icon {
+      font-size: 32px;
+      align-self: flex-end;
+      opacity: 0.8;
+    }
+  }
+}
+
+/* 优惠券卡片 */
+.coupon-card {
+  position: relative;
+  height: 160px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.3);
+
+  /* 优惠券锯齿边效果 */
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: -8px;
+    width: 16px;
+    height: 16px;
+    background: #f8fafc;
+    border-radius: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -8px;
+    width: 16px;
+    height: 16px;
+    background: #f8fafc;
+    border-radius: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+  }
+
+  .coupon-bg-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+  }
+
+  .coupon-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.9) 0%, rgba(185, 28, 28, 0.8) 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+    z-index: 2;
+
+    .coupon-title {
+      color: white;
+      font-size: 22px;
+      font-weight: 600;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .coupon-subtitle {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 16px;
+      font-weight: 400;
+      margin-bottom: 12px;
+    }
+
+    .coupon-icon {
+      font-size: 28px;
+      opacity: 0.8;
+    }
+  }
+}
+
+@keyframes slide {
+  0% {
+    transform: translateX(-100%) rotate(0deg);
+  }
+  100% {
+    transform: translateX(100%) rotate(360deg);
+  }
+}
+/* 底部导航 */
+.bottom-navigation {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  z-index: 1000;
+}
+
+.nav-container {
+  display: flex;
+  padding: 16px 0 32px;
+  justify-content: space-around;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+
+  .nav-icon {
+    font-size: 40px;
+    margin-bottom: 8px;
+    transition: transform 0.3s ease;
+
+    &.home-icon {
+      color: #10b981;
+    }
+
+    &.hotpot-icon {
+      color: #dc2626;
+    }
+  }
+
+  .nav-label {
+    font-size: 20px;
+    color: #666;
+    font-weight: 500;
+
+    &.active-label {
+      color: #10b981;
+      font-weight: 600;
+    }
+  }
+
+  &.active .nav-icon {
+    transform: scale(1.1);
+  }
+}
+
+/* 响应式适配 */
+@media screen and (max-width: 750px) {
+  .premium-search {
+    padding: 16px 24px;
+  }
+
+  .hero-banner {
+    height: 320px;
+    margin: 0 24px;
+  }
+
+  .animal-showcase,
+  .hotpot-banner,
+  .promotion-area {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .method-image-container {
+    width: 80px;
+    height: 80px;
+  }
+}
+/* 在现有样式基础上添加以下内容 */
+
+/* 轮播横幅样式 */
+.banner-swiper {
+  height: 200px;
+  margin: 24px 32px;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(255, 107, 107, 0.3);
+
+  .banner-bg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .banner-content {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.9) 0%, rgba(239, 68, 68, 0.8) 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+
+    .banner-title {
+      color: white;
+      font-size: 48px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      text-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .banner-subtitle {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 32px;
+      font-weight: 300;
+      letter-spacing: 4px;
+    }
+  }
+}
+
+/* 商品展示区 */
+.products-showcase {
+  padding: 32px;
+  background: #8B0000; /* 深红色背景，匹配图片 */
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.product-card {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s ease;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.product-image-wrapper {
+  position: relative;
+  height: 200px;
+
+  .product-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .brand-logo {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 8px 16px;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+
+    .brand-name {
+      font-size: 20px;
+      font-weight: bold;
+      color: #333;
+      line-height: 1.2;
+    }
+
+    .brand-subtitle {
+      font-size: 14px;
+      color: #666;
+      font-style: italic;
+    }
+  }
+
+  .add-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 48px;
+    height: 48px;
+    background: rgba(139, 0, 0, 0.9); /* 深红色，匹配主题 */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+
+    .add-icon {
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+    }
+  }
+}
+
+.product-info {
+  padding: 20px;
+
+  .product-name {
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+    line-height: 1.3;
+    margin-bottom: 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .price-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .current-price {
+      font-size: 28px;
+      font-weight: bold;
+      color: #dc2626;
+    }
+
+    .original-price {
+      font-size: 18px;
+      color: #999;
+    }
+  }
+}
+
+/* 底部导航样式 */
+.bottom-navigation {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  z-index: 1000;
+}
+
+.nav-container {
+  display: flex;
+  padding: 16px 0 32px;
+  justify-content: space-around;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+
+  .nav-icon {
+    font-size: 40px;
+    margin-bottom: 8px;
+    transition: transform 0.3s ease;
+
+    &.home-icon {
+      color: #10b981;
+    }
+
+    &.hotpot-icon {
+      color: #dc2626;
+    }
+  }
+
+  .nav-label {
+    font-size: 20px;
+    color: #666;
+    font-weight: 500;
+
+    &.active-label {
+      color: #10b981;
+      font-weight: 600;
+    }
+  }
+
+  &.active .nav-icon {
+    transform: scale(1.1);
+  }
+}
+
+/* 调整整体布局，为底部导航留出空间 */
+.premium-home {
+  padding-bottom: 120px;
+}

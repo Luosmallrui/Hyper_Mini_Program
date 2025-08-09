@@ -1,0 +1,128 @@
+@color-primary: #FF4D4F;
+@color-text: #333;
+@color-subtext: #666;
+@color-border: #E5E5E5;
+@color-bg: #F5F5F5;
+@border-radius: 8px;
+@padding-base: 16px;
+
+.recharge-page {
+  min-height: 100vh;
+  background-color: @color-bg;
+
+  .balance-header {
+    padding: @padding-base * 2;
+    background: linear-gradient(135deg, #FF7D7D, @color-primary);
+    color: #fff;
+    text-align: center;
+
+    .balance-title {
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    .balance-value {
+      font-size: 32px;
+      font-weight: bold;
+    }
+  }
+
+  .tab-bar {
+    display: flex;
+    background-color: #fff;
+    border-bottom: 1px solid @color-border;
+
+    .tab-item {
+      flex: 1;
+      text-align: center;
+      padding: @padding-base;
+      font-size: 16px;
+      color: @color-subtext;
+
+      &.active {
+        color: @color-primary;
+        font-weight: bold;
+        position: relative;
+
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 30%;
+          height: 2px;
+          background-color: @color-primary;
+        }
+      }
+    }
+  }
+
+  .recharge-panel,
+  .commission-panel {
+    padding: @padding-base;
+    background-color: #fff;
+    margin-top: 12px;
+
+    .amount-list {
+      display: flex;
+      padding: @padding-base 0;
+
+      .amount-item {
+        width: 80px;
+        height: 40px;
+        border: 1px solid @color-border;
+        border-radius: @border-radius;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+        font-size: 14px;
+        color: @color-text;
+
+        &.active {
+          border-color: @color-primary;
+          background-color: rgba(@color-primary, 0.1);
+          color: @color-primary;
+        }
+      }
+    }
+
+    .custom-input,
+    .commission-input {
+      height: 44px;
+      border: 1px solid @color-border;
+      border-radius: @border-radius;
+      padding: 0 @padding-base;
+      font-size: 14px;
+      margin-bottom: @padding-base;
+    }
+
+    .recharge-btn,
+    .transfer-btn {
+      background-color: @color-primary;
+      color: #fff;
+      height: 44px;
+      line-height: 44px;
+      text-align: center;
+      border-radius: @border-radius;
+      font-size: 16px;
+    }
+  }
+
+  .commission-panel {
+    .commission-desc {
+      font-size: 14px;
+      color: @color-subtext;
+      margin-bottom: @padding-base;
+    }
+  }
+
+  .record-link {
+    display: block;
+    padding: @padding-base;
+    text-align: right;
+    color: @color-primary;
+    font-size: 14px;
+  }
+}
