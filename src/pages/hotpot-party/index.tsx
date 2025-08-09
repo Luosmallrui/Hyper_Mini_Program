@@ -1,20 +1,43 @@
-import { View, Text, Image, ScrollView } from '@tarojs/components';
+import {View, Text, Image, ScrollView} from '@tarojs/components';
 import './index.less';
+
+import hotpotImg from '../../assets/fruit/fruit1.jpg';
 
 export default function HotpotPartyPage() {
   // 火锅套餐数据
   const packages = [
-    { id: 1, name: '经典双人套餐', price: 168, originalPrice: 198, sales: 128, image: 'https://via.placeholder.com/300?text=双人套餐' },
-    { id: 2, name: '麻辣四人套餐', price: 298, originalPrice: 368, sales: 86, image: 'https://via.placeholder.com/300?text=四人套餐' },
-    { id: 3, name: '全家福六人餐', price: 458, originalPrice: 598, sales: 42, image: 'https://via.placeholder.com/300?text=六人套餐' },
+    {
+      id: 1,
+      name: '经典双人套餐',
+      price: 168,
+      originalPrice: 198,
+      sales: 128,
+      image: 'https://via.placeholder.com/300?text=双人套餐'
+    },
+    {
+      id: 2,
+      name: '麻辣四人套餐',
+      price: 298,
+      originalPrice: 368,
+      sales: 86,
+      image: 'https://via.placeholder.com/300?text=四人套餐'
+    },
+    {
+      id: 3,
+      name: '全家福六人餐',
+      price: 458,
+      originalPrice: 598,
+      sales: 42,
+      image: 'https://via.placeholder.com/300?text=六人套餐'
+    },
   ];
 
   // 热门菜品
   const dishes = [
-    { id: 1, name: '精品肥牛', price: 48, sales: 256, image: 'https://via.placeholder.com/150?text=精品肥牛' },
-    { id: 2, name: '毛肚拼盘', price: 58, sales: 198, image: 'https://via.placeholder.com/150?text=毛肚拼盘' },
-    { id: 3, name: '手工虾滑', price: 38, sales: 182, image: 'https://via.placeholder.com/150?text=手工虾滑' },
-    { id: 4, name: '雪花牛肉', price: 68, sales: 156, image: 'https://via.placeholder.com/150?text=雪花牛肉' },
+    {id: 1, name: '精品肥牛', price: 48, sales: 256, image: 'https://via.placeholder.com/150?text=精品肥牛'},
+    {id: 2, name: '毛肚拼盘', price: 58, sales: 198, image: 'https://via.placeholder.com/150?text=毛肚拼盘'},
+    {id: 3, name: '手工虾滑', price: 38, sales: 182, image: 'https://via.placeholder.com/150?text=手工虾滑'},
+    {id: 4, name: '雪花牛肉', price: 68, sales: 156, image: 'https://via.placeholder.com/150?text=雪花牛肉'},
   ];
 
   return (
@@ -22,7 +45,7 @@ export default function HotpotPartyPage() {
       {/* 顶部横幅 */}
       <View className="banner">
         <Image
-          src="https://via.placeholder.com/750x300?text=火锅局"
+          src={hotpotImg}
           className="banner-img"
           mode="widthFix"
         />
@@ -32,13 +55,13 @@ export default function HotpotPartyPage() {
       <View className="section">
         <View className="section-header">
           <Text className="section-title">精选火锅套餐</Text>
-          <Text className="section-more">更多套餐 { '>' }</Text>
+          <Text className="section-more">更多套餐 {'>'}</Text>
         </View>
 
         <ScrollView scrollX className="package-list">
           {packages.map(pkg => (
             <View key={pkg.id} className="package-card">
-              <Image src={pkg.image} className="package-img" />
+              <Image src={hotpotImg} className="package-img"/>
               <View className="package-info">
                 <Text className="package-name">{pkg.name}</Text>
                 <View className="price-container">
@@ -61,7 +84,7 @@ export default function HotpotPartyPage() {
         <View className="dish-grid">
           {dishes.map(dish => (
             <View key={dish.id} className="dish-card">
-              <Image src={dish.image} className="dish-img" />
+              <Image src={hotpotImg} className="dish-img"/>
               <Text className="dish-name">{dish.name}</Text>
               <View className="dish-footer">
                 <Text className="dish-price">¥{dish.price}</Text>
@@ -81,7 +104,7 @@ export default function HotpotPartyPage() {
         <View className="soup-grid">
           <View className="soup-item">
             <Image
-              src="https://via.placeholder.com/150?text=麻辣锅"
+              src={hotpotImg}
               className="soup-img"
             />
             <Text className="soup-name">麻辣牛油锅</Text>
@@ -89,7 +112,7 @@ export default function HotpotPartyPage() {
 
           <View className="soup-item">
             <Image
-              src="https://via.placeholder.com/150?text=番茄锅"
+              src={hotpotImg}
               className="soup-img"
             />
             <Text className="soup-name">番茄浓汤锅</Text>
@@ -97,7 +120,7 @@ export default function HotpotPartyPage() {
 
           <View className="soup-item">
             <Image
-              src="https://via.placeholder.com/150?text=菌汤锅"
+              src={hotpotImg}
               className="soup-img"
             />
             <Text className="soup-name">养生菌汤锅</Text>
@@ -105,7 +128,7 @@ export default function HotpotPartyPage() {
 
           <View className="soup-item">
             <Image
-              src="https://via.placeholder.com/150?text=鸳鸯锅"
+              src={hotpotImg}
               className="soup-img"
             />
             <Text className="soup-name">鸳鸯锅</Text>

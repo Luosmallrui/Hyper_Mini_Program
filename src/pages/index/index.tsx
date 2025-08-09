@@ -1,7 +1,7 @@
-import { setTabBarIndex } from "@/store/tabbar";
-import { View, Text, Image, Input, Swiper, SwiperItem, Button } from '@tarojs/components';
-import Taro, { eventCenter, getCurrentInstance } from "@tarojs/taro";
-import { useEffect, useState } from 'react';
+import {setTabBarIndex} from "@/store/tabbar";
+import {View, Text, Image, Input, Swiper, SwiperItem, Button} from '@tarojs/components';
+import Taro, {eventCenter, getCurrentInstance} from "@tarojs/taro";
+import {useEffect, useState} from 'react';
 import './index.less';
 
 // 扩展全局类型
@@ -39,7 +39,9 @@ const HomePage = () => {
     setTabBarIndex(0);
     // 从全局数据获取购物车状态
     const app = getCurrentInstance();
-    const globalData = app?.app ? ((app.app as unknown) as { globalData?: { cartItems?: any[] } })?.globalData || {} : {};
+    const globalData = app?.app ? ((app.app as unknown) as {
+      globalData?: { cartItems?: any[] }
+    })?.globalData || {} : {};
     if (globalData.cartItems) {
       setCartItems(globalData.cartItems);
     }
@@ -68,10 +70,39 @@ const HomePage = () => {
 
   const getLocationInfo = () => {
     Taro.getLocation({
-      type: 'gcj02',
-      success: () => {
-        // 这里简化逆地理编码逻辑
-        setLocation('定位成功');
+      type: 'gcj02', // 使用国内标准坐标系
+      altitude: true, // 获取高度信息
+      isHighAccuracy: true, // 使用高精度定位
+      highAccuracyExpireTime: 4000, // 高精度定位超时时间
+      success: (res) => {
+        console.log('定位结果:', res);
+
+        // 使用有效的API密钥进行逆地理编码
+        Taro.request({
+          url: 'https://apis.map.qq.com/ws/geocoder/v1/',
+          data: {
+            location: `${res.latitude},${res.longitude}`,
+            key: '7GEBZ-DLZKN-TRUFI-S7MTP-UISI6-4XBGI', // 需要替换为有效密钥
+            get_poi: 1,
+            poi_options: 'policy=1;radius=1000'
+          },
+          success: (response) => {
+            console.log('逆地理编码结果:', response.data);
+            const data = response.data;
+            if (data && data.status === 0) {
+              const address = data.result;
+              const city = address.address_component.city || address.address_component.district;
+              setLocation(city);
+            } else {
+              console.error('逆地理编码失败:', data);
+              setLocation('定位解析失败');
+            }
+          },
+          fail: (error) => {
+            console.error('请求失败:', error);
+            setLocation('网络请求失败');
+          }
+        });
       },
       fail: (error) => {
         console.error('定位失败:', error);
@@ -83,7 +114,9 @@ const HomePage = () => {
   // 添加商品到购物车
   const addToCart = (product) => {
     const app = getCurrentInstance();
-    const globalData = app?.app ? ((app.app as unknown) as { globalData?: { cartItems?: any[] } })?.globalData || {} : {};
+    const globalData = app?.app ? ((app.app as unknown) as {
+      globalData?: { cartItems?: any[] }
+    })?.globalData || {} : {};
 
     // 初始化全局数据
     if (!globalData.cartItems) {
@@ -101,7 +134,7 @@ const HomePage = () => {
     if (existingItem) {
       // 如果已有，增加数量
       globalData.cartItems = globalData.cartItems.map(item =>
-        item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        item.id === product.id ? {...item, quantity: item.quantity + 1} : item
       );
     } else {
       // 如果是新商品，添加到购物车
@@ -227,10 +260,10 @@ const HomePage = () => {
           {/* 购物车图标 */}
           <View
             className='cart-icon-container'
-            onClick={() => Taro.switchTab({ url: '/pages/cart/index' })}
+            onClick={() => Taro.switchTab({url: '/pages/cart/index'})}
           >
             <Text className='cart-icon'>🛒</Text>
-            {newItemAdded && <View className='new-item-dot' />}
+            {newItemAdded && <View className='new-item-dot'/>}
             {cartItems.length > 0 && (
               <View className='cart-badge'>
                 {cartItems.reduce((sum, item) => sum + item.quantity, 0)}

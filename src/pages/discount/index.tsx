@@ -1,6 +1,7 @@
 import { View, Text, Image, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import './index.less';
+import hotpotImg from '../../assets/fruit/fruit1.jpg';
 
 export default function DiscountPage() {
   // 功能入口列表
@@ -49,7 +50,7 @@ export default function DiscountPage() {
       {/* 顶部横幅 */}
       <View className="banner">
         <Image
-          src="https://via.placeholder.com/750x200?text=优惠活动"
+          src={hotpotImg}
           className="banner-img"
           mode="widthFix"
         />
@@ -63,7 +64,7 @@ export default function DiscountPage() {
             className="feature-item"
             onClick={() => navigateToFeature(feature.id)}
           >
-            <Image src={feature.icon} className="feature-icon" />
+            <Image src={hotpotImg} className="feature-icon" />
             <Text className="feature-name">{feature.name}</Text>
           </View>
         ))}
@@ -113,7 +114,7 @@ export default function DiscountPage() {
       <View className="group-buy-list">
         <View className="group-buy-card">
           <Image
-            src="https://via.placeholder.com/300?text=牛里脊"
+            src={hotpotImg}
             className="group-buy-img"
           />
           <View className="group-buy-info">
@@ -132,7 +133,7 @@ export default function DiscountPage() {
 
         <View className="group-buy-card">
           <Image
-            src="https://via.placeholder.com/300?text=原切小"
+            src={hotpotImg}
             className="group-buy-img"
           />
           <View className="group-buy-info">
