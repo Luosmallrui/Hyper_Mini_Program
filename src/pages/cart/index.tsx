@@ -64,7 +64,7 @@ export default function CartPage() {
       id: 101,
       name: '澳洲和牛A级雪花牛肉炒不柴系列',
       price: 125.00,
-      image: 'https://images.unsplash.com/photo-1607116667981-ffbcba09b71a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80'
+      image: 'https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit2.jpg'
     },
     {
       id: 102,
@@ -103,7 +103,7 @@ export default function CartPage() {
         id: 2,
         name: '手工虾滑',
         price: 38,
-        image: 'https://images.unsplash.com/photo-1607116667981-ffbcba09b71a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
+        image: 'https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit2.jpg',
         quantity: 2,
         selected: true,
         deliveryType: 'tomorrow',

@@ -412,7 +412,7 @@ const HomePage = () => {
         <View className='promo-left'>
           <View className='newbie-card'>
             <Image
-              src='https://picsum.photos/300/200?random=1'
+              src='https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit1.jpg'
               mode='aspectFill'
               className='newbie-bg-image'
             />
@@ -427,7 +427,7 @@ const HomePage = () => {
         <View className='promo-right'>
           <View className='coupon-card'>
             <Image
-              src='https://picsum.photos/300/200?random=2'
+              src='https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit2.jpg'
               mode='aspectFill'
               className='coupon-bg-image'
             />

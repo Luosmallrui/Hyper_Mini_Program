@@ -1,7 +1,8 @@
 import {View, Text, Image, ScrollView} from '@tarojs/components';
 import './index.less';
 
-import hotpotImg from '../../assets/fruit/fruit1.jpg';
+const hotpotImg = 'https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit2.jpg';
+
 
 export default function HotpotPartyPage() {
   // 火锅套餐数据
@@ -45,7 +46,7 @@ export default function HotpotPartyPage() {
       {/* 顶部横幅 */}
       <View className="banner">
         <Image
-          src={hotpotImg}
+          src="https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit4.jpg"
           className="banner-img"
           mode="widthFix"
         />
@@ -61,7 +62,7 @@ export default function HotpotPartyPage() {
         <ScrollView scrollX className="package-list">
           {packages.map(pkg => (
             <View key={pkg.id} className="package-card">
-              <Image src={hotpotImg} className="package-img"/>
+              <Image src="https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit3.jpg" className="package-img"/>
               <View className="package-info">
                 <Text className="package-name">{pkg.name}</Text>
                 <View className="price-container">
@@ -84,7 +85,7 @@ export default function HotpotPartyPage() {
         <View className="dish-grid">
           {dishes.map(dish => (
             <View key={dish.id} className="dish-card">
-              <Image src={hotpotImg} className="dish-img"/>
+              <Image src="https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit2.jpg" className="dish-img"/>
               <Text className="dish-name">{dish.name}</Text>
               <View className="dish-footer">
                 <Text className="dish-price">¥{dish.price}</Text>

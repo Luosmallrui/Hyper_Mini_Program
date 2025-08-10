@@ -1,15 +1,32 @@
-import { View, Text, Image, ScrollView } from '@tarojs/components';
+import {View, Text, Image, ScrollView} from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import './index.less';
-import hotpotImg from '../../assets/fruit/fruit1.jpg';
+
+const hotpotImg = 'https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit2.jpg';
 
 export default function DiscountPage() {
   // 功能入口列表
   const features = [
-    { id: 'group-buy', name: '拼团', icon: 'https://tse2-mm.cn.bing.net/th/id/OIP-C.yE57Q4bW0wW_OuUvxjBA-wHaHa?w=189&h=189&c=7&r=0&o=7&pid=1.7&rm=3' },
-    { id: 'bargain', name: '砍价', icon: 'https://tse2-mm.cn.bing.net/th/id/OIP-C.yE57Q4bW0wW_OuUvxjBA-wHaHa?w=189&h=189&c=7&r=0&o=7&pid=1.7&rm=3'},
-    { id: 'promotion', name: '促销活动', icon: 'https://tse2-mm.cn.bing.net/th/id/OIP-C.yE57Q4bW0wW_OuUvxjBA-wHaHa?w=189&h=189&c=7&r=0&o=7&pid=1.7&rm=3' },
-    { id: 'flash-sale', name: '限时秒杀', icon:'https://tse2-mm.cn.bing.net/th/id/OIP-C.yE57Q4bW0wW_OuUvxjBA-wHaHa?w=189&h=189&c=7&r=0&o=7&pid=1.7&rm=3' },
+    {
+      id: 'group-buy',
+      name: '拼团',
+      icon: 'https://tse2-mm.cn.bing.net/th/id/OIP-C.yE57Q4bW0wW_OuUvxjBA-wHaHa?w=189&h=189&c=7&r=0&o=7&pid=1.7&rm=3'
+    },
+    {
+      id: 'bargain',
+      name: '砍价',
+      icon: 'https://tse2-mm.cn.bing.net/th/id/OIP-C.yE57Q4bW0wW_OuUvxjBA-wHaHa?w=189&h=189&c=7&r=0&o=7&pid=1.7&rm=3'
+    },
+    {
+      id: 'promotion',
+      name: '促销活动',
+      icon: 'https://tse2-mm.cn.bing.net/th/id/OIP-C.yE57Q4bW0wW_OuUvxjBA-wHaHa?w=189&h=189&c=7&r=0&o=7&pid=1.7&rm=3'
+    },
+    {
+      id: 'flash-sale',
+      name: '限时秒杀',
+      icon: 'https://tse2-mm.cn.bing.net/th/id/OIP-C.yE57Q4bW0wW_OuUvxjBA-wHaHa?w=189&h=189&c=7&r=0&o=7&pid=1.7&rm=3'
+    },
   ];
 
   // 促销商品列表
@@ -42,7 +59,7 @@ export default function DiscountPage() {
 
   // 跳转到功能页面
   const navigateToFeature = (featureId: string) => {
-    Taro.navigateTo({ url: `/pages/${featureId}/index` });
+    Taro.navigateTo({url: `/pages/${featureId}/index`});
   };
 
   return (
@@ -64,7 +81,7 @@ export default function DiscountPage() {
             className="feature-item"
             onClick={() => navigateToFeature(feature.id)}
           >
-            <Image src={hotpotImg} className="feature-icon" />
+            <Image src={hotpotImg} className="feature-icon"/>
             <Text className="feature-name">{feature.name}</Text>
           </View>
         ))}
@@ -77,7 +94,7 @@ export default function DiscountPage() {
           className="section-more"
           onClick={() => navigateToFeature('promotion')}
         >
-          查看更多 { '>' }
+          查看更多 {'>'}
         </Text>
       </View>
 
@@ -85,7 +102,7 @@ export default function DiscountPage() {
       <ScrollView scrollX className="promo-scroll">
         {promoProducts.map(product => (
           <View key={product.id} className="promo-card">
-            <Image src={product.image} className="product-img" />
+            <Image src={product.image} className="product-img"/>
             <Text className="product-name">{product.name}</Text>
             <View className="price-container">
               <Text className="current-price">¥{product.price.toFixed(2)}</Text>
@@ -106,7 +123,7 @@ export default function DiscountPage() {
           className="section-more"
           onClick={() => navigateToFeature('group-buy')}
         >
-          查看更多  { '>' }
+          查看更多 {'>'}
         </Text>
       </View>
 
@@ -118,7 +135,8 @@ export default function DiscountPage() {
             className="group-buy-img"
           />
           <View className="group-buy-info">
-            <Text className="product-title">好友两人拼33.9一块，前牛排，炒牛肉都可以，俗称牛里脊，牛身上最嫩的部位，老少皆宜</Text>
+            <Text
+              className="product-title">好友两人拼33.9一块，前牛排，炒牛肉都可以，俗称牛里脊，牛身上最嫩的部位，老少皆宜</Text>
             <View className="spec-container">
               <Text className="spec">规格：200g</Text>
               <Text className="spec">类型：2人团</Text>
