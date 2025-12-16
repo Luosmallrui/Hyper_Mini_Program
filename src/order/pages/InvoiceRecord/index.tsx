@@ -17,15 +17,15 @@ const InvoiceRecord: FC = () => {
   };
 
   return (
-    <View className="invoice-record-page">
+    <View className='invoice-record-page'>
       {/* 空状态区域 */}
-      <View className="empty-container">
-        <Image className="empty-icon" src={EMPTY_ICON} mode="widthFix" />
-        <Text className="empty-text">~ 您还没有申请发票记录 ~</Text>
+      <View className='empty-container'>
+        <Image className='empty-icon' src={EMPTY_ICON} mode='widthFix' />
+        <Text className='empty-text'>~ 您还没有申请发票记录 ~</Text>
       </View>
 
       {/* 申请按钮 */}
-      <Button className="apply-btn" onClick={handleApplyInvoice}>
+      <Button className='apply-btn' onClick={handleApplyInvoice}>
         申请开具发票
       </Button>
     </View>

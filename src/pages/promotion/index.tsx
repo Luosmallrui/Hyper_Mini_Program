@@ -47,29 +47,29 @@ export default function PromotionPage() {
   ];
 
   return (
-    <ScrollView className="promotion-container" scrollY>
+    <ScrollView className='promotion-container' scrollY>
       {/* 顶部搜索栏 */}
-      <View className="search-bar">
-        <View className="search-input">
-          <Text className="search-icon">🔍</Text>
-          <Text className="placeholder">搜索促销商品</Text>
+      <View className='search-bar'>
+        <View className='search-input'>
+          <Text className='search-icon'>🔍</Text>
+          <Text className='placeholder'>搜索促销商品</Text>
         </View>
       </View>
 
       {/* 促销商品列表 */}
-      <View className="promo-grid">
+      <View className='promo-grid'>
         {promoProducts.map(product => (
-          <View key={product.id} className="promo-card">
-            <Image src={product.image} className="product-img" />
-            <Text className="product-name">{product.name}</Text>
-            <View className="price-container">
-              <Text className="current-price">¥{product.price.toFixed(2)}</Text>
-              <Text className="original-price">¥{product.originalPrice.toFixed(2)}</Text>
+          <View key={product.id} className='promo-card'>
+            <Image src={product.image} className='product-img' />
+            <Text className='product-name'>{product.name}</Text>
+            <View className='price-container'>
+              <Text className='current-price'>¥{product.price.toFixed(2)}</Text>
+              <Text className='original-price'>¥{product.originalPrice.toFixed(2)}</Text>
             </View>
-            <View className="stock-container">
-              <Text className="stock-text">库存: {product.stock}</Text>
+            <View className='stock-container'>
+              <Text className='stock-text'>库存: {product.stock}</Text>
             </View>
-            <View className="promo-tag">促销</View>
+            <View className='promo-tag'>促销</View>
           </View>
         ))}
       </View>

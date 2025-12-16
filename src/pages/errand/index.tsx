@@ -52,35 +52,35 @@ export default function ErrandApplyPage() {
   };
 
   return (
-    <View className="errand-container">
+    <View className='errand-container'>
       {/* 页面标题 */}
-      <View className="page-header">
-        <Text className="title">跑腿员申请</Text>
-        <Text className="subtitle">加入我们，开启灵活工作新方式</Text>
+      <View className='page-header'>
+        <Text className='title'>跑腿员申请</Text>
+        <Text className='subtitle'>加入我们，开启灵活工作新方式</Text>
       </View>
 
       {/* 表单区域 */}
-      <View className="form-container">
+      <View className='form-container'>
         {/* 姓名输入 */}
-        <View className="form-item">
-          <Text className="label">姓名</Text>
+        <View className='form-item'>
+          <Text className='label'>姓名</Text>
           <Input
-            className="input"
-            placeholder="请输入您的姓名"
-            placeholderClass="placeholder"
+            className='input'
+            placeholder='请输入您的姓名'
+            placeholderClass='placeholder'
             value={formData.name}
             onInput={(e) => handleInputChange('name', e)}
           />
         </View>
 
         {/* 手机号输入 */}
-        <View className="form-item">
-          <Text className="label">手机号</Text>
+        <View className='form-item'>
+          <Text className='label'>手机号</Text>
           <Input
-            className="input"
-            placeholder="请输入您的手机号"
-            placeholderClass="placeholder"
-            type="number"
+            className='input'
+            placeholder='请输入您的手机号'
+            placeholderClass='placeholder'
+            type='number'
             maxlength={11}
             value={formData.phone}
             onInput={(e) => handleInputChange('phone', e)}
@@ -89,14 +89,14 @@ export default function ErrandApplyPage() {
       </View>
 
       {/* 提交按钮 */}
-      <Button className="submit-btn" onClick={handleSubmit}>
+      <Button className='submit-btn' onClick={handleSubmit}>
         提交申请
       </Button>
 
       {/* 底部说明 */}
-      <View className="footer">
-        <Text className="footer-text">提交申请后，我们将在1-3个工作日内联系您</Text>
-        <Text className="footer-text">客服热线：400-123-4567</Text>
+      <View className='footer'>
+        <Text className='footer-text'>提交申请后，我们将在1-3个工作日内联系您</Text>
+        <Text className='footer-text'>客服热线：400-123-4567</Text>
       </View>
     </View>
   );

@@ -92,40 +92,40 @@ export default function CouponPage() {
   };
 
   return (
-    <View className="coupon-container">
+    <View className='coupon-container'>
       {/* 顶部标题栏 */}
-      <View className="header">
-        <View className="back-btn" onClick={handleBack}>
-          <Text className="back-icon">‹</Text>
+      <View className='header'>
+        <View className='back-btn' onClick={handleBack}>
+          <Text className='back-icon'>‹</Text>
         </View>
-        <Text className="title">领取优惠券</Text>
+        <Text className='title'>领取优惠券</Text>
       </View>
 
       {/* 优惠券列表 */}
-      <ScrollView scrollY className="coupon-list">
+      <ScrollView scrollY className='coupon-list'>
         {coupons.map(coupon => (
           <View
             key={coupon.id}
             className={`coupon-card ${coupon.isClaimed ? 'claimed' : ''}`}
           >
             {/* 左侧价值区域 */}
-            <View className="coupon-value">
-              <Text className="value-text">¥{coupon.value.toFixed(2)}</Text>
-              <Text className="condition">满{coupon.minAmount.toFixed(2)}元可用</Text>
+            <View className='coupon-value'>
+              <Text className='value-text'>¥{coupon.value.toFixed(2)}</Text>
+              <Text className='condition'>满{coupon.minAmount.toFixed(2)}元可用</Text>
             </View>
 
             {/* 右侧信息区域 */}
-            <View className="coupon-info">
-              <Text className="coupon-title">{coupon.title}</Text>
-              <Text className="coupon-desc">{coupon.description}</Text>
-              <Text className="coupon-validity">有效期至: {coupon.validity}</Text>
+            <View className='coupon-info'>
+              <Text className='coupon-title'>{coupon.title}</Text>
+              <Text className='coupon-desc'>{coupon.description}</Text>
+              <Text className='coupon-validity'>有效期至: {coupon.validity}</Text>
 
               {/* 按钮区域 */}
               {coupon.isClaimed ? (
-                <View className="claimed-btn">已领取</View>
+                <View className='claimed-btn'>已领取</View>
               ) : (
                 <View
-                  className="claim-btn"
+                  className='claim-btn'
                   onClick={() => claimCoupon(coupon.id)}
                 >
                   立即领取
@@ -135,13 +135,13 @@ export default function CouponPage() {
 
             {/* 角标 */}
             {coupon.type === 'product' && (
-              <View className="coupon-tag">商品券</View>
+              <View className='coupon-tag'>商品券</View>
             )}
           </View>
         ))}
 
         {/* 底部提示 */}
-        <View className="bottom-tip">
+        <View className='bottom-tip'>
           <Text>我也是有底线的</Text>
         </View>
       </ScrollView>

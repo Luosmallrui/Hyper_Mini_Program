@@ -42,34 +42,34 @@ export default function HotpotPartyPage() {
   ];
 
   return (
-    <ScrollView className="hotpot-container" scrollY>
+    <ScrollView className='hotpot-container' scrollY>
       {/* 顶部横幅 */}
-      <View className="banner">
+      <View className='banner'>
         <Image
-          src="https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit4.jpg"
-          className="banner-img"
-          mode="widthFix"
+          src='https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit4.jpg'
+          className='banner-img'
+          mode='widthFix'
         />
       </View>
 
       {/* 火锅套餐 */}
-      <View className="section">
-        <View className="section-header">
-          <Text className="section-title">精选火锅套餐</Text>
-          <Text className="section-more">更多套餐 {'>'}</Text>
+      <View className='section'>
+        <View className='section-header'>
+          <Text className='section-title'>精选火锅套餐</Text>
+          <Text className='section-more'>更多套餐 {'>'}</Text>
         </View>
 
-        <ScrollView scrollX className="package-list">
+        <ScrollView scrollX className='package-list'>
           {packages.map(pkg => (
-            <View key={pkg.id} className="package-card">
-              <Image src="https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit3.jpg" className="package-img"/>
-              <View className="package-info">
-                <Text className="package-name">{pkg.name}</Text>
-                <View className="price-container">
-                  <Text className="price">¥{pkg.price}</Text>
-                  <Text className="original-price">¥{pkg.originalPrice}</Text>
+            <View key={pkg.id} className='package-card'>
+              <Image src='https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit3.jpg' className='package-img'/>
+              <View className='package-info'>
+                <Text className='package-name'>{pkg.name}</Text>
+                <View className='price-container'>
+                  <Text className='price'>¥{pkg.price}</Text>
+                  <Text className='original-price'>¥{pkg.originalPrice}</Text>
                 </View>
-                <Text className="sales">已售{pkg.sales}份</Text>
+                <Text className='sales'>已售{pkg.sales}份</Text>
               </View>
             </View>
           ))}
@@ -77,19 +77,19 @@ export default function HotpotPartyPage() {
       </View>
 
       {/* 热门菜品 */}
-      <View className="section">
-        <View className="section-header">
-          <Text className="section-title">热门菜品</Text>
+      <View className='section'>
+        <View className='section-header'>
+          <Text className='section-title'>热门菜品</Text>
         </View>
 
-        <View className="dish-grid">
+        <View className='dish-grid'>
           {dishes.map(dish => (
-            <View key={dish.id} className="dish-card">
-              <Image src="https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit2.jpg" className="dish-img"/>
-              <Text className="dish-name">{dish.name}</Text>
-              <View className="dish-footer">
-                <Text className="dish-price">¥{dish.price}</Text>
-                <Text className="dish-sales">已售{dish.sales}</Text>
+            <View key={dish.id} className='dish-card'>
+              <Image src='https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit2.jpg' className='dish-img'/>
+              <Text className='dish-name'>{dish.name}</Text>
+              <View className='dish-footer'>
+                <Text className='dish-price'>¥{dish.price}</Text>
+                <Text className='dish-sales'>已售{dish.sales}</Text>
               </View>
             </View>
           ))}
@@ -97,42 +97,42 @@ export default function HotpotPartyPage() {
       </View>
 
       {/* 锅底选择 */}
-      <View className="section">
-        <View className="section-header">
-          <Text className="section-title">锅底选择</Text>
+      <View className='section'>
+        <View className='section-header'>
+          <Text className='section-title'>锅底选择</Text>
         </View>
 
-        <View className="soup-grid">
-          <View className="soup-item">
+        <View className='soup-grid'>
+          <View className='soup-item'>
             <Image
               src={hotpotImg}
-              className="soup-img"
+              className='soup-img'
             />
-            <Text className="soup-name">麻辣牛油锅</Text>
+            <Text className='soup-name'>麻辣牛油锅</Text>
           </View>
 
-          <View className="soup-item">
+          <View className='soup-item'>
             <Image
               src={hotpotImg}
-              className="soup-img"
+              className='soup-img'
             />
-            <Text className="soup-name">番茄浓汤锅</Text>
+            <Text className='soup-name'>番茄浓汤锅</Text>
           </View>
 
-          <View className="soup-item">
+          <View className='soup-item'>
             <Image
               src={hotpotImg}
-              className="soup-img"
+              className='soup-img'
             />
-            <Text className="soup-name">养生菌汤锅</Text>
+            <Text className='soup-name'>养生菌汤锅</Text>
           </View>
 
-          <View className="soup-item">
+          <View className='soup-item'>
             <Image
               src={hotpotImg}
-              className="soup-img"
+              className='soup-img'
             />
-            <Text className="soup-name">鸳鸯锅</Text>
+            <Text className='soup-name'>鸳鸯锅</Text>
           </View>
         </View>
       </View>

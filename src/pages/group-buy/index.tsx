@@ -37,33 +37,33 @@ export default function GroupBuyPage() {
   ];
 
   return (
-    <ScrollView className="group-buy-container" scrollY>
+    <ScrollView className='group-buy-container' scrollY>
       {/* 顶部搜索栏 */}
-      <View className="search-bar">
-        <View className="search-input">
-          <Text className="search-icon">🔍</Text>
-          <Text className="placeholder">搜索拼团商品</Text>
+      <View className='search-bar'>
+        <View className='search-input'>
+          <Text className='search-icon'>🔍</Text>
+          <Text className='placeholder'>搜索拼团商品</Text>
         </View>
       </View>
 
       {/* 拼团商品列表 */}
-      <View className="group-buy-list">
+      <View className='group-buy-list'>
         {groupProducts.map(product => (
-          <View key={product.id} className="group-buy-card">
-            <Image src={product.image} className="product-img" />
-            <View className="product-info">
-              <Text className="product-name">{product.name}</Text>
-              <Text className="product-desc">{product.desc}</Text>
-              <View className="spec-container">
-                <Text className="spec">{product.spec}</Text>
-                <Text className="spec">{product.type}</Text>
+          <View key={product.id} className='group-buy-card'>
+            <Image src={product.image} className='product-img' />
+            <View className='product-info'>
+              <Text className='product-name'>{product.name}</Text>
+              <Text className='product-desc'>{product.desc}</Text>
+              <View className='spec-container'>
+                <Text className='spec'>{product.spec}</Text>
+                <Text className='spec'>{product.type}</Text>
               </View>
-              <View className="price-container">
-                <Text className="group-price">¥{product.price.toFixed(2)}</Text>
-                <Text className="original-price">¥{product.originalPrice.toFixed(2)}</Text>
+              <View className='price-container'>
+                <Text className='group-price'>¥{product.price.toFixed(2)}</Text>
+                <Text className='original-price'>¥{product.originalPrice.toFixed(2)}</Text>
               </View>
             </View>
-            <View className="group-buy-btn">去拼团</View>
+            <View className='group-buy-btn'>去拼团</View>
           </View>
         ))}
       </View>

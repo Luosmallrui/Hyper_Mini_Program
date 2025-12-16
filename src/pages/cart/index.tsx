@@ -240,22 +240,22 @@ export default function CartPage() {
   };
 
   return (
-    <View className="cart-container">
+    <View className='cart-container'>
       {/* 顶部导航栏 */}
       <View className={`cart-header ${isScrolled ? 'scrolled' : ''}`}>
-        <Text className="title">购物车</Text>
-        <View className="actions">
-          <AtIcon value="search" size="20" color="#333" />
-          <AtIcon value="message" size="20" color="#333" />
-          <Text className="edit-btn" onClick={toggleDeleteShow}>
+        <Text className='title'>购物车</Text>
+        <View className='actions'>
+          <AtIcon value='search' size='20' color='#333' />
+          <AtIcon value='message' size='20' color='#333' />
+          <Text className='edit-btn' onClick={toggleDeleteShow}>
             {showDelete ? '完成' : '编辑'}
           </Text>
         </View>
       </View>
 
       {/* 配送方式选择区域 */}
-      <View className="delivery-section">
-        <View className="delivery-options">
+      <View className='delivery-section'>
+        <View className='delivery-options'>
           <View
             className={`option ${deliveryType === 'today' ? 'active' : ''}`}
             onClick={() => toggleDeliveryType('today')}
@@ -271,12 +271,12 @@ export default function CartPage() {
         </View>
 
         {cartItems.length > 0 && (
-          <View className="delete-section">
+          <View className='delete-section'>
             <View
               className={`delete-btn ${showDelete ? 'show' : ''}`}
               onClick={deleteSelectedItems}
             >
-              <AtIcon value="trash" size="16" color="#fff" />
+              <AtIcon value='trash' size='16' color='#fff' />
               删除
             </View>
           </View>
@@ -284,59 +284,59 @@ export default function CartPage() {
       </View>
 
       {/* 购物车内容区域 */}
-      <ScrollView scrollY className="cart-content">
+      <ScrollView scrollY className='cart-content'>
         {cartItems.length === 0 ? (
           // 购物车为空状态
-          <View className="empty-cart">
+          <View className='empty-cart'>
             <Image
-              className="empty-image"
-              src="https://images.unsplash.com/photo-1586208958839-06c17cacdf08?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80"
-              mode="aspectFit"
+              className='empty-image'
+              src='https://images.unsplash.com/photo-1586208958839-06c17cacdf08?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80'
+              mode='aspectFit'
             />
-            <Text className="empty-text">暂无商品，去添加点什么吧</Text>
-            <Button className="browse-btn" onClick={() => Taro.switchTab({ url: '/pages/index/index' })}>
+            <Text className='empty-text'>暂无商品，去添加点什么吧</Text>
+            <Button className='browse-btn' onClick={() => Taro.switchTab({ url: '/pages/index/index' })}>
               去逛逛
             </Button>
           </View>
         ) : (
           // 购物车商品列表
           <>
-            <View className="section-title">
-              <Text className="title">一起买,更实惠</Text>
+            <View className='section-title'>
+              <Text className='title'>一起买,更实惠</Text>
             </View>
 
             {cartItems.filter(item => item.deliveryType === deliveryType).map(item => (
               <View
                 key={item.id}
-                className="cart-item"
+                className='cart-item'
                 onClick={() => navigateToProduct(item.id)}
               >
                 <View
-                  className="item-select"
+                  className='item-select'
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleItemSelection(item.id);
                   }}
                 >
                   <View className={`select-icon ${item.selected ? 'selected' : ''}`}>
-                    {item.selected && <AtIcon value="check" size="12" color="#fff" />}
+                    {item.selected && <AtIcon value='check' size='12' color='#fff' />}
                   </View>
                 </View>
 
-                <Image src={item.image} className="item-image" />
+                <Image src={item.image} className='item-image' />
 
-                <View className="item-info">
-                  <Text className="item-name">{item.name}</Text>
+                <View className='item-info'>
+                  <Text className='item-name'>{item.name}</Text>
                   {item.discount && (
-                    <AtTag type="primary" size="small" circle active>
+                    <AtTag type='primary' size='small' circle active>
                       限时优惠
                     </AtTag>
                   )}
-                  <View className="item-bottom">
-                    <Text className="item-price">¥{item.price.toFixed(2)}</Text>
-                    <View className="quantity-control">
+                  <View className='item-bottom'>
+                    <Text className='item-price'>¥{item.price.toFixed(2)}</Text>
+                    <View className='quantity-control'>
                       <View
-                        className="btn minus"
+                        className='btn minus'
                         onClick={(e) => {
                           e.stopPropagation();
                           updateQuantity(item.id, -1);
@@ -344,9 +344,9 @@ export default function CartPage() {
                       >
                         -
                       </View>
-                      <Text className="quantity">{item.quantity}</Text>
+                      <Text className='quantity'>{item.quantity}</Text>
                       <View
-                        className="btn plus"
+                        className='btn plus'
                         onClick={(e) => {
                           e.stopPropagation();
                           updateQuantity(item.id, 1);
@@ -365,32 +365,32 @@ export default function CartPage() {
         {/* 推荐商品区域 */}
 
           <View>
-            <View className="section-title">
-              <Text className="title">猜你喜欢</Text>
+            <View className='section-title'>
+              <Text className='title'>猜你喜欢</Text>
             </View>
 
             <Swiper
-              className="recommend-swiper"
-              indicatorColor="#999"
-              indicatorActiveColor="#07c160"
+              className='recommend-swiper'
+              indicatorColor='#999'
+              indicatorActiveColor='#07c160'
               circular
               indicatorDots
               autoplay
             >
               {recommendedItems.map(item => (
                 <SwiperItem key={item.id}>
-                  <View className="recommend-item">
-                    <Image src={item.image} className="recommend-image" />
-                    <Text className="recommend-name">{item.name}</Text>
-                    <Text className="recommend-price">¥{item.price.toFixed(2)}</Text>
+                  <View className='recommend-item'>
+                    <Image src={item.image} className='recommend-image' />
+                    <Text className='recommend-name'>{item.name}</Text>
+                    <Text className='recommend-price'>¥{item.price.toFixed(2)}</Text>
                     <Button
-                      className="add-btn"
+                      className='add-btn'
                       onClick={(e) => {
                         e.stopPropagation();
                         addToCart(item);
                       }}
                     >
-                      <AtIcon value="add" size="16" color="#fff" />
+                      <AtIcon value='add' size='16' color='#fff' />
                     </Button>
                   </View>
                 </SwiperItem>
@@ -402,48 +402,48 @@ export default function CartPage() {
       {/* 底部结算栏 */}
       {cartItems.length > 0 ? (
         <>
-          <View className="select-all" onClick={toggleSelectAll}>
+          <View className='select-all' onClick={toggleSelectAll}>
             <View className={`select-icon ${selectAll ? 'selected' : ''}`}>
-              {selectAll && <AtIcon value="check" size="12" color="#fff" />}
+              {selectAll && <AtIcon value='check' size='12' color='#fff' />}
             </View>
             <Text>全选</Text>
           </View>
 
-          <View className="total-section">
-            <Text className="total-text">总价: </Text>
-            <Text className="total-price">¥{totalPrice.toFixed(2)}</Text>
+          <View className='total-section'>
+            <Text className='total-text'>总价: </Text>
+            <Text className='total-price'>¥{totalPrice.toFixed(2)}</Text>
           </View>
 
-          <View className="checkout-btn">
+          <View className='checkout-btn'>
             <Text>结算({totalCount})</Text>
           </View>
         </>
       ) : (
-        <View className="empty-checkout">
+        <View className='empty-checkout'>
           <Text>购物车是空的</Text>
         </View>
       )}
 
       {/* 底部导航栏 */}
-      <View className="bottom-tabbar">
-        <View className="tab-item active">
-          <AtIcon value="home" size="20" color="#07c160" />
+      <View className='bottom-tabbar'>
+        <View className='tab-item active'>
+          <AtIcon value='home' size='20' color='#07c160' />
           <Text>首页</Text>
         </View>
-        <View className="tab-item">
-          <AtIcon value="discount" size="20" color="#999" />
+        <View className='tab-item'>
+          <AtIcon value='discount' size='20' color='#999' />
           <Text>优惠</Text>
         </View>
-        <View className="tab-item">
-          <AtIcon value="shopping-bag" size="20" color="#999" />
+        <View className='tab-item'>
+          <AtIcon value='shopping-bag' size='20' color='#999' />
           <Text>火锅局</Text>
         </View>
-        <View className="tab-item">
-          <AtIcon value="shopping-cart" size="20" color="#07c160" />
+        <View className='tab-item'>
+          <AtIcon value='shopping-cart' size='20' color='#07c160' />
           <Text>购物车</Text>
         </View>
-        <View className="tab-item">
-          <AtIcon value="user" size="20" color="#999" />
+        <View className='tab-item'>
+          <AtIcon value='user' size='20' color='#999' />
           <Text>我的</Text>
         </View>
       </View>

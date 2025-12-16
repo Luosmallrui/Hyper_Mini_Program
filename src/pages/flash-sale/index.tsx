@@ -17,28 +17,28 @@ export default function FlashSalePage() {
   const [activeSlot, setActiveSlot] = useState(1);
 
   return (
-    <View className="flash-sale-container">
+    <View className='flash-sale-container'>
       {/* 秒杀时间段 */}
-      <ScrollView scrollX className="time-slots">
+      <ScrollView scrollX className='time-slots'>
         {timeSlots.map(slot => (
           <View
             key={slot.id}
             className={`time-slot ${activeSlot === slot.id ? 'active' : ''}`}
             onClick={() => setActiveSlot(slot.id)}
           >
-            <Text className="time">{slot.time}</Text>
-            <Text className="status">{slot.status}</Text>
+            <Text className='time'>{slot.time}</Text>
+            <Text className='status'>{slot.status}</Text>
           </View>
         ))}
       </ScrollView>
 
       {/* 秒杀商品空状态 */}
-      <View className="empty-state">
+      <View className='empty-state'>
         <Image
-          src="https://via.placeholder.com/200x200?text=秒杀"
-          className="empty-icon"
+          src='https://via.placeholder.com/200x200?text=秒杀'
+          className='empty-icon'
         />
-        <Text className="empty-text">~ 暂无商品 ~</Text>
+        <Text className='empty-text'>~ 暂无商品 ~</Text>
       </View>
     </View>
   );

@@ -8,10 +8,10 @@ interface CooperationProps {}
 
 const Cooperation: React.FC<CooperationProps> = () => {
   return (
-    <View className="cooperation-page">
-      <View className="empty-container">
-        <Image className="empty-icon" src={EMPTY_ICON} mode="widthFix" />
-        <Text className="empty-text">空空如也</Text>
+    <View className='cooperation-page'>
+      <View className='empty-container'>
+        <Image className='empty-icon' src={EMPTY_ICON} mode='widthFix' />
+        <Text className='empty-text'>空空如也</Text>
       </View>
     </View>
   );

@@ -63,35 +63,35 @@ export default function DiscountPage() {
   };
 
   return (
-    <ScrollView className="discount-container" scrollY>
+    <ScrollView className='discount-container' scrollY>
       {/* 顶部横幅 */}
-      <View className="banner">
+      <View className='banner'>
         <Image
           src={hotpotImg}
-          className="banner-img"
-          mode="widthFix"
+          className='banner-img'
+          mode='widthFix'
         />
       </View>
 
       {/* 功能入口 */}
-      <View className="feature-grid">
+      <View className='feature-grid'>
         {features.map(feature => (
           <View
             key={feature.id}
-            className="feature-item"
+            className='feature-item'
             onClick={() => navigateToFeature(feature.id)}
           >
-            <Image src={hotpotImg} className="feature-icon"/>
-            <Text className="feature-name">{feature.name}</Text>
+            <Image src={hotpotImg} className='feature-icon'/>
+            <Text className='feature-name'>{feature.name}</Text>
           </View>
         ))}
       </View>
 
       {/* 促销活动标题 */}
-      <View className="section-header">
-        <Text className="section-title">促销活动</Text>
+      <View className='section-header'>
+        <Text className='section-title'>促销活动</Text>
         <Text
-          className="section-more"
+          className='section-more'
           onClick={() => navigateToFeature('promotion')}
         >
           查看更多 {'>'}
@@ -99,28 +99,28 @@ export default function DiscountPage() {
       </View>
 
       {/* 促销商品列表 */}
-      <ScrollView scrollX className="promo-scroll">
+      <ScrollView scrollX className='promo-scroll'>
         {promoProducts.map(product => (
-          <View key={product.id} className="promo-card">
-            <Image src={product.image} className="product-img"/>
-            <Text className="product-name">{product.name}</Text>
-            <View className="price-container">
-              <Text className="current-price">¥{product.price.toFixed(2)}</Text>
-              <Text className="original-price">¥{product.originalPrice.toFixed(2)}</Text>
+          <View key={product.id} className='promo-card'>
+            <Image src={product.image} className='product-img'/>
+            <Text className='product-name'>{product.name}</Text>
+            <View className='price-container'>
+              <Text className='current-price'>¥{product.price.toFixed(2)}</Text>
+              <Text className='original-price'>¥{product.originalPrice.toFixed(2)}</Text>
             </View>
-            <View className="stock-container">
-              <Text className="stock-text">库存: {product.stock}</Text>
+            <View className='stock-container'>
+              <Text className='stock-text'>库存: {product.stock}</Text>
             </View>
-            <View className="promo-tag">促销</View>
+            <View className='promo-tag'>促销</View>
           </View>
         ))}
       </ScrollView>
 
       {/* 拼团推荐标题 */}
-      <View className="section-header">
-        <Text className="section-title">拼团推荐</Text>
+      <View className='section-header'>
+        <Text className='section-title'>拼团推荐</Text>
         <Text
-          className="section-more"
+          className='section-more'
           onClick={() => navigateToFeature('group-buy')}
         >
           查看更多 {'>'}
@@ -128,44 +128,45 @@ export default function DiscountPage() {
       </View>
 
       {/* 拼团商品列表 */}
-      <View className="group-buy-list">
-        <View className="group-buy-card">
+      <View className='group-buy-list'>
+        <View className='group-buy-card'>
           <Image
             src={hotpotImg}
-            className="group-buy-img"
+            className='group-buy-img'
           />
-          <View className="group-buy-info">
+          <View className='group-buy-info'>
             <Text
-              className="product-title">好友两人拼33.9一块，前牛排，炒牛肉都可以，俗称牛里脊，牛身上最嫩的部位，老少皆宜</Text>
-            <View className="spec-container">
-              <Text className="spec">规格：200g</Text>
-              <Text className="spec">类型：2人团</Text>
+              className='product-title'
+            >好友两人拼33.9一块，前牛排，炒牛肉都可以，俗称牛里脊，牛身上最嫩的部位，老少皆宜</Text>
+            <View className='spec-container'>
+              <Text className='spec'>规格：200g</Text>
+              <Text className='spec'>类型：2人团</Text>
             </View>
-            <View className="price-container">
-              <Text className="group-price">¥33.90</Text>
-              <Text className="original-price">¥49.90</Text>
+            <View className='price-container'>
+              <Text className='group-price'>¥33.90</Text>
+              <Text className='original-price'>¥49.90</Text>
             </View>
           </View>
-          <View className="group-buy-btn">去拼团</View>
+          <View className='group-buy-btn'>去拼团</View>
         </View>
 
-        <View className="group-buy-card">
+        <View className='group-buy-card'>
           <Image
             src={hotpotImg}
-            className="group-buy-img"
+            className='group-buy-img'
           />
-          <View className="group-buy-info">
-            <Text className="product-title">美团Prime极佳级原切小牛排，雪花纹理锁住丰盈汁水，入口肉香十足有嚼劲</Text>
-            <View className="spec-container">
-              <Text className="spec">规格：150g</Text>
-              <Text className="spec">类型：2人团</Text>
+          <View className='group-buy-info'>
+            <Text className='product-title'>美团Prime极佳级原切小牛排，雪花纹理锁住丰盈汁水，入口肉香十足有嚼劲</Text>
+            <View className='spec-container'>
+              <Text className='spec'>规格：150g</Text>
+              <Text className='spec'>类型：2人团</Text>
             </View>
-            <View className="price-container">
-              <Text className="group-price">¥22.90</Text>
-              <Text className="original-price">¥36.90</Text>
+            <View className='price-container'>
+              <Text className='group-price'>¥22.90</Text>
+              <Text className='original-price'>¥36.90</Text>
             </View>
           </View>
-          <View className="group-buy-btn">去拼团</View>
+          <View className='group-buy-btn'>去拼团</View>
         </View>
       </View>
     </ScrollView>

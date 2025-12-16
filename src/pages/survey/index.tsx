@@ -47,32 +47,32 @@ const SurveyList = () => {
   };
 
   return (
-    <View className="survey-page">
+    <View className='survey-page'>
       {/* 顶部标题 */}
-      <View className="header">
-        <Text className="title">问卷调查</Text>
-        <Button className="record-btn" onClick={goToRecords}>
+      <View className='header'>
+        <Text className='title'>问卷调查</Text>
+        <Button className='record-btn' onClick={goToRecords}>
           参与记录
         </Button>
       </View>
 
       {/* 内容区域 */}
-      <ScrollView className="content" scrollY>
+      <ScrollView className='content' scrollY>
         {surveyList.length > 0 ? (
           // 有问卷数据
-          <View className="survey-list">
+          <View className='survey-list'>
             {surveyList.map((item) => (
               <View
                 className={`survey-item ${item.status === '已结束' ? 'ended' : ''}`}
                 key={item.id}
                 onClick={() => goToSurveyDetail(item.id)}
               >
-                <View className="item-header">
-                  <Text className="item-title">{item.title}</Text>
-                  <Text className="item-status">{item.status}</Text>
+                <View className='item-header'>
+                  <Text className='item-title'>{item.title}</Text>
+                  <Text className='item-status'>{item.status}</Text>
                 </View>
-                <Text className="item-desc">{item.description}</Text>
-                <View className="item-time">
+                <Text className='item-desc'>{item.description}</Text>
+                <View className='item-time'>
                   <Text>时间: {item.startTime} 至 {item.endTime}</Text>
                 </View>
               </View>
@@ -80,9 +80,9 @@ const SurveyList = () => {
           </View>
         ) : (
           // 空状态
-          <View className="empty-container">
-            <Image className="empty-icon" src={EMPTY_ICON} mode="aspectFit" />
-            <Text className="empty-text">~ 目前暂无可用的问卷调查 ~</Text>
+          <View className='empty-container'>
+            <Image className='empty-icon' src={EMPTY_ICON} mode='aspectFit' />
+            <Text className='empty-text'>~ 目前暂无可用的问卷调查 ~</Text>
           </View>
         )}
       </ScrollView>

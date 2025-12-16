@@ -91,35 +91,35 @@ export default function PresidentApplyPage() {
   };
 
   return (
-    <View className="president-container">
+    <View className='president-container'>
       {/* 页面标题 */}
-      <View className="page-header">
-        <Text className="title">代理申请</Text>
-        <Text className="subtitle">加入我们，开启创业新篇章</Text>
+      <View className='page-header'>
+        <Text className='title'>代理申请</Text>
+        <Text className='subtitle'>加入我们，开启创业新篇章</Text>
       </View>
 
       {/* 表单区域 */}
-      <View className="form-container">
+      <View className='form-container'>
         {/* 姓名输入 */}
-        <View className="form-item">
-          <Text className="label">姓名</Text>
+        <View className='form-item'>
+          <Text className='label'>姓名</Text>
           <Input
-            className="input"
-            placeholder="请输入您的姓名"
-            placeholderClass="placeholder"
+            className='input'
+            placeholder='请输入您的姓名'
+            placeholderClass='placeholder'
             value={formData.name}
             onInput={(e) => handleInputChange('name', e)}
           />
         </View>
 
         {/* 手机号输入 */}
-        <View className="form-item">
-          <Text className="label">手机号</Text>
+        <View className='form-item'>
+          <Text className='label'>手机号</Text>
           <Input
-            className="input"
-            placeholder="请输入您的手机号"
-            placeholderClass="placeholder"
-            type="number"
+            className='input'
+            placeholder='请输入您的手机号'
+            placeholderClass='placeholder'
+            type='number'
             maxlength={11}
             value={formData.phone}
             onInput={(e) => handleInputChange('phone', e)}
@@ -128,11 +128,11 @@ export default function PresidentApplyPage() {
 
         {/* 区域选择 */}
         <View
-          className="form-item"
+          className='form-item'
           onClick={() => setRegionPickerVisible(true)}
         >
-          <Text className="label">区域</Text>
-          <View className="input">
+          <Text className='label'>区域</Text>
+          <View className='input'>
             <Text className={formData.region[0] ? '' : 'placeholder'}>
               {getRegionText()}
             </Text>
@@ -140,12 +140,12 @@ export default function PresidentApplyPage() {
         </View>
 
         {/* 备注 */}
-        <View className="form-item">
-          <Text className="label">备注</Text>
+        <View className='form-item'>
+          <Text className='label'>备注</Text>
           <Textarea
-            className="textarea"
-            placeholder="备注信息（选填）"
-            placeholderClass="placeholder"
+            className='textarea'
+            placeholder='备注信息（选填）'
+            placeholderClass='placeholder'
             value={formData.remark}
             onInput={(e) => handleInputChange('remark', e)}
             autoHeight
@@ -154,23 +154,23 @@ export default function PresidentApplyPage() {
       </View>
 
       {/* 提交按钮 */}
-      <Button className="submit-btn" onClick={handleSubmit}>
+      <Button className='submit-btn' onClick={handleSubmit}>
         提交申请
       </Button>
 
       {/* 地区选择器 */}
       {regionPickerVisible && (
-        <View className="picker-container">
+        <View className='picker-container'>
           <Picker
-            mode="region"
+            mode='region'
             value={formData.region}
             onChange={handleRegionChange}
           >
-            <View className="picker-inner">
-              <View className="picker-header">
-                <Text className="picker-cancel" onClick={handleRegionCancel}>取消</Text>
-                <Text className="picker-title">选择区域</Text>
-                <Text className="picker-confirm" onClick={handleRegionConfirm}>确定</Text>
+            <View className='picker-inner'>
+              <View className='picker-header'>
+                <Text className='picker-cancel' onClick={handleRegionCancel}>取消</Text>
+                <Text className='picker-title'>选择区域</Text>
+                <Text className='picker-confirm' onClick={handleRegionConfirm}>确定</Text>
               </View>
             </View>
           </Picker>
@@ -179,13 +179,13 @@ export default function PresidentApplyPage() {
 
       {/* 蒙层 */}
       {regionPickerVisible && (
-        <View className="mask" onClick={handleRegionCancel} />
+        <View className='mask' onClick={handleRegionCancel} />
       )}
 
       {/* 底部说明 */}
-      <View className="footer">
-        <Text className="footer-text">提交申请后，我们将在1-3个工作日内联系您</Text>
-        <Text className="footer-text">客服热线：400-123-4567</Text>
+      <View className='footer'>
+        <Text className='footer-text'>提交申请后，我们将在1-3个工作日内联系您</Text>
+        <Text className='footer-text'>客服热线：400-123-4567</Text>
       </View>
     </View>
   );

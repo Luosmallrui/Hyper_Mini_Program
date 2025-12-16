@@ -108,25 +108,25 @@ const Recharge: React.FC<RechargeProps> = () => {
   const rechargeAmounts = [50, 100, 200, 500, 1000, 2000, 5000, 10000];
 
   return (
-    <View className="recharge-page">
+    <View className='recharge-page'>
       {/* 余额展示 */}
-      <View className="balance-header">
-        <Text className="balance-title">我的余额</Text>
-        <Text className="balance-value">¥{balance.toFixed(2)}</Text>
+      <View className='balance-header'>
+        <Text className='balance-title'>我的余额</Text>
+        <Text className='balance-value'>¥{balance.toFixed(2)}</Text>
       </View>
 
       {/* Tab 切换 */}
-      <View className="tab-bar">
+      <View className='tab-bar'>
         <RadioGroup onChange={handleTabChange}>
-          <Radio className="tab-item" checked={activeTab === 'recharge'} value="recharge">账户充值</Radio>
-          <Radio className="tab-item" checked={activeTab === 'commission'} value="commission">佣金转入</Radio>
+          <Radio className='tab-item' checked={activeTab === 'recharge'} value='recharge'>账户充值</Radio>
+          <Radio className='tab-item' checked={activeTab === 'commission'} value='commission'>佣金转入</Radio>
         </RadioGroup>
       </View>
 
       {activeTab === 'recharge' ? (
         // 账户充值面板
-        <View className="recharge-panel">
-          <ScrollView className="amount-list" scrollX>
+        <View className='recharge-panel'>
+          <ScrollView className='amount-list' scrollX>
             {rechargeAmounts.map(amount => (
               <View
                 key={amount}
@@ -138,31 +138,31 @@ const Recharge: React.FC<RechargeProps> = () => {
             ))}
           </ScrollView>
           <Input
-            className="custom-input"
-            placeholder="自定义金额"
+            className='custom-input'
+            placeholder='自定义金额'
             value={customAmount}
             onInput={handleCustomInput}
-            type="number"
+            type='number'
           />
-          <Button className="recharge-btn" onClick={handleRecharge}>立即充值</Button>
+          <Button className='recharge-btn' onClick={handleRecharge}>立即充值</Button>
         </View>
       ) : (
         // 佣金转入面板
-        <View className="commission-panel">
-          <Text className="commission-desc">当前佣金：¥{commissionAmount.toFixed(2)}</Text>
+        <View className='commission-panel'>
+          <Text className='commission-desc'>当前佣金：¥{commissionAmount.toFixed(2)}</Text>
           <Input
-            className="commission-input"
-            placeholder="输入转入金额"
+            className='commission-input'
+            placeholder='输入转入金额'
             value={inputCommission}
             onInput={handleCommissionInput}
-            type="number"
+            type='number'
           />
-          <Button className="transfer-btn" onClick={handleCommissionTransfer}>立即转入</Button>
+          <Button className='transfer-btn' onClick={handleCommissionTransfer}>立即转入</Button>
         </View>
       )}
 
       {/* 充值记录 */}
-      <Text className="record-link" onClick={goRechargeRecord}>充值记录</Text>
+      <Text className='record-link' onClick={goRechargeRecord}>充值记录</Text>
     </View>
   );
 };

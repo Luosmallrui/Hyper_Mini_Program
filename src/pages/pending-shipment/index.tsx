@@ -25,34 +25,34 @@ export default function PendingShipmentPage() {
   }
 
   return (
-    <View className="pending-shipment-container">
+    <View className='pending-shipment-container'>
       {/* 顶部标题栏 */}
-      <View className="header">
-        <View className="back-btn" onClick={handleBack}>
-          <Text className="back-icon">‹</Text>
+      <View className='header'>
+        <View className='back-btn' onClick={handleBack}>
+          <Text className='back-icon'>‹</Text>
         </View>
-        <Text className="title">我的订单</Text>
+        <Text className='title'>我的订单</Text>
       </View>
 
       {/* 订单状态标签栏 */}
-      <ScrollView scrollX className="tabs-container">
+      <ScrollView scrollX className='tabs-container'>
         {tabs.map((tab) => (
           <View
             key={tab.id}
             className={`tab-item ${activeStatus === tab.id ? 'active' : ''}`}
             onClick={() => setActiveStatus(tab.id as OrderStatus)}
           >
-            <Text className="tab-text">{tab.title}</Text>
-            {activeStatus === tab.id && <View className="tab-indicator" />}
+            <Text className='tab-text'>{tab.title}</Text>
+            {activeStatus === tab.id && <View className='tab-indicator' />}
           </View>
         ))}
       </ScrollView>
 
       {/* 订单内容区域 */}
-      <View className="content">
-        <View className="empty-state">
-          <View className="empty-icon">📦</View>
-          <Text className="empty-text">暂无订单</Text>
+      <View className='content'>
+        <View className='empty-state'>
+          <View className='empty-icon'>📦</View>
+          <Text className='empty-text'>暂无订单</Text>
         </View>
       </View>
     </View>

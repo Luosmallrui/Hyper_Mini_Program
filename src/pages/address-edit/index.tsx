@@ -114,104 +114,104 @@ export default function AddressEditPage() {
   };
 
   return (
-    <View className="address-edit-container">
-      <View className="form-container">
+    <View className='address-edit-container'>
+      <View className='form-container'>
         {/* 收货人 */}
-        <View className="form-item">
-          <Text className="label">收货人</Text>
+        <View className='form-item'>
+          <Text className='label'>收货人</Text>
           <Input
-            className="input"
-            placeholder="请填写收货人"
+            className='input'
+            placeholder='请填写收货人'
             value={formData.name}
             onInput={(e) => handleInputChange('name', e)}
           />
         </View>
 
         {/* 手机号 */}
-        <View className="form-item">
-          <Text className="label">手机号</Text>
+        <View className='form-item'>
+          <Text className='label'>手机号</Text>
           <Input
-            className="input"
-            placeholder="请输入联系电话"
-            type="number"
+            className='input'
+            placeholder='请输入联系电话'
+            type='number'
             value={formData.phone}
             onInput={(e) => handleInputChange('phone', e)}
           />
         </View>
 
         {/* 所在地区 */}
-        <View className="form-item" onClick={() => setRegionPickerVisible(true)}>
-          <Text className="label">所在地区</Text>
-          <View className="input">
+        <View className='form-item' onClick={() => setRegionPickerVisible(true)}>
+          <Text className='label'>所在地区</Text>
+          <View className='input'>
             {formData.region[0] ? (
               <Text>{`${formData.region[0]}/${formData.region[1]}/${formData.region[2]}`}</Text>
             ) : (
-              <Text className="placeholder">省/市/区</Text>
+              <Text className='placeholder'>省/市/区</Text>
             )}
           </View>
-          <Text className="arrow">›</Text>
+          <Text className='arrow'>›</Text>
         </View>
 
         {/* 详细地址 */}
-        <View className="form-item">
-          <Text className="label">详细地址</Text>
+        <View className='form-item'>
+          <Text className='label'>详细地址</Text>
           <Textarea
-            className="textarea"
-            placeholder="街道门牌信息"
+            className='textarea'
+            placeholder='街道门牌信息'
             value={formData.address}
             onInput={(e) => handleInputChange('address', e)}
           />
         </View>
 
         {/* 粘贴识别 */}
-        <View className="paste-tip" onClick={pasteAndRecognize}>
+        <View className='paste-tip' onClick={pasteAndRecognize}>
           <Text>粘贴文本，自动识别收件人信息</Text>
-          <Text className="example">如：浙江省杭州市西湖区文一西路588号中节能西溪首座，张三，187****9999</Text>
+          <Text className='example'>如：浙江省杭州市西湖区文一西路588号中节能西溪首座，张三，187****9999</Text>
         </View>
 
         {/* 上传图片 */}
-        <View className="upload-section">
-          <Text className="title">上传图片</Text>
-          <View className="images-container">
+        <View className='upload-section'>
+          <Text className='title'>上传图片</Text>
+          <View className='images-container'>
             {images.map((img, index) => (
-              <View key={index} className="image-item">
-                <Image src={img} className="image" mode="aspectFill" />
-                <View className="delete-btn" onClick={() => deleteImage(index)}>×</View>
+              <View key={index} className='image-item'>
+                <Image src={img} className='image' mode='aspectFill' />
+                <View className='delete-btn' onClick={() => deleteImage(index)}>×</View>
               </View>
             ))}
             {images.length < 3 && (
-              <View className="upload-btn" onClick={uploadImage}>
-                <Text className="plus">+</Text>
-                <Text className="text">上传</Text>
+              <View className='upload-btn' onClick={uploadImage}>
+                <Text className='plus'>+</Text>
+                <Text className='text'>上传</Text>
               </View>
             )}
           </View>
-          <Text className="tip">最多上传3张图片</Text>
+          <Text className='tip'>最多上传3张图片</Text>
         </View>
 
         {/* 设为默认 */}
-        <View className="default-section" onClick={toggleDefault}>
-          <Text className="label">设为默认</Text>
+        <View className='default-section' onClick={toggleDefault}>
+          <Text className='label'>设为默认</Text>
           <View className={`switch ${formData.isDefault ? 'active' : ''}`}>
-            {formData.isDefault && <View className="switch-handle" />}
+            {formData.isDefault && <View className='switch-handle' />}
           </View>
         </View>
       </View>
 
       {/* 保存按钮 */}
-      <View className="save-btn" onClick={saveAddress}>
+      <View className='save-btn' onClick={saveAddress}>
         <Text>立即保存</Text>
       </View>
 
       {/* 地区选择器 */}
       {regionPickerVisible && (
         <Picker
-          mode="region"
+          mode='region'
           value={formData.region}
           onChange={handleRegionChange}
           onCancel={() => setRegionPickerVisible(false)}
         >
-          <View className="picker-mask" onClick={() => setRegionPickerVisible(false)} />
+          <View className='picker-mask' onClick={() => setRegionPickerVisible(false)} />
         </Picker>
       )}
     </View>
