@@ -35,21 +35,14 @@ export default class CustomTabBar extends Component<{}, State> {
         },
         {
           pagePath: "/pages/discount/index",
-          text: "优惠",
+          text: "广场",
           iconType: 'discount',
           icon: require('../assets/icons/discount.png'),
           activeIcon: require('../assets/icons/discount-active.png')
         },
         {
-          pagePath: "/pages/hotpot-party/index",
-          text: "火锅局",
-          iconType: 'hotpot-party',
-          icon: require('../assets/icons/hotpot.png'),
-          activeIcon: require('../assets/icons/hotpot-active.png')
-        },
-        {
           pagePath: "/pages/cart/index",
-          text: "购物车",
+          text: "消息",
           iconType: 'cart',
           icon: require('../assets/icons/cart.png'),
           activeIcon: require('../assets/icons/cart-active.png')

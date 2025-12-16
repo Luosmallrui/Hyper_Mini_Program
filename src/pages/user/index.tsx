@@ -60,25 +60,25 @@ export default function UserPage() {
   const handleItemClick = (label: string) => {
     if (label === '全部订单') {
       Taro.navigateTo({
-        url: '/pages/order/index'  // 确保这个路径正确
+        url: '/order/pages/order/index'  // 确保这个路径正确
       })
       return
     }
     if (label === '待付款') {
       Taro.navigateTo({
-        url: '/pages/pending-payment/index'  // 确保这个路径正确
+        url: '/order/pages/pending-payment/index'  // 确保这个路径正确
       })
       return
     }
     if (label === '待发货') {
       Taro.navigateTo({
-        url: '/pages/pending-shipment/index'  // 确保这个路径正确
+        url: '/order/pages/pending-shipment/index'  // 确保这个路径正确
       })
       return
     }
     if (label === '待收货') {
       Taro.navigateTo({
-        url: '/pages/pending-receipt/index'  // 确保这个路径正确
+        url: '/order/pages/pending-receipt/index'  // 确保这个路径正确
       })
       return
     }
@@ -90,7 +90,7 @@ export default function UserPage() {
     }
     if (label === '收货地址') {
       Taro.navigateTo({
-        url: '/pages/address-edit/index'  // 确保这个路径正确
+        url: '/order/pages/address-edit/index'  // 确保这个路径正确
       })
       return
     }
@@ -101,23 +101,23 @@ export default function UserPage() {
       return
     }
     if (label === '收藏') {
-     Taro.navigateTo({
-       url: '/pages/recharge/index'  // 确保这个路径正确 @@@@@@@有问题需要修改
+      Taro.navigateTo({
+        url: '/pages/recharge/index'  // 确保这个路径正确 @@@@@@@有问题需要修改
       })
       return
     }
     if (label === '开具发票') {
       Taro.navigateTo({
-        url: '/pages/InvoiceRecord/index'  // 确保这个路径正确
+        url: '/order/pages/InvoiceRecord/index'  // 确保这个路径正确
       })
       return
     }
-   if (label === '问卷调查') {
-     Taro.navigateTo({
-      url: '/pages/survey/index'  // 确保这个路径正确
-    })
-   return
-  }
+    if (label === '问卷调查') {
+      Taro.navigateTo({
+        url: '/pages/survey/index'  // 确保这个路径正确
+      })
+      return
+    }
     if (label === '商务合作') {
       Taro.navigateTo({
         url: '/pages/cooperation/index'  // 确保这个路径正确
@@ -165,7 +165,6 @@ export default function UserPage() {
       icon: 'none'
     })
   }
-
 
 
   return (

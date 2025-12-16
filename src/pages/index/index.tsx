@@ -1,66 +1,108 @@
-import {setTabBarIndex} from "@/store/tabbar";
-import {View, Text, Image, Input, Swiper, SwiperItem, Button} from '@tarojs/components';
-import Taro, {eventCenter, getCurrentInstance} from "@tarojs/taro";
+
+import markerIcon from '@/assets/icons/marker.png';
+import markerIconRed from '@/assets/icons/marker-red.png';
+import {View, Text, Input, Map, Image, ScrollView} from '@tarojs/components';
+import Taro from '@tarojs/taro';
 import {useEffect, useState} from 'react';
 import './index.less';
 
-// 扩展全局类型
-declare global {
-  interface AppInstance {
-    globalData: {
-      cartItems?: any[];
-    };
-  }
-}
 
 const HomePage = () => {
+  /* ================== 基础状态 ================== */
   const [searchValue, setSearchValue] = useState('');
-  const [location, setLocation] = useState('定位中...');
-  const [cartItems, setCartItems] = useState<any[]>([]);
-  const [newItemAdded, setNewItemAdded] = useState(false);
+  const [locationName, setLocationName] = useState('成都市');
 
+  // 默认成都中心，防止初始白屏
+  const [latitude, setLatitude] = useState(30.65984);
+  const [longitude, setLongitude] = useState(104.06325);
+
+  /* ================== Marker 数据 ================== */
+  const [markers] = useState([
+    // 中心大红点
+    {
+      id: 1,
+      latitude: 30.65984,
+      longitude: 104.06325,
+      width: 48,
+      height: 48,
+      iconPath: markerIconRed,
+      callout: {
+        content: 'POWER FLOW',
+        color: '#ffffff',
+        fontSize: 14,
+        bgColor: '#000000',
+        display: 'ALWAYS' as const,
+        textAlign: 'center' as const
+      }
+    },
+    // 周围橙色小点
+    {
+      id: 2,
+      latitude: 30.66284,
+      longitude: 104.06525,
+      width: 32,
+      height: 32,
+      iconPath: markerIcon
+    },
+    {
+      id: 3,
+      latitude: 30.66084,
+      longitude: 104.07125,
+      width: 32,
+      height: 32,
+      iconPath: markerIcon
+    },
+    {
+      id: 4,
+      latitude: 30.65684,
+      longitude: 104.05525,
+      width: 32,
+      height: 32,
+      iconPath: markerIcon
+    },
+    {
+      id: 5,
+      latitude: 30.65384,
+      longitude: 104.06825,
+      width: 32,
+      height: 32,
+      iconPath: markerIcon
+    },
+    {
+      id: 6,
+      latitude: 30.66384,
+      longitude: 104.05925,
+      width: 32,
+      height: 32,
+      iconPath: markerIcon
+    },
+    {
+      id: 7,
+      latitude: 30.65584,
+      longitude: 104.05025,
+      width: 32,
+      height: 32,
+      iconPath: markerIcon
+    }
+  ] as any);
+
+  /* ================== 生命周期 ================== */
   useEffect(() => {
     getLocation();
-    setTabBarIndex(0);
-
-    // 监听购物车更新事件
-    eventCenter.on('cartUpdated', () => {
-      setNewItemAdded(true);
-      setTimeout(() => setNewItemAdded(false), 2000);
-    });
-
-    return () => {
-      eventCenter.off('cartUpdated');
-    };
   }, []);
 
-  // 页面显示时也设置一次，确保状态正确
-  Taro.useDidShow(() => {
-    setTabBarIndex(0);
-    // 从全局数据获取购物车状态
-    const app = getCurrentInstance();
-    const globalData = app?.app ? ((app.app as unknown) as {
-      globalData?: { cartItems?: any[] }
-    })?.globalData || {} : {};
-    if (globalData.cartItems) {
-      setCartItems(globalData.cartItems);
-    }
-  });
-
-  // 获取定位
+  /* ================== 定位 ================== */
   const getLocation = () => {
     Taro.getSetting({
-      success: (res) => {
+      success(res) {
         if (res.authSetting['scope.userLocation']) {
-          getLocationInfo();
+          fetchLocation();
         } else {
           Taro.authorize({
             scope: 'scope.userLocation',
-            success: () => {
-              getLocationInfo();
-            },
+            success: fetchLocation,
             fail: () => {
-              setLocation('未授权定位');
+              console.warn('用户拒绝定位');
             }
           });
         }
@@ -68,377 +110,311 @@ const HomePage = () => {
     });
   };
 
-  const getLocationInfo = () => {
+  const fetchLocation = () => {
     Taro.getLocation({
-      type: 'gcj02', // 使用国内标准坐标系
-      altitude: true, // 获取高度信息
-      isHighAccuracy: true, // 使用高精度定位
-      highAccuracyExpireTime: 4000, // 高精度定位超时时间
-      success: (res) => {
-        console.log('定位结果:', res);
-
-        // 使用有效的API密钥进行逆地理编码
-        Taro.request({
-          url: 'https://apis.map.qq.com/ws/geocoder/v1/',
-          data: {
-            location: `${res.latitude},${res.longitude}`,
-            key: '7GEBZ-DLZKN-TRUFI-S7MTP-UISI6-4XBGI', // 需要替换为有效密钥
-            get_poi: 1,
-            poi_options: 'policy=1;radius=1000'
-          },
-          success: (response) => {
-            console.log('逆地理编码结果:', response.data);
-            const data = response.data;
-            if (data && data.status === 0) {
-              const address = data.result;
-              const city = address.address_component.city || address.address_component.district;
-              setLocation(city);
-            } else {
-              console.error('逆地理编码失败:', data);
-              setLocation('定位解析失败');
-            }
-          },
-          fail: (error) => {
-            console.error('请求失败:', error);
-            setLocation('网络请求失败');
-          }
-        });
+      type: 'gcj02',
+      isHighAccuracy: true,
+      success(res) {
+        setLatitude(res.latitude);
+        setLongitude(res.longitude);
+        reverseGeocoder(res.latitude, res.longitude);
       },
-      fail: (error) => {
-        console.error('定位失败:', error);
-        setLocation('定位失败');
+      fail(err) {
+        console.error('定位失败', err);
       }
     });
   };
 
-  // 添加商品到购物车
-  const addToCart = (product) => {
-    const app = getCurrentInstance();
-    const globalData = app?.app ? ((app.app as unknown) as {
-      globalData?: { cartItems?: any[] }
-    })?.globalData || {} : {};
-
-    // 初始化全局数据
-    if (!globalData.cartItems) {
-      globalData.cartItems = [];
-      // 更新全局状态
-      if (app?.app) {
-        ((app.app as unknown) as { globalData?: { cartItems?: any[] } }).globalData = globalData;
-      }
-      setCartItems([...globalData.cartItems]);
-    }
-
-    // 检查是否已有该商品
-    const existingItem = globalData.cartItems.find(item => item.id === product.id);
-
-    if (existingItem) {
-      // 如果已有，增加数量
-      globalData.cartItems = globalData.cartItems.map(item =>
-        item.id === product.id ? {...item, quantity: item.quantity + 1} : item
-      );
-    } else {
-      // 如果是新商品，添加到购物车
-      globalData.cartItems = [
-        ...globalData.cartItems,
-        {
-          ...product,
-          quantity: 1,
-          selected: true,
-          deliveryType: 'today',
-          price: parseFloat(product.price)
+  /* ================== 逆地理编码 ================== */
+  const reverseGeocoder = (lat: number, lng: number) => {
+    Taro.request({
+      url: 'https://apis.map.qq.com/ws/geocoder/v1/',
+      data: {
+        location: `${lat},${lng}`,
+        key: '7GEBZ-DLZKN-TRUFI-S7MTP-UISI6-4XBGI',
+        get_poi: 0
+      },
+      success(res) {
+        const data = res.data;
+        if (data && data.status === 0) {
+          const city =
+            data.result.address_component.city ||
+            data.result.address_component.district;
+          setLocationName(city);
         }
-      ];
-      // 标记有新商品添加
-      setNewItemAdded(true);
-      setTimeout(() => setNewItemAdded(false), 2000);
-    }
-
-    // 更新全局状态
-    if (app?.app) {
-      ((app.app as unknown) as { globalData?: { cartItems?: any[] } }).globalData = globalData;
-    }
-    setCartItems([...globalData.cartItems]);
-
-    // 通知购物车页面更新
-    eventCenter.trigger('cartUpdated');
-
-    Taro.showToast({
-      title: '已添加到购物车',
-      icon: 'success'
+      }
     });
   };
 
-  // 动物分类卡片
-  const animalCategories = [
-    {
-      name: '澳洲和牛',
-      image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=300&h=200&fit=crop',
-      overlay: true
-    },
-    {
-      name: '新西兰罗姆尼羊',
-      image: 'https://images.unsplash.com/photo-1516467508483-a7212febe31a?w=300&h=200&fit=crop',
-      overlay: true
-    },
-    {
-      name: '西班牙伊比利亚黑猪',
-      image: 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=300&h=200&fit=crop',
-      overlay: true
-    }
-  ];
+  /* ================== 回到当前位置 ================== */
+  const handleBackToLocation = () => {
+    const ctx = Taro.createMapContext('mainMap');
+    ctx.moveToLocation({
+      success: () => {
+        console.log('移动到当前位置成功');
+      }
+    });
+  };
 
-  // 烹饪方式
-  const cookingMethods = [
-    {name: '煎', icon: '🍳', image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=150&h=150&fit=crop'},
-    {name: '炒', icon: '🥘', image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=150&h=150&fit=crop'},
-    {name: '涮', icon: '🍲', image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=150&h=150&fit=crop'},
-    {name: '炖', icon: '🥩', image: 'https://images.unsplash.com/photo-1588168333986-5078d3ae3976?w=150&h=150&fit=crop'},
-    {name: '烤', icon: '🔥', image: 'https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=150&h=150&fit=crop'}
-  ];
-
-  // 横幅数据
-  const bannerData = [
-    {
-      title: '红芋火锅局',
-      subtitle: 'HONGHUI',
-      image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800&h=400&fit=crop',
-      gradient: 'from-red-600 to-orange-500'
-    }
-  ];
-
-  // 商品数据
-  const products = [
-    {
-      id: 1,
-      name: '澳洲谷饲安格斯M3+雪花原切西冷牛排',
-      price: '59.90',
-      originalPrice: '8452',
-      image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&h=300&fit=crop',
-      brand: 'HONG HUI',
-      brandSubtitle: 'butcher life'
-    },
-    {
-      id: 2,
-      name: '澳洲谷饲安格斯M3+雪花牛仔骨原切',
-      price: '59.90',
-      originalPrice: '6854',
-      image: 'https://images.unsplash.com/photo-1558030006-450675393462?w=400&h=300&fit=crop',
-      brand: 'HONG HUI',
-      brandSubtitle: 'butcher life'
-    },
-    {
-      id: 3,
-      name: '澳洲原切150天小西冷牛排（煎炒两用）',
-      price: '19.90',
-      originalPrice: '10360',
-      image: 'https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=400&h=300&fit=crop',
-      brand: 'HONG HUI',
-      brandSubtitle: 'butcher life'
-    },
-    {
-      id: 4,
-      name: '美国谷饲Prime级佳级原切西冷牛排',
-      price: '59.90',
-      originalPrice: '6651',
-      image: 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=400&h=300&fit=crop',
-      brand: 'HONG HUI',
-      brandSubtitle: 'butcher life'
-    }
-  ];
-
+  /* ================== Render ================== */
   return (
-    <View className='premium-home'>
-      {/* 沉浸式顶部 */}
-      <View className='immersive-header'>
-        <View className='status-bar'>
-          <View className='location-pin' onClick={getLocation}>
-            <Text className='pin-icon'>📍</Text>
-            <Text className='city-name'>{location}</Text>
-            <Text className='location-arrow'>▼</Text>
+    <View className="map-home">
+
+      {/* ================= 地图 ================= */}
+      <Map
+        id="mainMap"
+        className="map-view"
+        latitude={latitude}
+        longitude={longitude}
+        scale={15}
+        markers={markers}
+        showLocation
+        enable3D
+        enableRotate
+        onError={(e) => {
+          console.error('地图错误:', e);
+        }}
+        // subkey="7GEBZ-DLZKN-TRUFI-S7MTP-UISI6-4XBGI"
+      />
+
+      {/* ================= 顶部悬浮 ================= */}
+      <View className="header-wrapper">
+        <View className="search-bar-floating">
+          <View className="city-select" onClick={getLocation}>
+            <Text className="city-name">{locationName}</Text>
+            <Text className="arrow">▼</Text>
           </View>
 
-          {/* 购物车图标 */}
-          <View
-            className='cart-icon-container'
-            onClick={() => Taro.switchTab({url: '/pages/cart/index'})}
-          >
-            <Text className='cart-icon'>🛒</Text>
-            {newItemAdded && <View className='new-item-dot'/>}
-            {cartItems.length > 0 && (
-              <View className='cart-badge'>
-                {cartItems.reduce((sum, item) => sum + item.quantity, 0)}
-              </View>
-            )}
-          </View>
-        </View>
-
-        <View className='search-section'>
-          <View className='premium-search'>
-            <Text className='search-icon'>🔍</Text>
+          <View className="search-input-box">
+            <Text className="search-icon">🔍</Text>
             <Input
-              placeholder='牛排'
               value={searchValue}
+              placeholder="搜索"
               onInput={(e) => setSearchValue(e.detail.value)}
-              className='search-field'
+              className="search-input"
             />
-            <Text className='search-button'>搜索</Text>
           </View>
+
+          <View className="qr-btn">
+            <Text>二维码</Text>
+          </View>
+        </View>
+
+        <View className="filter-bar">
+          <View className="filter-item">全部 ▼</View>
+          <View className="filter-item">区域 ▼</View>
+          <View className="filter-item">更多筛选 ▼</View>
         </View>
       </View>
 
-      {/* 轮播背景 */}
-      <Swiper
-        className='hero-banner'
-        indicatorDots
-        autoplay
-        interval={3000}
-        circular
-      >
-        <SwiperItem>
-          <Image
-            src='https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&h=600&fit=crop'
-            mode='aspectFill'
-            className='hero-image'
-          />
-          <View className='hero-overlay'/>
-        </SwiperItem>
-        <SwiperItem>
-          <Image
-            src='https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&h=600&fit=crop'
-            mode='aspectFill'
-            className='hero-image'
-          />
-          <View className='hero-overlay'/>
-        </SwiperItem>
-      </Swiper>
+      {/* ================= 右侧悬浮按钮 ================= */}
+      <View className="floating-controls">
+        <View className="control-btn" onClick={handleBackToLocation}>
+          <Text className="control-text">定位</Text>
+        </View>
+        <View className="control-btn list-mode">
+          <Text className="control-icon">≡</Text>
+          <Text className="control-text">查看列表</Text>
+        </View>
+      </View>
 
-      {/* 动物分类卡片 */}
-      <View className='animal-showcase'>
-        <View className='showcase-grid'>
-          {animalCategories.map((animal, index) => (
-            <View key={index} className='animal-card'>
+      {/* ================= 底部卡片 ================= */}
+      <View className="bottom-panel">
+        <ScrollView
+          scrollX
+          className="store-scroll"
+          showScrollbar={false}
+          enableFlex
+          onTouchMove={(e) => e.stopPropagation()}
+        >
+          {/* 卡片1 */}
+          <View className="store-card">
+            <View className="card-img-box">
               <Image
-                src={animal.image}
-                mode='aspectFill'
-                className='animal-image'
+                src="https://images.unsplash.com/photo-1574169208507-84376144848b?w=500"
+                className="card-img"
+                mode="aspectFill"
               />
-              <View className='animal-overlay'>
-                <Text className='animal-name'>{animal.name}</Text>
-              </View>
+              <View className="price-tag">65¥起</View>
+              <View className="date-tag">6.10</View>
             </View>
-          ))}
-        </View>
-      </View>
 
-      {/* 烹饪方式 */}
-      <View className='cooking-methods'>
-        <View className='methods-container'>
-          {cookingMethods.map((method, index) => (
-            <View key={index} className='method-card'>
-              <View className='method-image-container'>
-                <Image
-                  src={method.image}
-                  mode='aspectFill'
-                  className='method-bg'
-                />
-                <View className='method-overlay'>
-                  <Text className='method-name'>{method.name}</Text>
+            <View className="card-info">
+              <Text className="title">Power Flow嘻哈与电子音乐结合</Text>
+
+              <View className="tags">
+                <Text className="tag">HipHop</Text>
+                <Text className="tag">电子</Text>
+                <Text className="tag">早鸟票</Text>
+                <Text className="tag">鸡尾酒</Text>
+              </View>
+
+              <View className="footer">
+                <View className="user">
+                  <View className="avatar"/>
+                  <View className="user-info">
+                    <Text className="name">PURE LOOP</Text>
+                    <Text className="fans">5234粉丝</Text>
+                  </View>
+                </View>
+                <View className="action-btns">
+                  <View className="btn subscribe">订阅</View>
+                  <View className="btn route">路线</View>
                 </View>
               </View>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* 火锅局横幅 */}
-      <Swiper
-        className='banner-swiper'
-        indicatorDots
-        autoplay
-        interval={3000}
-        circular
-      >
-        {bannerData.map((item, index) => (
-          <SwiperItem key={index}>
-            <Image src={item.image} className='banner-bg' mode='aspectFill'/>
-            <View className='banner-content'>
-              <Text className='banner-title'>{item.title}</Text>
-              <Text className='banner-subtitle'>{item.subtitle}</Text>
-            </View>
-          </SwiperItem>
-        ))}
-      </Swiper>
-
-      {/* 商品展示区 */}
-      <View className='products-showcase'>
-        <View className='products-grid'>
-          {products.map((product) => (
-            <View key={product.id} className='product-card'>
-              <View className='product-image-wrapper'>
-                <Image
-                  src={product.image}
-                  mode='aspectFill'
-                  className='product-image'
-                />
-                <View className='brand-logo'>
-                  <Text className='brand-name'>{product.brand}</Text>
-                  <Text className='brand-subtitle'>{product.brandSubtitle}</Text>
-                </View>
-                <Button
-                  className='add-btn'
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    addToCart(product);
-                  }}
-                >
-                  <Text className='add-icon'>+</Text>
-                </Button>
-              </View>
-
-              <View className='product-info'>
-                <Text className='product-name'>{product.name}</Text>
-                <View className='price-section'>
-                  <Text className='current-price'>¥{product.price}</Text>
-                  <Text className='original-price'>已售 {product.originalPrice}</Text>
-                </View>
-              </View>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* 底部推广区域 */}
-      <View className='promotion-area'>
-        <View className='promo-left'>
-          <View className='newbie-card'>
-            <Image
-              src='https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit1.jpg'
-              mode='aspectFill'
-              className='newbie-bg-image'
-            />
-            <View className='newbie-overlay'>
-              <Text className='promo-title'>新人专享</Text>
-              <Text className='promo-subtitle'>天天有折扣</Text>
-              <View className='promo-icon'>🎁</View>
             </View>
           </View>
-        </View>
 
-        <View className='promo-right'>
-          <View className='coupon-card'>
-            <Image
-              src='https://fruit-1306715736.cos.ap-chengdu.myqcloud.com/fruit2.jpg'
-              mode='aspectFill'
-              className='coupon-bg-image'
-            />
-            <View className='coupon-overlay'>
-              <Text className='coupon-title'>一优惠券专区一</Text>
-              <Text className='coupon-subtitle'>领券享优惠</Text>
-              <View className='coupon-icon'>🎟️</View>
+          {/* 卡片2 */}
+          <View className="store-card">
+            <View className="card-img-box">
+              <Image
+                src="https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=500"
+                className="card-img"
+                mode="aspectFill"
+              />
+              <View className="price-tag">88¥起</View>
+              <View className="date-tag">6.15</View>
+            </View>
+
+            <View className="card-info">
+              <Text className="title">夏日电音节 Summer Beat</Text>
+
+              <View className="tags">
+                <Text className="tag">EDM</Text>
+                <Text className="tag">House</Text>
+                <Text className="tag">预售</Text>
+              </View>
+
+              <View className="footer">
+                <View className="user">
+                  <View className="avatar" style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}/>
+                  <View className="user-info">
+                    <Text className="name">BEAT ZONE</Text>
+                    <Text className="fans">8921粉丝</Text>
+                  </View>
+                </View>
+                <View className="action-btns">
+                  <View className="btn subscribe">订阅</View>
+                  <View className="btn route">路线</View>
+                </View>
+              </View>
             </View>
           </View>
-        </View>
+
+          {/* 卡片3 */}
+          <View className="store-card">
+            <View className="card-img-box">
+              <Image
+                src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500"
+                className="card-img"
+                mode="aspectFill"
+              />
+              <View className="price-tag">120¥起</View>
+              <View className="date-tag">6.20</View>
+            </View>
+
+            <View className="card-info">
+              <Text className="title">Techno Underground 地下派对</Text>
+
+              <View className="tags">
+                <Text className="tag">Techno</Text>
+                <Text className="tag">深夜场</Text>
+                <Text className="tag">限量</Text>
+              </View>
+
+              <View className="footer">
+                <View className="user">
+                  <View className="avatar" style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}/>
+                  <View className="user-info">
+                    <Text className="name">NEON CLUB</Text>
+                    <Text className="fans">12.5K粉丝</Text>
+                  </View>
+                </View>
+                <View className="action-btns">
+                  <View className="btn subscribe">订阅</View>
+                  <View className="btn route">路线</View>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* 卡片4 */}
+          <View className="store-card">
+            <View className="card-img-box">
+              <Image
+                src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500"
+                className="card-img"
+                mode="aspectFill"
+              />
+              <View className="price-tag">50¥起</View>
+              <View className="date-tag">6.25</View>
+            </View>
+
+            <View className="card-info">
+              <Text className="title">复古迪斯科之夜 Retro Disco</Text>
+
+              <View className="tags">
+                <Text className="tag">Disco</Text>
+                <Text className="tag">复古</Text>
+                <Text className="tag">学生票</Text>
+              </View>
+
+              <View className="footer">
+                <View className="user">
+                  <View className="avatar" style={{background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'}}/>
+                  <View className="user-info">
+                    <Text className="name">RETRO BAR</Text>
+                    <Text className="fans">6789粉丝</Text>
+                  </View>
+                </View>
+                <View className="action-btns">
+                  <View className="btn subscribe">订阅</View>
+                  <View className="btn route">路线</View>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* 卡片5 */}
+          <View className="store-card">
+            <View className="card-img-box">
+              <Image
+                src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=500"
+                className="card-img"
+                mode="aspectFill"
+              />
+              <View className="price-tag">98¥起</View>
+              <View className="date-tag">6.30</View>
+            </View>
+
+            <View className="card-info">
+              <Text className="title">爵士之夜 Jazz Lounge</Text>
+
+              <View className="tags">
+                <Text className="tag">Jazz</Text>
+                <Text className="tag">现场</Text>
+                <Text className="tag">含餐</Text>
+              </View>
+
+              <View className="footer">
+                <View className="user">
+                  <View className="avatar" style={{background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)'}}/>
+                  <View className="user-info">
+                    <Text className="name">SMOOTH BAR</Text>
+                    <Text className="fans">4532粉丝</Text>
+                  </View>
+                </View>
+                <View className="action-btns">
+                  <View className="btn subscribe">订阅</View>
+                  <View className="btn route">路线</View>
+                </View>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
       </View>
+
     </View>
   );
 };
