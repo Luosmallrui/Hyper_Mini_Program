@@ -8,11 +8,11 @@ import './index.less'
 
 export default function UserPage() {
   useEffect(() => {
-    setTabBarIndex(1)
+    setTabBarIndex(3)
   }, [])
 
   Taro.useDidShow(() => {
-    setTabBarIndex(1)
+    setTabBarIndex(3)
   })
 
   const stats = [

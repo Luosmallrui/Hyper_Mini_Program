@@ -40,9 +40,8 @@ class TabBarStore {
   updateByCurrentRoute() {
     const routes = [
       '/pages/index/index',
-      '/pages/discount/index',    // 优惠
-      '/pages/hotpot-party/index',// 火锅局
-      '/pages/cart/index',        // 购物车
+      '/pages/discount/index',
+      '/pages/cart/index',
       '/pages/user/index',
     ]
 

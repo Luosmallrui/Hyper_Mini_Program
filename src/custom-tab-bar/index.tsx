@@ -1,8 +1,9 @@
-import {Component} from 'react'
-import {View, Text, Image} from '@tarojs/components'
+import { Component } from 'react'
+import { View, Text, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import {tabBarStore} from '../store/tabbar'
+import { tabBarStore } from '../store/tabbar'
 
+// 引入 SCSS 文件
 import './index.scss'
 
 interface TabItem {
@@ -60,7 +61,7 @@ export default class CustomTabBar extends Component<{}, State> {
 
   componentDidMount() {
     this.unsubscribe = tabBarStore.subscribe((selectedIndex) => {
-      this.setState({selected: selectedIndex})
+      this.setState({ selected: selectedIndex })
     })
     tabBarStore.updateByCurrentRoute()
   }
@@ -76,7 +77,7 @@ export default class CustomTabBar extends Component<{}, State> {
       return
     }
 
-    const {list} = this.state
+    const { list } = this.state
     const url = list[index].pagePath
 
     tabBarStore.setSelected(index)
@@ -91,36 +92,33 @@ export default class CustomTabBar extends Component<{}, State> {
   }
 
   render() {
-    const {selected, list} = this.state
+    const { selected, list } = this.state
 
     return (
       <View className='custom-tab-bar'>
-        <View className='tab-bar-backdrop'/>
-        <View className='tab-bar-content'>
-          {list.map((item, index) => (
-            <View
-              key={index}
-              className={`tab-item ${selected === index ? 'selected' : ''}`}
-              onClick={() => this.switchTab(index)}
-            >
-              <View className='tab-icon-container'>
-                <View className='tab-icon-wrapper'>
+        <View className='tab-bar-capsule'>
+          {list.map((item, index) => {
+            const isSelected = selected === index
+            return (
+              <View
+                key={index}
+                className={`tab-item ${isSelected ? 'active' : ''}`}
+                onClick={() => this.switchTab(index)}
+              >
+                {/* 图标背景圆圈 */}
+                <View className='icon-wrapper'>
                   <Image
-                    src={selected === index ? item.activeIcon : item.icon}
-                    className='tab-icon-image'
+                    src={isSelected ? item.activeIcon : item.icon}
+                    className='tab-icon'
                     mode='aspectFit'
                   />
-                  {selected === index && (
-                    <View className='icon-bg-animation'/>
-                  )}
                 </View>
-                {selected === index && (
-                  <View className='tab-indicator'/>
-                )}
+                
+                {/* 文字标签 */}
+                <Text className='tab-text'>{item.text}</Text>
               </View>
-              <Text className='tab-text'>{item.text}</Text>
-            </View>
-          ))}
+            )
+          })}
         </View>
       </View>
     )

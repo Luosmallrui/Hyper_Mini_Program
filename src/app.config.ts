@@ -58,20 +58,16 @@ export default defineAppConfig({
         text: '首页',
       },
       {
-        pagePath: 'pages/user/index',
-        text: '我的',
-      },
-      {
-        pagePath: "pages/discount/index",
-        text: "优惠",
-      },
-      {
-        pagePath: "pages/hotpot-party/index",
-        text: "火锅局",
+        pagePath: 'pages/discount/index',
+        text: '广场',
       },
       {
         pagePath: "pages/cart/index",
-        text: "购物车",
+        text: "消息",
+      },
+      {
+        pagePath: "pages/user/index",
+        text: "我的",
       },
     ],
   },

@@ -1,4 +1,3 @@
-
 import markerIcon from '@/assets/icons/marker.png';
 import markerIconRed from '@/assets/icons/marker-red.png';
 import {View, Text, Input, Map, Image, ScrollView} from '@tarojs/components';
