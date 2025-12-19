@@ -1,4 +1,4 @@
-/* 1. 外部容器：定位到底部，不拦截点击事件 */
+/* 1. 外部容器 - 调整边距，让它看起来更长 */
 .custom-tab-bar {
   position: fixed;
   bottom: 0;
@@ -6,101 +6,102 @@
   right: 0;
   z-index: 9999;
   display: flex;
-  justify-content: center; /* 水平居中 */
-  pointer-events: none; /* 让点击穿透空白区域，不挡住页面内容 */
-  
-  /* 适配 iPhone X 等全面屏底部的安全距离 */
-  padding-bottom: calc(20px + env(safe-area-inset-bottom)); 
+  justify-content: center;
+  pointer-events: none;
+  /* 调整底部距离 */
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
 }
 
-/* 2. 胶囊本体：实际可见的黑色条 */
+/* 2. 胶囊本体 - 核心改动：增加宽度与高度 */
 .tab-bar-capsule {
-  pointer-events: auto; /* 恢复内部点击 */
-  width: 90%; /* 宽度占比 */
-  height: 100px; /* 胶囊高度 */
+  pointer-events: auto;
+  width: 95%; /* 宽度从 90% 增加到 95%，显著“拉长” */
+  height: 84px; /* 高度从 72px 增加到 84px，支撑更大的图标 */
   
-  /* 核心视觉样式 */
-  background: rgba(30, 30, 30, 0.25); /* 深色半透明背景 */
-  backdrop-filter: blur(15px); /* 毛玻璃模糊效果 */
-  -webkit-backdrop-filter: blur(15px); /* 兼容 iOS */
-  border-radius: 100px; /* 大圆角形成胶囊形状 */
-  border: 1px solid rgba(255, 255, 255, 0.1); /* 极细微的亮边框增加质感 */
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); /* 阴影 */
+  background: rgba(15, 15, 15, 0.75); /* 稍微加深，更具高级感 */
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  
+  border-radius: 100px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
 
-  /* 布局 */
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between; /* 改用 space-between 让内容撑满 */
   align-items: center;
-  padding: 0 10px;
+  padding: 0 15px; /* 增加左右内边距 */
+  box-sizing: border-box;
 }
 
 /* 3. 单个 Tab 项 */
 .tab-item {
   flex: 1;
+  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  transition: all 0.3s ease;
-
-  /* 点击时的按压效果 */
-  &:active {
-    opacity: 0.7;
-  }
+  transition: all 0.3s cubic-bezier(0.2, 0, 0.2, 1);
 }
 
-/* 4. 图标外层容器 (那个会变白色的圆圈) */
+/* 4. 图标容器 - 配合大图标进行放大 */
 .icon-wrapper {
-  width: 40px;
-  height: 40px;
+  width: 52px; /* 增加容器尺寸 */
+  height: 52px;
   border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
   margin-bottom: 2px;
-  transition: background-color 0.3s ease;
-  
-  /* 默认背景是透明的 */
+  transition: all 0.3s ease;
   background-color: transparent;
 }
 
-/* 5. 图片样式 */
+/* 5. 图片样式 - 显著放大图标 */
 .tab-icon {
-  width: 22px;
-  height: 22px;
+  width: 32px; /* 从 22px/26px 增大到 32px */
+  height: 32px;
   display: block;
-  transition: all 0.3s;
+  transition: transform 0.3s ease;
   
-  /* 关键：未选中时强制把图标变成纯白色 */
-  /* 如果你的原图本来就是白的，这一行可以去掉 */
+  /* 未选中时：亮白色，带一定透明度 */
   filter: brightness(0) invert(1);
+  opacity: 0.7; 
 }
 
 /* 6. 文字样式 */
 .tab-text {
-  font-size: 10px;
-  color: #888888; /* 未选中是灰色 */
+  font-size: 13px; /* 增大字号 */
+  line-height: 1;
+  color: #999999;
+  font-weight: 500; /* 加粗 */
   transition: color 0.3s ease;
+  margin-top: 2px;
 }
 
-/* ========== 选中状态 (Active State) ========== */
+/* ========== 选中状态优化 ========== */
 .tab-item.active {
   .icon-wrapper {
-    /* 选中时，背景变白 */
+    width: 58px; /* 选中时圆圈更饱满 */
+    height: 58px;
     background-color: #ffffff;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.4);
+    /* 选中的轻微上浮效果，让视觉更有活力 */
+    transform: translateY(-8px); 
   }
 
   .tab-icon {
-    /* 选中时，去除白色滤镜，显示图标原色（假设 activeIcon 是深色的） */
-    /* 如果 activeIcon 也是白色的，这里需要加 filter: brightness(0); 把它变黑 */
-    filter: none; 
-    transform: scale(1.05); /* 选中时稍微放大一点 */
+    opacity: 1;
+    transform: scale(1.05);
+    
+    /* 关键点：如果你的图标是白色的，在白背景下看不见，强制转为黑色 */
+    /* 如果你的图标已经是黑色的，请保留下面这一行 */
+    filter: brightness(0); 
   }
 
   .tab-text {
-    /* 选中时，文字变白 */
     color: #ffffff;
-    font-weight: 500;
+    font-weight: 600;
+    transform: translateY(-4px); /* 文字同步微调 */
   }
 }

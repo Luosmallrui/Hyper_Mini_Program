@@ -2,7 +2,7 @@
   "miniprogramRoot": "dist/",
   "projectname": "ydy-cli-project-taros",
   "description": "123",
-  "appid": "wxdc08e67cac4c6554",
+  "appid": "wx27c89241d93f10d3",
   "setting": {
     "urlCheck": true,
     "es6": true,
@@ -36,5 +36,5 @@
     "include": []
   },
   "editorSetting": {},
-  "libVersion": "3.8.8"
+  "libVersion": "3.12.1"
 }

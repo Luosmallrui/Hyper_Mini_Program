@@ -1,6 +1,6 @@
 import markerIcon from '@/assets/icons/marker.png';
 import markerIconRed from '@/assets/icons/marker-red.png';
-import {View, Text, Input, Map, Image, ScrollView} from '@tarojs/components';
+import {View, Text, Map, Image, ScrollView} from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import {useEffect, useState} from 'react';
 import './index.less';
@@ -130,7 +130,7 @@ const HomePage = () => {
       url: 'https://apis.map.qq.com/ws/geocoder/v1/',
       data: {
         location: `${lat},${lng}`,
-        key: '7GEBZ-DLZKN-TRUFI-S7MTP-UISI6-4XBGI',
+        key: '4C6BZ-O47Y7-SOZX7-HM46J-TPRQV-TGFHX',
         get_poi: 0
       },
       success(res) {
@@ -173,32 +173,32 @@ const HomePage = () => {
         onError={(e) => {
           console.error('地图错误:', e);
         }}
-        // subkey="7GEBZ-DLZKN-TRUFI-S7MTP-UISI6-4XBGI"
+        layer-style="1"
+        subkey='4C6BZ-O47Y7-SOZX7-HM46J-TPRQV-TGFHX'
       />
 
       {/* ================= 顶部悬浮 ================= */}
       <View className='header-wrapper'>
         <View className='search-bar-floating'>
+          
+          {/* 1. 城市 */}
           <View className='city-select' onClick={getLocation}>
             <Text className='city-name'>{locationName}</Text>
             <Text className='arrow'>▼</Text>
           </View>
 
+          {/* 2. 搜索 */}
           <View className='search-input-box'>
-            <Text className='search-icon'>🔍</Text>
-            <Input
-              value={searchValue}
-              placeholder='搜索'
-              onInput={(e) => setSearchValue(e.detail.value)}
-              className='search-input'
-            />
+            <Text>搜索</Text>
           </View>
 
+          {/* 3. 二维码 */}
           <View className='qr-btn'>
             <Text>二维码</Text>
           </View>
         </View>
 
+        {/* 筛选栏 */}
         <View className='filter-bar'>
           <View className='filter-item'>全部 ▼</View>
           <View className='filter-item'>区域 ▼</View>
