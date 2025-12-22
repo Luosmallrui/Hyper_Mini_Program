@@ -1,6 +1,6 @@
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/index.scss'
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { View, Text, Button, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { setTabBarIndex } from '../../store/tabbar'
@@ -39,12 +39,10 @@ export default function UserPage() {
       console.log('Code2Session 返回:', res.data)
       Taro.hideLoading()
 
-      // 【修改点】：直接获取 res.data，因为它直接包含了 user/stats/token
       const responseData = res.data
 
       // 判断依据：只要返回的数据里有 token，就视为请求成功
       if (responseData && responseData.token) {
-        // 直接解构，不需要再进一层 .data
         const { user, stats, token } = responseData
 
         // 1. 保存 Token
@@ -55,7 +53,6 @@ export default function UserPage() {
         setUserStats(stats)
 
         // 3. 判断是否有手机号
-        // 你的日志里 phone_number 是 ""，所以这里会走 else 分支，显示“绑定手机号”按钮
         if (user.phone_number && user.phone_number !== "") {
           setIsLogin(true)
           setNeedPhoneAuth(false)

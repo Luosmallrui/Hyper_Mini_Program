@@ -1,3 +1,3 @@
 export default definePageConfig({
-  navigationBarTitleText: '优惠'
+  navigationBarTitleText: '广场'
 })

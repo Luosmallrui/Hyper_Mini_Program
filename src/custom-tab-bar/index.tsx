@@ -1,6 +1,9 @@
 import { Component } from 'react'
-import { View, Text, Image } from '@tarojs/components'
+import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import { AtIcon } from 'taro-ui'
+// 务必引入 icon 样式，否则图标无法显示
+import 'taro-ui/dist/style/components/icon.scss' 
 import { tabBarStore } from '../store/tabbar'
 
 // 引入 SCSS 文件
@@ -9,9 +12,7 @@ import './index.scss'
 interface TabItem {
   pagePath: string
   text: string
-  iconType: string
-  icon: string
-  activeIcon: string
+  iconName: string // 将 icon/activeIcon 合并为 iconName，因为字体图标只变颜色
 }
 
 interface State {
@@ -30,30 +31,22 @@ export default class CustomTabBar extends Component<{}, State> {
         {
           pagePath: '/pages/index/index',
           text: '首页',
-          iconType: 'home',
-          icon: require('../assets/icons/home.png'),
-          activeIcon: require('../assets/icons/home-active.png')
+          iconName: 'home' 
         },
         {
           pagePath: "/pages/discount/index",
           text: "广场",
-          iconType: 'discount',
-          icon: require('../assets/icons/discount.png'),
-          activeIcon: require('../assets/icons/discount-active.png')
+          iconName: 'tag' // Taro UI 中 tag 图标适合表示优惠/广场，也可以换成 'streaming'
         },
         {
           pagePath: "/pages/cart/index",
           text: "消息",
-          iconType: 'cart',
-          icon: require('../assets/icons/cart.png'),
-          activeIcon: require('../assets/icons/cart-active.png')
+          iconName: 'message'
         },
         {
           pagePath: '/pages/user/index',
           text: '我的',
-          iconType: 'user',
-          icon: require('../assets/icons/home.png'),
-          activeIcon: require('../assets/icons/home-active.png')
+          iconName: 'user'
         },
       ]
     }
@@ -93,7 +86,7 @@ export default class CustomTabBar extends Component<{}, State> {
 
   render() {
     const { selected, list } = this.state
-
+  
     return (
       <View className='custom-tab-bar'>
         <View className='tab-bar-capsule'>
@@ -105,16 +98,14 @@ export default class CustomTabBar extends Component<{}, State> {
                 className={`tab-item ${isSelected ? 'active' : ''}`}
                 onClick={() => this.switchTab(index)}
               >
-                {/* 图标背景圆圈 */}
                 <View className='icon-wrapper'>
-                  <Image
-                    src={isSelected ? item.activeIcon : item.icon}
-                    className='tab-icon'
-                    mode='aspectFit'
+                  {/* 这里把 size 改为 30，作为默认基准 */}
+                  <AtIcon 
+                    value={item.iconName} 
+                    size='30' 
+                    className='tab-at-icon' 
                   />
                 </View>
-                
-                {/* 文字标签 */}
                 <Text className='tab-text'>{item.text}</Text>
               </View>
             )

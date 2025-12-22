@@ -1,4 +1,4 @@
-/* 1. 外部容器 - 调整边距，让它看起来更长 */
+/* 1. 外部容器 - 稍微增加一点底部间距，防止大图标贴底 */
 .custom-tab-bar {
   position: fixed;
   bottom: 0;
@@ -8,28 +8,27 @@
   display: flex;
   justify-content: center;
   pointer-events: none;
-  /* 调整底部距离 */
-  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  padding-bottom: calc(28px + env(safe-area-inset-bottom)); /* 24px -> 28px */
 }
 
-/* 2. 胶囊本体 - 核心改动：增加宽度与高度 */
+/* 2. 胶囊本体 - 保持宽度，高度微调 */
 .tab-bar-capsule {
   pointer-events: auto;
-  width: 95%; /* 宽度从 90% 增加到 95%，显著“拉长” */
-  height: 84px; /* 高度从 72px 增加到 84px，支撑更大的图标 */
+  width: 92%;
+  height: 80px; /* 76px -> 80px，给大图标更多空间 */
   
-  background: rgba(15, 15, 15, 0.75); /* 稍微加深，更具高级感 */
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
+  background: rgba(20, 20, 20, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   
-  border-radius: 100px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+  border-radius: 60px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 
   display: flex;
-  justify-content: space-between; /* 改用 space-between 让内容撑满 */
+  justify-content: space-between;
   align-items: center;
-  padding: 0 15px; /* 增加左右内边距 */
+  padding: 0 10px; /* 左右内边距稍微减小，防止图标挤 */
   box-sizing: border-box;
 }
 
@@ -41,67 +40,69 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  transition: all 0.3s cubic-bezier(0.2, 0, 0.2, 1);
 }
 
-/* 4. 图标容器 - 配合大图标进行放大 */
+/* 4. 图标容器 */
 .icon-wrapper {
-  width: 52px; /* 增加容器尺寸 */
-  height: 52px;
+  width: 48px; /* 未选中状态容器变大：44px -> 48px */
+  height: 48px;
   border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
   margin-bottom: 2px;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
   background-color: transparent;
 }
 
-/* 5. 图片样式 - 显著放大图标 */
-.tab-icon {
-  width: 32px; /* 从 22px/26px 增大到 32px */
-  height: 32px;
-  display: block;
-  transition: transform 0.3s ease;
+/* 5. AtIcon 图标样式 */
+.tab-at-icon {
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
   
-  /* 未选中时：亮白色，带一定透明度 */
-  filter: brightness(0) invert(1);
-  opacity: 0.7; 
+  /* 未选中状态：透明度降低 */
+  color: rgba(255, 255, 255, 0.55) !important; 
+  /* 【核心修改】放大未选中图标：24px -> 30px */
+  font-size: 30px !important; 
 }
 
 /* 6. 文字样式 */
 .tab-text {
-  font-size: 13px; /* 增大字号 */
-  line-height: 1;
-  color: #999999;
-  font-weight: 500; /* 加粗 */
+  font-size: 11px;
+  line-height: 1; /* 紧凑一点 */
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 400;
   transition: color 0.3s ease;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
-/* ========== 选中状态优化 ========== */
+/* ========== 选中状态 (Active) ========== */
 .tab-item.active {
   .icon-wrapper {
-    width: 58px; /* 选中时圆圈更饱满 */
-    height: 58px;
+    /* 【核心修改】选中时圆圈显著变大：48px -> 56px */
+    width: 56px; 
+    height: 56px;
     background-color: #ffffff;
-    box-shadow: 0 6px 15px rgba(0,0,0,0.4);
-    /* 选中的轻微上浮效果，让视觉更有活力 */
-    transform: translateY(-8px); 
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.35);
+    /* 上浮幅度加大，以免遮挡文字 */
+    transform: translateY(-16px); 
   }
 
-  .tab-icon {
-    opacity: 1;
+  .tab-at-icon {
     transform: scale(1.05);
-    
-    /* 关键点：如果你的图标是白色的，在白背景下看不见，强制转为黑色 */
-    /* 如果你的图标已经是黑色的，请保留下面这一行 */
-    filter: brightness(0); 
+    color: #1a1a1a !important; 
+    font-weight: bold; 
+    /* 【核心修改】选中图标放大：26px -> 34px */
+    font-size: 34px !important; 
   }
 
   .tab-text {
     color: #ffffff;
     font-weight: 600;
-    transform: translateY(-4px); /* 文字同步微调 */
+    opacity: 1;
+    /* 文字跟随上移 */
+    transform: translateY(-10px); 
   }
 }
