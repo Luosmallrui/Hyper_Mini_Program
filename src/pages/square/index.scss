@@ -1,0 +1,186 @@
+page {
+  background-color: #F7F8FA;
+}
+
+.square-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 顶部 Tab */
+.header-tabs {
+  padding-top: 100px; // 避让状态栏
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 48px;
+  background: #F7F8FA;
+  padding-bottom: 20px;
+
+  .tab-item {
+    font-size: 30px;
+    color: #9CA3AF;
+    font-weight: 500;
+    transition: all 0.3s;
+
+    &.active {
+      font-size: 34px;
+      color: #1F2937;
+      font-weight: bold;
+      position: relative;
+      
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 30%;
+        height: 6px;
+        background: #333; // 选中下划线，可根据设计图调整
+        border-radius: 4px;
+      }
+    }
+  }
+}
+
+/* 子标签滚动 */
+.sub-tabs-scroll {
+  display: flex;
+  white-space: nowrap;
+  padding: 20px 32px;
+  background: #F7F8FA;
+  height: 80px;
+  box-sizing: border-box;
+
+  .sub-tab-pill {
+    display: inline-flex;
+    padding: 8px 32px;
+    background: transparent;
+    color: #4B5563;
+    font-size: 28px;
+    border-radius: 30px;
+    margin-right: 16px;
+
+    &.active {
+      background: #D1D5DB; // 灰色选中底
+      color: #fff;
+      font-weight: 500;
+    }
+  }
+
+  .sub-tab-expand {
+    margin-left: auto;
+    padding-left: 20px;
+    display: flex;
+    align-items: center;
+    color: #9CA3AF;
+    font-size: 26px;
+  }
+}
+
+/* 瀑布流容器 */
+.feed-container {
+  flex: 1;
+  padding: 0 24px;
+  box-sizing: border-box;
+
+  .masonry-layout {
+    // 核心：使用 column 属性实现纯 CSS 瀑布流
+    column-count: 2;
+    column-gap: 20px;
+  }
+
+  .feed-card {
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    break-inside: avoid; // 防止卡片被断开
+    box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+
+    .card-image {
+      width: 100%;
+      // height 由内联样式控制模拟不同高度
+    }
+
+    .card-info {
+      padding: 16px;
+
+      .card-title {
+        font-size: 28px;
+        font-weight: bold;
+        color: #1F2937;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+        margin-bottom: 16px;
+      }
+
+      .card-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        .user-box {
+          display: flex;
+          align-items: center;
+          
+          .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #E5E7EB;
+            margin-right: 8px;
+          }
+
+          .username {
+            font-size: 22px;
+            color: #6B7280;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+        }
+
+        .like-box {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          
+          .like-count {
+            font-size: 22px;
+            color: #9CA3AF;
+          }
+        }
+      }
+    }
+  }
+  
+  .bottom-spacer {
+    height: 180px; // 留出底部 TabBar 和 FAB 的空间
+  }
+}
+
+/* 悬浮按钮 */
+.fab-publish {
+  position: fixed;
+  right: 32px;
+  bottom: 220px; // 位于 TabBar 之上
+  width: 96px;
+  height: 96px;
+  background: #fff;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  font-size: 24px;
+  color: #333;
+  z-index: 100;
+  border: 1px solid #eee;
+}

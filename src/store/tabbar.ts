@@ -40,8 +40,8 @@ class TabBarStore {
   updateByCurrentRoute() {
     const routes = [
       '/pages/index/index',
-      '/pages/discount/index',
-      '/pages/cart/index',
+      '/pages/square/index',
+      '/pages/message/index',
       '/pages/user/index',
     ]
 

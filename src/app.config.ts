@@ -25,21 +25,11 @@ export default defineAppConfig({
     'pages/agency/index',//代理
     'pages/president/index',//荟长
     'pages/redperson/index',//红人申请
-    'pages/user/index',//用户界面
-  ],
-  subPackages: [
-    {
-      root: 'order',
-      name: 'order',
-      pages: [
-        'pages/order/index',
-        'pages/pending-payment/index',
-        'pages/pending-receipt/index',
-        'pages/pending-shipment/index',
-        'pages/address-edit/index',
-        'pages/InvoiceRecord/index'
-      ]
-    }
+    'pages/square/index', // 广场界面
+    'pages/square/post-create/index', // 发布页
+    'pages/square/post-detail/index', // 详情页
+    'pages/message/index', // 消息界面
+    'pages/user/index', // 用户界面
   ],
   window: {
     backgroundTextStyle: 'light',
@@ -58,11 +48,11 @@ export default defineAppConfig({
         text: '首页',
       },
       {
-        pagePath: 'pages/discount/index',
+        pagePath: 'pages/square/index',
         text: '广场',
       },
       {
-        pagePath: "pages/cart/index",
+        pagePath: "pages/message/index",
         text: "消息",
       },
       {

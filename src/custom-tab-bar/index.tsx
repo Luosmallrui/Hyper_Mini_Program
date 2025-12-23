@@ -12,7 +12,7 @@ import './index.scss'
 interface TabItem {
   pagePath: string
   text: string
-  iconName: string // 将 icon/activeIcon 合并为 iconName，因为字体图标只变颜色
+  iconName: string
 }
 
 interface State {
@@ -34,12 +34,12 @@ export default class CustomTabBar extends Component<{}, State> {
           iconName: 'home' 
         },
         {
-          pagePath: "/pages/discount/index",
+          pagePath: "/pages/square/index",
           text: "广场",
-          iconName: 'tag' // Taro UI 中 tag 图标适合表示优惠/广场，也可以换成 'streaming'
+          iconName: 'streaming'
         },
         {
-          pagePath: "/pages/cart/index",
+          pagePath: "/pages/message/index",
           text: "消息",
           iconName: 'message'
         },
