@@ -1,6 +1,10 @@
 export default defineAppConfig({
   pages: [
     'pages/index/index',          // 首页
+    'pages/search/index',            // 搜索页
+    'pages/activity-list/index',     // 活动列表（信息流模式）
+    'pages/my-tickets/index',        // 我的票夹
+    'pages/activity-detail/index',   // 活动详情
     // 'pages/order/index',          // 订单列表页面
     // 'pages/pending-payment/index', // 待付款页面
     // 'pages/pending-shipment/index', //待发货界面

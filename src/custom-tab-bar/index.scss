@@ -1,3 +1,5 @@
+@import 'taro-ui/dist/style/components/icon.scss';
+
 /* 1. 外部容器 - 稍微增加一点底部间距，防止大图标贴底 */
 .custom-tab-bar {
   position: fixed;
@@ -44,12 +46,15 @@
 
 /* 4. 图标容器 */
 .icon-wrapper {
-  width: 48px; /* 未选中状态容器变大：44px -> 48px */
+  width: 48px;
   height: 48px;
   border-radius: 50%;
+  
+  /* 使用 Flex 布局让内部的 Icon 绝对居中 */
   display: flex;
   justify-content: center;
   align-items: center;
+  
   margin-bottom: 2px;
   transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
   background-color: transparent;
@@ -57,15 +62,18 @@
 
 /* 5. AtIcon 图标样式 */
 .tab-at-icon {
-  display: flex !important;
-  justify-content: center;
-  align-items: center;
+  /* 【核心修复】移除 display: flex !important，Icon 本质是字体，不应作为容器 */
+  /* display: flex !important; <--- 删除这行 */
+  
+  /* 确保行高为 1，防止字体本身自带的行高导致偏移 */
+  line-height: 1 !important;
+  
   transition: all 0.3s ease;
   
-  /* 未选中状态：透明度降低 */
+  /* 未选中状态 */
   color: rgba(255, 255, 255, 0.55) !important; 
-  /* 【核心修改】放大未选中图标：24px -> 30px */
   font-size: 30px !important; 
+  font-weight: normal;
 }
 
 /* 6. 文字样式 */
@@ -81,20 +89,20 @@
 /* ========== 选中状态 (Active) ========== */
 .tab-item.active {
   .icon-wrapper {
-    /* 【核心修改】选中时圆圈显著变大：48px -> 56px */
     width: 56px; 
     height: 56px;
     background-color: #ffffff;
     box-shadow: 0 4px 15px rgba(255, 255, 255, 0.35);
-    /* 上浮幅度加大，以免遮挡文字 */
     transform: translateY(-16px); 
   }
 
   .tab-at-icon {
     transform: scale(1.05);
     color: #1a1a1a !important; 
+    
+    /* 选中时稍微加粗 (注意：部分图标字体不支持 bold，如果变样请去掉) */
     font-weight: bold; 
-    /* 【核心修改】选中图标放大：26px -> 34px */
+    
     font-size: 34px !important; 
   }
 

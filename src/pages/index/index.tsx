@@ -1,421 +1,277 @@
-import markerIcon from '@/assets/icons/marker.png';
-import markerIconRed from '@/assets/icons/marker-red.png';
-import {View, Text, Map, Image, ScrollView} from '@tarojs/components';
-import Taro from '@tarojs/taro';
-import {useEffect, useState} from 'react';
-import './index.less';
+import { View, Text, Map, Swiper, SwiperItem } from '@tarojs/components'
+import Taro from '@tarojs/taro'
+import { useState, useEffect, useRef } from 'react'
+import { AtIcon, AtSlider } from 'taro-ui'
+import 'taro-ui/dist/style/components/icon.scss'
+import 'taro-ui/dist/style/components/slider.scss'
+import { setTabBarIndex } from '../../store/tabbar'
+import './index.less'
 
+// 模拟 Party 数据
+const PARTY_DATA = [
+  {
+    id: 1,
+    title: 'Power Flow嘻哈与电子音乐结合',
+    location: '东南大街段上乘街道',
+    distance: '6.10km',
+    price: '65',
+    lat: 30.657,
+    lng: 104.066,
+    tags: ['HipHop', '电子', '早鸟票'],
+    user: 'PURE LOOP',
+    fans: '5234',
+    image: '' // 实际开发请填入图片URL
+  },
+  {
+    id: 2,
+    title: '疯狂派对：午夜狂欢',
+    location: '建设路主要路口',
+    distance: '2.5km',
+    price: '88',
+    lat: 30.670,
+    lng: 104.070,
+    tags: ['EDM', '派对'],
+    user: 'CRAZY CLUB',
+    fans: '1200',
+    image: ''
+  },
+  {
+    id: 3,
+    title: '复古迪斯科之夜',
+    location: '九眼桥酒吧街',
+    distance: '4.2km',
+    price: '120',
+    lat: 30.645,
+    lng: 104.080,
+    tags: ['Disco', '复古'],
+    user: 'RETRO VIBE',
+    fans: '3300',
+    image: ''
+  }
+]
 
-const HomePage = () => {
-  /* ================== 基础状态 ================== */
-  const [searchValue, setSearchValue] = useState('');
-  const [locationName, setLocationName] = useState('成都市');
+export default function IndexPage() {
+  const [current, setCurrent] = useState(0)
+  const [markers, setMarkers] = useState<any[]>([])
+  const [filterOpen, setFilterOpen] = useState<'none' | 'all' | 'area' | 'more'>('none')
+  const mapCtx = useRef<any>(null)
 
-  // 默认成都中心，防止初始白屏
-  const [latitude, setLatitude] = useState(30.65984);
-  const [longitude, setLongitude] = useState(104.06325);
+  Taro.useDidShow(() => {
+    setTabBarIndex(0)
+  })
 
-  /* ================== Marker 数据 ================== */
-  const [markers] = useState([
-    // 中心大红点
-    {
-      id: 1,
-      latitude: 30.65984,
-      longitude: 104.06325,
-      width: 48,
-      height: 48,
-      iconPath: markerIconRed,
-      callout: {
-        content: 'POWER FLOW',
-        color: '#ffffff',
-        fontSize: 14,
-        bgColor: '#000000',
-        display: 'ALWAYS' as const,
-        textAlign: 'center' as const
-      }
-    },
-    // 周围橙色小点
-    {
-      id: 2,
-      latitude: 30.66284,
-      longitude: 104.06525,
-      width: 32,
-      height: 32,
-      iconPath: markerIcon
-    },
-    {
-      id: 3,
-      latitude: 30.66084,
-      longitude: 104.07125,
-      width: 32,
-      height: 32,
-      iconPath: markerIcon
-    },
-    {
-      id: 4,
-      latitude: 30.65684,
-      longitude: 104.05525,
-      width: 32,
-      height: 32,
-      iconPath: markerIcon
-    },
-    {
-      id: 5,
-      latitude: 30.65384,
-      longitude: 104.06825,
-      width: 32,
-      height: 32,
-      iconPath: markerIcon
-    },
-    {
-      id: 6,
-      latitude: 30.66384,
-      longitude: 104.05925,
-      width: 32,
-      height: 32,
-      iconPath: markerIcon
-    },
-    {
-      id: 7,
-      latitude: 30.65584,
-      longitude: 104.05025,
-      width: 32,
-      height: 32,
-      iconPath: markerIcon
-    }
-  ] as any);
-
-  /* ================== 生命周期 ================== */
   useEffect(() => {
-    getLocation();
-  }, []);
+    // 初始化地图上下文
+    mapCtx.current = Taro.createMapContext('myMap')
+    updateMarkers(0)
+  }, [])
 
-  /* ================== 定位 ================== */
-  const getLocation = () => {
-    Taro.getSetting({
-      success(res) {
-        if (res.authSetting['scope.userLocation']) {
-          fetchLocation();
-        } else {
-          Taro.authorize({
-            scope: 'scope.userLocation',
-            success: fetchLocation,
-            fail: () => {
-              console.warn('用户拒绝定位');
-            }
-          });
-        }
+  // 更新 Markers，高亮当前选中的
+  const updateMarkers = (activeIndex: number) => {
+    const newMarkers = PARTY_DATA.map((item, index) => ({
+      id: item.id,
+      latitude: item.lat,
+      longitude: item.lng,
+      width: index === activeIndex ? 40 : 24, // 选中变大
+      height: index === activeIndex ? 40 : 24,
+      iconPath: index === activeIndex 
+        ? 'https://cdn-icons-png.flaticon.com/512/684/684908.png' // 红色大图标 (模拟)
+        : 'https://cdn-icons-png.flaticon.com/512/684/684908.png', // 橙色小图标
+      // 真实项目中建议使用不同颜色的图标图片
+      callout: {
+        content: item.title,
+        display: index === activeIndex ? 'ALWAYS' : 'BYCLICK',
+        padding: 8,
+        borderRadius: 4,
+        bgColor: '#ffffff',
+        color: '#000000'
       }
-    });
-  };
+    }))
+    setMarkers(newMarkers)
+  }
 
-  const fetchLocation = () => {
-    Taro.getLocation({
-      type: 'gcj02',
-      isHighAccuracy: true,
-      success(res) {
-        setLatitude(res.latitude);
-        setLongitude(res.longitude);
-        reverseGeocoder(res.latitude, res.longitude);
-      },
-      fail(err) {
-        console.error('定位失败', err);
-      }
-    });
-  };
+  // 卡片滑动处理
+  const handleSwiperChange = (e: any) => {
+    const index = e.detail.current
+    setCurrent(index)
+    updateMarkers(index)
 
-  /* ================== 逆地理编码 ================== */
-  const reverseGeocoder = (lat: number, lng: number) => {
-    Taro.request({
-      url: 'https://apis.map.qq.com/ws/geocoder/v1/',
-      data: {
-        location: `${lat},${lng}`,
-        key: '4C6BZ-O47Y7-SOZX7-HM46J-TPRQV-TGFHX',
-        get_poi: 0
-      },
-      success(res) {
-        const data = res.data;
-        if (data && data.status === 0) {
-          const city =
-            data.result.address_component.city ||
-            data.result.address_component.district;
-          setLocationName(city);
-        }
-      }
-    });
-  };
+    // 地图中心聚焦到当前 Party
+    const target = PARTY_DATA[index]
+    if (mapCtx.current) {
+      mapCtx.current.moveToLocation({
+        longitude: target.lng,
+        latitude: target.lat,
+      })
+    }
+  }
 
-  /* ================== 回到当前位置 ================== */
-  const handleBackToLocation = () => {
-    const ctx = Taro.createMapContext('mainMap');
-    ctx.moveToLocation({
-      success: () => {
-        console.log('移动到当前位置成功');
-      }
-    });
-  };
+  // 点击定位回用户位置
+  const handleLocate = () => {
+    if (mapCtx.current) {
+      mapCtx.current.moveToLocation()
+    }
+  }
 
-  /* ================== Render ================== */
+  // 导航跳转
+  const navigateTo = (path: string) => Taro.navigateTo({ url: path })
+
+  // 渲染筛选下拉层
+  const renderFilterModal = () => {
+    if (filterOpen === 'none') return null
+    return (
+      <View className='filter-modal' onClick={() => setFilterOpen('none')}>
+        <View className='filter-content' onClick={e => e.stopPropagation()}>
+          {filterOpen === 'all' && (
+            <View className='list-filter'>
+              {['全部', '演出', '滑板', '骑行', '汽车', '派对'].map(tag => (
+                <View key={tag} className='filter-item'>{tag}</View>
+              ))}
+            </View>
+          )}
+          {filterOpen === 'area' && (
+             <View className='list-filter'>
+                <View className='filter-group-title'>行政区</View>
+                <View className='row-wrap'>
+                  {['锦江区', '青羊区', '武侯区', '高新区'].map(item => <View key={item} className='tag-item'>{item}</View>)}
+                </View>
+             </View>
+          )}
+           {filterOpen === 'more' && (
+             <View className='more-filter'>
+                <View className='section'>
+                  <Text className='label'>价格</Text>
+                  <AtSlider value={50} min={0} max={500} activeColor='#333' backgroundColor='#eee' />
+                </View>
+                <View className='section'>
+                  <Text className='label'>时段</Text>
+                  <View className='time-tags'>
+                    <View className='time-tag'>上午</View>
+                    <View className='time-tag'>下午</View>
+                    <View className='time-tag active'>晚上</View>
+                  </View>
+                </View>
+             </View>
+          )}
+        </View>
+      </View>
+    )
+  }
+
   return (
-    <View className='map-home'>
-
-      {/* ================= 地图 ================= */}
+    <View className='index-page-map'>
+      {/* 地图层 */}
       <Map
-        id='mainMap'
-        className='map-view'
-        latitude={latitude}
-        longitude={longitude}
-        scale={15}
+        id='myMap'
+        className='map-bg'
+        longitude={104.066}
+        latitude={30.657}
+        scale={13}
         markers={markers}
         showLocation
-        enable3D
-        enableRotate
-        onError={(e) => {
-          console.error('地图错误:', e);
+        // 关键：Taro 中配置深色地图通常需要 subkey 和 layer-style
+        // subkey="YOUR_QQ_MAP_KEY"
+        // layer-style="1" // 腾讯地图样式 1通常是深色
+        setting={{
+          enableSatellite: false,
+          enableTraffic: false,
         }}
-        layer-style="1"
-        subkey='4C6BZ-O47Y7-SOZX7-HM46J-TPRQV-TGFHX'
       />
 
-      {/* ================= 顶部悬浮 ================= */}
-      <View className='header-wrapper'>
-        <View className='search-bar-floating'>
-          
-          {/* 1. 城市 */}
-          <View className='city-select' onClick={getLocation}>
-            <Text className='city-name'>{locationName}</Text>
-            <Text className='arrow'>▼</Text>
+      {/* 顶部搜索栏 */}
+      <View className='top-bar'>
+        <View className='location-text'>成都市</View>
+        <View className='search-pill'>
+          <View className='pill-btn' onClick={() => navigateTo('/pages/search/index')}>
+             <AtIcon value='search' size='14' color='#333'/>
+             <Text>搜索</Text>
           </View>
-
-          {/* 2. 搜索 */}
-          <View className='search-input-box'>
-            <Text>搜索</Text>
+          <View className='line' />
+          <View className='pill-btn' onClick={() => navigateTo('/pages/my-tickets/index')}>
+             <AtIcon value='qr-code' size='14' color='#333'/>
+             <Text>二维码</Text>
           </View>
-
-          {/* 3. 二维码 */}
-          <View className='qr-btn'>
-            <Text>二维码</Text>
-          </View>
-        </View>
-
-        {/* 筛选栏 */}
-        <View className='filter-bar'>
-          <View className='filter-item'>全部 ▼</View>
-          <View className='filter-item'>区域 ▼</View>
-          <View className='filter-item'>更多筛选 ▼</View>
         </View>
       </View>
 
-      {/* ================= 右侧悬浮按钮 ================= */}
+      {/* 筛选栏 */}
+      <View className='filter-bar'>
+        <View className='filter-btn' onClick={() => setFilterOpen(filterOpen === 'all' ? 'none' : 'all')}>
+          全部 <AtIcon value='chevron-down' size='10' color='#333'/>
+        </View>
+        <View className='filter-btn' onClick={() => setFilterOpen(filterOpen === 'area' ? 'none' : 'area')}>
+          区域 <AtIcon value='chevron-down' size='10' color='#333'/>
+        </View>
+        <View className='filter-btn' onClick={() => setFilterOpen(filterOpen === 'more' ? 'none' : 'more')}>
+          更多筛选 <AtIcon value='chevron-down' size='10' color='#333'/>
+        </View>
+      </View>
+
+      {/* 筛选弹窗 */}
+      {renderFilterModal()}
+
+      {/* 右侧悬浮按钮 */}
       <View className='floating-controls'>
-        <View className='control-btn' onClick={handleBackToLocation}>
-          <Text className='control-text'>定位</Text>
+        <View className='float-btn' onClick={handleLocate}>
+          <AtIcon value='map-pin' size='20' color='#333'/>
+          {/* <Text className='btn-txt'>定位</Text> */}
         </View>
-        <View className='control-btn list-mode'>
-          <Text className='control-icon'>≡</Text>
-          <Text className='control-text'>查看列表</Text>
+        <View className='float-btn list-btn' onClick={() => navigateTo('/pages/activity-list/index')}>
+          <AtIcon value='list' size='18' color='#333'/>
+          <Text className='btn-txt'>查看列表</Text>
         </View>
       </View>
 
-      {/* ================= 底部卡片 ================= */}
-      <View className='bottom-panel'>
-        <ScrollView
-          scrollX
-          className='store-scroll'
-          showScrollbar={false}
-          enableFlex
-          onTouchMove={(e) => e.stopPropagation()}
+      {/* 底部 Swiper 卡片 */}
+      <View className='bottom-swiper-container'>
+        <Swiper
+          className='party-swiper'
+          current={current}
+          onChange={handleSwiperChange}
+          previousMargin='24px'
+          nextMargin='24px'
+          circular
         >
-          {/* 卡片1 */}
-          <View className='store-card'>
-            <View className='card-img-box'>
-              <Image
-                src='https://images.unsplash.com/photo-1574169208507-84376144848b?w=500'
-                className='card-img'
-                mode='aspectFill'
-              />
-              <View className='price-tag'>65¥起</View>
-              <View className='date-tag'>6.10</View>
-            </View>
-
-            <View className='card-info'>
-              <Text className='title'>Power Flow嘻哈与电子音乐结合</Text>
-
-              <View className='tags'>
-                <Text className='tag'>HipHop</Text>
-                <Text className='tag'>电子</Text>
-                <Text className='tag'>早鸟票</Text>
-                <Text className='tag'>鸡尾酒</Text>
-              </View>
-
-              <View className='footer'>
-                <View className='user'>
-                  <View className='avatar'/>
-                  <View className='user-info'>
-                    <Text className='name'>PURE LOOP</Text>
-                    <Text className='fans'>5234粉丝</Text>
-                  </View>
-                </View>
-                <View className='action-btns'>
-                  <View className='btn subscribe'>订阅</View>
-                  <View className='btn route'>路线</View>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* 卡片2 */}
-          <View className='store-card'>
-            <View className='card-img-box'>
-              <Image
-                src='https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=500'
-                className='card-img'
-                mode='aspectFill'
-              />
-              <View className='price-tag'>88¥起</View>
-              <View className='date-tag'>6.15</View>
-            </View>
-
-            <View className='card-info'>
-              <Text className='title'>夏日电音节 Summer Beat</Text>
-
-              <View className='tags'>
-                <Text className='tag'>EDM</Text>
-                <Text className='tag'>House</Text>
-                <Text className='tag'>预售</Text>
-              </View>
-
-              <View className='footer'>
-                <View className='user'>
-                  <View className='avatar' style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}/>
-                  <View className='user-info'>
-                    <Text className='name'>BEAT ZONE</Text>
-                    <Text className='fans'>8921粉丝</Text>
-                  </View>
-                </View>
-                <View className='action-btns'>
-                  <View className='btn subscribe'>订阅</View>
-                  <View className='btn route'>路线</View>
+          {PARTY_DATA.map((item) => (
+            <SwiperItem key={item.id} className='party-item'>
+              <View 
+                className={`card-content ${item.image ? '' : 'no-img'}`}
+                onClick={() => navigateTo(`/pages/activity-detail/index?id=${item.id}`)}
+              >
+                {/* 模拟图片占位 */}
+                <View className='card-bg' /> 
+                
+                <View className='card-info'>
+                   <View className='price-tag'>
+                      <Text className='symbol'>¥</Text>
+                      <Text className='val'>{item.price}</Text>
+                      <Text className='sub'>起</Text>
+                      <Text className='dist'>{item.distance}</Text>
+                   </View>
+                   
+                   <Text className='card-title'>{item.title}</Text>
+                   
+                   <View className='tags'>
+                      {item.tags.map(t => <View key={t} className='tag'>{t}</View>)}
+                   </View>
+                   
+                   <View className='user-row'>
+                      <View className='avatar' />
+                      <View className='user-meta'>
+                        <Text className='name'>{item.user}</Text>
+                        <Text className='fans'>{item.fans}粉丝</Text>
+                      </View>
+                      <View className='btns'>
+                         <View className='mini-btn'>订阅</View>
+                         <View className='mini-btn'>路线</View>
+                      </View>
+                   </View>
                 </View>
               </View>
-            </View>
-          </View>
-
-          {/* 卡片3 */}
-          <View className='store-card'>
-            <View className='card-img-box'>
-              <Image
-                src='https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500'
-                className='card-img'
-                mode='aspectFill'
-              />
-              <View className='price-tag'>120¥起</View>
-              <View className='date-tag'>6.20</View>
-            </View>
-
-            <View className='card-info'>
-              <Text className='title'>Techno Underground 地下派对</Text>
-
-              <View className='tags'>
-                <Text className='tag'>Techno</Text>
-                <Text className='tag'>深夜场</Text>
-                <Text className='tag'>限量</Text>
-              </View>
-
-              <View className='footer'>
-                <View className='user'>
-                  <View className='avatar' style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}/>
-                  <View className='user-info'>
-                    <Text className='name'>NEON CLUB</Text>
-                    <Text className='fans'>12.5K粉丝</Text>
-                  </View>
-                </View>
-                <View className='action-btns'>
-                  <View className='btn subscribe'>订阅</View>
-                  <View className='btn route'>路线</View>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* 卡片4 */}
-          <View className='store-card'>
-            <View className='card-img-box'>
-              <Image
-                src='https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500'
-                className='card-img'
-                mode='aspectFill'
-              />
-              <View className='price-tag'>50¥起</View>
-              <View className='date-tag'>6.25</View>
-            </View>
-
-            <View className='card-info'>
-              <Text className='title'>复古迪斯科之夜 Retro Disco</Text>
-
-              <View className='tags'>
-                <Text className='tag'>Disco</Text>
-                <Text className='tag'>复古</Text>
-                <Text className='tag'>学生票</Text>
-              </View>
-
-              <View className='footer'>
-                <View className='user'>
-                  <View className='avatar' style={{background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'}}/>
-                  <View className='user-info'>
-                    <Text className='name'>RETRO BAR</Text>
-                    <Text className='fans'>6789粉丝</Text>
-                  </View>
-                </View>
-                <View className='action-btns'>
-                  <View className='btn subscribe'>订阅</View>
-                  <View className='btn route'>路线</View>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* 卡片5 */}
-          <View className='store-card'>
-            <View className='card-img-box'>
-              <Image
-                src='https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=500'
-                className='card-img'
-                mode='aspectFill'
-              />
-              <View className='price-tag'>98¥起</View>
-              <View className='date-tag'>6.30</View>
-            </View>
-
-            <View className='card-info'>
-              <Text className='title'>爵士之夜 Jazz Lounge</Text>
-
-              <View className='tags'>
-                <Text className='tag'>Jazz</Text>
-                <Text className='tag'>现场</Text>
-                <Text className='tag'>含餐</Text>
-              </View>
-
-              <View className='footer'>
-                <View className='user'>
-                  <View className='avatar' style={{background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)'}}/>
-                  <View className='user-info'>
-                    <Text className='name'>SMOOTH BAR</Text>
-                    <Text className='fans'>4532粉丝</Text>
-                  </View>
-                </View>
-                <View className='action-btns'>
-                  <View className='btn subscribe'>订阅</View>
-                  <View className='btn route'>路线</View>
-                </View>
-              </View>
-            </View>
-          </View>
-        </ScrollView>
+            </SwiperItem>
+          ))}
+        </Swiper>
       </View>
-
     </View>
-  );
-};
-
-export default HomePage;
+  )
+}

@@ -2,8 +2,6 @@ import { Component } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { AtIcon } from 'taro-ui'
-// 务必引入 icon 样式，否则图标无法显示
-import 'taro-ui/dist/style/components/icon.scss' 
 import { tabBarStore } from '../store/tabbar'
 
 // 引入 SCSS 文件
