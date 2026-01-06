@@ -1,16 +1,15 @@
 import { Component } from 'react'
-import { View, Text } from '@tarojs/components'
+import { View, Image, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { AtIcon } from 'taro-ui'
 import { tabBarStore } from '../store/tabbar'
-
-// 引入 SCSS 文件
 import './index.scss'
 
 interface TabItem {
   pagePath: string
-  text: string
-  iconName: string
+  iconPath?: string 
+  selectedIconPath?: string
+  iconName?: string 
+  isSpecial?: boolean 
 }
 
 interface State {
@@ -28,23 +27,28 @@ export default class CustomTabBar extends Component<{}, State> {
       list: [
         {
           pagePath: '/pages/index/index',
-          text: '首页',
-          iconName: 'home' 
+          iconPath: require('../assets/icons/home.svg'),
+          selectedIconPath: require('../assets/icons/home-active.svg'),
         },
         {
           pagePath: "/pages/square/index",
-          text: "广场",
-          iconName: 'streaming'
+          iconPath: require('../assets/icons/stream.svg'),
+          selectedIconPath: require('../assets/icons/stream-active.svg'),
+        },
+        {
+          // 中间特殊按钮
+          pagePath: "/pages/square/post-create/index", 
+          isSpecial: true 
         },
         {
           pagePath: "/pages/message/index",
-          text: "消息",
-          iconName: 'message'
+          iconPath: require('../assets/icons/message.svg'),
+          selectedIconPath: require('../assets/icons/message-active.svg'),
         },
         {
           pagePath: '/pages/user/index',
-          text: '我的',
-          iconName: 'user'
+          iconPath: require('../assets/icons/user.svg'),
+          selectedIconPath: require('../assets/icons/user-active.svg'),
         },
       ]
     }
@@ -63,18 +67,17 @@ export default class CustomTabBar extends Component<{}, State> {
     }
   }
 
-  switchTab = (index: number) => {
-    if (index === this.state.selected) {
+  handleTabClick = (index: number, item: TabItem) => {
+    if (item.isSpecial) {
+      Taro.navigateTo({ url: item.pagePath })
       return
     }
 
-    const { list } = this.state
-    const url = list[index].pagePath
+    if (index === this.state.selected) return
 
     tabBarStore.setSelected(index)
-
     Taro.switchTab({
-      url,
+      url: item.pagePath,
       fail: (err) => {
         console.error('页面跳转失败:', err)
         tabBarStore.updateByCurrentRoute()
@@ -87,24 +90,29 @@ export default class CustomTabBar extends Component<{}, State> {
   
     return (
       <View className='custom-tab-bar'>
-        <View className='tab-bar-capsule'>
+        <View className='tab-bar-container'>
           {list.map((item, index) => {
             const isSelected = selected === index
+            const isSpecial = item.isSpecial || false
+
             return (
               <View
                 key={index}
-                className={`tab-item ${isSelected ? 'active' : ''}`}
-                onClick={() => this.switchTab(index)}
+                className={`tab-item ${isSelected ? 'active' : ''} ${isSpecial ? 'special-item' : ''}`}
+                onClick={() => this.handleTabClick(index, item)}
               >
                 <View className='icon-wrapper'>
-                  {/* 这里把 size 改为 30，作为默认基准 */}
-                  <AtIcon 
-                    value={item.iconName} 
-                    size='30' 
-                    className='tab-at-icon' 
-                  />
+                  {isSpecial ? (
+                    // 修改点：直接使用 Text 渲染 + 号
+                    <Text className='tab-text-plus'>+</Text>
+                  ) : (
+                    <Image
+                      src={isSelected ? item.selectedIconPath! : item.iconPath!}
+                      className='tab-icon-image'
+                      mode='aspectFit'
+                    />
+                  )}
                 </View>
-                <Text className='tab-text'>{item.text}</Text>
               </View>
             )
           })}

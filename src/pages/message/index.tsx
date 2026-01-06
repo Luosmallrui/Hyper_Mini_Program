@@ -19,7 +19,7 @@ export default function MessagePage() {
   
   // 每次进入页面，确保 TabBar 选中“消息” (假设索引是 2)
   Taro.useDidShow(() => {
-    setTabBarIndex(2)
+    setTabBarIndex(3)
   })
 
   // 模拟数据 - 完全复刻截图内容

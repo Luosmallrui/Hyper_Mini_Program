@@ -1,27 +1,49 @@
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/index.scss'
-import { useEffect, useState } from 'react'
-import { View, Text, Button, Image } from '@tarojs/components'
+import React, { useEffect, useState } from 'react'
+import { View, Text, Button, Image, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { setTabBarIndex } from '../../store/tabbar'
 import './index.scss'
 
+const BASE_URL = 'https://www.hypercn.cn'
+
 export default function UserPage() {
   // 状态管理
-  const [isLogin, setIsLogin] = useState(false) // 是否完全登录（绑定了手机号）
+  const [isLogin, setIsLogin] = useState(false) // 是否完全登录
   const [userInfo, setUserInfo] = useState<any>({}) // 用户基础信息
-  const [userStats, setUserStats] = useState<any>({ following: 0, follower: 0, likes: 0 }) // 用户统计数据
-  const [needPhoneAuth, setNeedPhoneAuth] = useState(false) // 是否处于“等待绑定手机”状态
+  const [userStats, setUserStats] = useState<any>({ following: 0, follower: 0, likes: 0 }) // 用户统计
+  const [needPhoneAuth, setNeedPhoneAuth] = useState(false) // 是否需要手机号
+
+  // 完善信息弹窗状态
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [tempAvatar, setTempAvatar] = useState('')
+  const [tempNickname, setTempNickname] = useState('')
 
   useEffect(() => {
-    setTabBarIndex(3)
+    setTabBarIndex(4)
   }, [])
 
   Taro.useDidShow(() => {
-    setTabBarIndex(3)
+    setTabBarIndex(4)
+    // 可选：检查 token 有效性
+    const token = Taro.getStorageSync('token')
+    if (token && !isLogin) {
+      // 实际项目中可以在这里调接口刷新用户信息
+    }
   })
 
-  // 第一步：普通登录（获取 openid/token）
+  // 监听登录状态，如果已登录但无头像，弹出完善框
+  useEffect(() => {
+    if (isLogin && (!userInfo.avatar_url || userInfo.avatar_url === '')) {
+      setShowAuthModal(true)
+      // 设置默认头像
+      setTempAvatar('https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0')
+      setTempNickname(userInfo.nickname || '')
+    }
+  }, [isLogin, userInfo])
+
+  // 1. 登录逻辑
   const handleLogin = async () => {
     Taro.showLoading({ title: '登录中...' })
     try {
@@ -29,124 +51,180 @@ export default function UserPage() {
       console.log('wx.login code:', loginRes.code)
 
       const res = await Taro.request({
-        url: 'https://hyperfun.com.cn/api/auth/wx-login',
+        url: `${BASE_URL}/api/auth/wx-login`,
         method: 'POST',
-        data: {
-          code: loginRes.code
-        }
+        data: { code: loginRes.code }
       })
 
-      console.log('Code2Session 返回:', res.data)
       Taro.hideLoading()
-
       const responseData = res.data
 
-      // 判断依据：只要返回的数据里有 token，就视为请求成功
       if (responseData && responseData.token) {
         const { user, stats, token } = responseData
-
-        // 1. 保存 Token
         Taro.setStorageSync('token', token)
-
-        // 2. 更新用户信息和统计数据
         setUserInfo(user)
         setUserStats(stats)
 
-        // 3. 判断是否有手机号
         if (user.phone_number && user.phone_number !== "") {
           setIsLogin(true)
           setNeedPhoneAuth(false)
           Taro.showToast({ title: '登录成功', icon: 'success' })
         } else {
-          // 手机号为空，设置需要验证手机状态
           setNeedPhoneAuth(true)
-          // 这里不要 setIsLogin(true)，保持未完全登录状态，界面显示绑定按钮
-          // 但此时头像和昵称已经获取到了，界面会更新显示头像
         }
       } else {
-        // 如果没有 token，或者返回了错误信息
-        // 兼容一下如果服务器返回了 { msg: 'error' } 这种情况
-        const errorMsg = (responseData as any).msg || '登录数据解析失败'
+        const errorMsg = (responseData as any).msg || '登录失败'
         Taro.showToast({ title: errorMsg, icon: 'none' })
       }
-
     } catch (err) {
       Taro.hideLoading()
-      console.error(err)
-      Taro.showToast({ title: '登录请求失败', icon: 'none' })
+      Taro.showToast({ title: '请求失败', icon: 'none' })
     }
   }
 
-  // 第二步：获取手机号并绑定
+  // 2. 手机号绑定逻辑
   const onGetPhoneNumber = async (e: any) => {
-    console.log('getPhoneNumber event:', e)
-
     if (!e.detail?.code) {
-      console.log('用户拒绝或环境不对')
-      Taro.showToast({ title: '需授权手机号才能继续', icon: 'none' })
+      Taro.showToast({ title: '需授权手机号', icon: 'none' })
+      return
+    }
+    Taro.showLoading({ title: '绑定中...' })
+    try {
+      const res = await Taro.request({
+        url: `${BASE_URL}/api/auth/bind-phone`,
+        method: 'POST',
+        header: { 'Authorization': `Bearer ${Taro.getStorageSync('token')}` },
+        data: { phone_code: e.detail.code }
+      })
+      Taro.hideLoading()
+      const responseData = res.data
+      if (responseData && responseData.phone_number) {
+        const updatedUser = { ...userInfo, phone_number: responseData.phone_number }
+        setUserInfo(updatedUser)
+        setIsLogin(true)
+        setNeedPhoneAuth(false)
+        Taro.showToast({ title: '绑定成功', icon: 'success' })
+      } else {
+        Taro.showToast({ title: (responseData as any).msg || '绑定失败', icon: 'none' })
+      }
+    } catch (err) {
+      Taro.hideLoading()
+      Taro.showToast({ title: '网络请求失败', icon: 'none' })
+    }
+  }
+
+  // 3. 头像选择
+  const onChooseAvatar = (e: any) => {
+    const { avatarUrl } = e.detail
+    setTempAvatar(avatarUrl)
+  }
+
+  // 4. 昵称输入
+  const onNicknameBlur = (e: any) => {
+    setTempNickname(e.detail.value)
+  }
+
+  // 5. 关闭弹窗
+  const handleCloseModal = () => {
+    setShowAuthModal(false)
+  }
+
+  // 6. 保存个人信息 (修复 BUG)
+  const handleSubmitProfile = async () => {
+    if (!tempNickname) {
+      Taro.showToast({ title: '请输入昵称', icon: 'none' })
       return
     }
 
-    Taro.showLoading({ title: '绑定中...' })
+    Taro.showLoading({ title: '保存中...' })
+    const token = Taro.getStorageSync('token')
 
     try {
-      const res = await Taro.request({
-        url: 'https://hyperfun.com.cn/api/auth/bind-phone',
+      let finalAvatarUrl = userInfo.avatar_url // 默认维持原头像
+
+      // 判断是否是临时文件
+      const isNewImage = tempAvatar.startsWith('http') && !tempAvatar.includes('mmbiz.qpic.cn') || tempAvatar.startsWith('wxfile')
+      
+      // 1. 上传图片 (UploadFile 返回结构通常是标准的，data 为字符串)
+      if (isNewImage) {
+        const uploadRes = await Taro.uploadFile({
+          url: `${BASE_URL}/api/v1/user/avatar`,
+          filePath: tempAvatar,
+          name: 'image',
+          header: { 'Authorization': `Bearer ${token}` }
+        })
+
+        let uploadData: any = {}
+        try {
+          uploadData = JSON.parse(uploadRes.data)
+        } catch (e) {
+          throw new Error('头像上传响应解析失败')
+        }
+        
+        if (uploadData.code === 200) {
+           finalAvatarUrl = (typeof uploadData.data === 'string') ? uploadData.data : uploadData.data?.url
+        } else {
+           throw new Error(uploadData.msg || '头像上传失败')
+        }
+      } else {
+        finalAvatarUrl = tempAvatar
+      }
+
+      // 2. 更新用户信息接口
+      // 注意：这里的 updateRes 根据你的描述，可能已经被拦截器处理过，直接就是 {code:200, ...}
+      const updateRes: any = await Taro.request({
+        url: `${BASE_URL}/api/v1/user/info`,
         method: 'POST',
-        header: {
-          // 绑定手机号通常需要带上 token
-          'Authorization': `Bearer ${Taro.getStorageSync('token')}`
-        },
+        header: { 'Authorization': `Bearer ${token}` },
         data: {
-          phone_code: e.detail.code
+          nickname: tempNickname,
+          avatar: finalAvatarUrl
         }
       })
 
-      console.log('绑定手机号返回:', res.data)
       Taro.hideLoading()
 
-      // 【修改点】：直接获取 res.data
-      const responseData = res.data
+      // 【核心修复】：智能判断 updateRes 的结构
+      // 1. 如果 updateRes 直接有 code 字段，说明它就是数据对象 (拦截器处理过)
+      // 2. 否则，尝试取 updateRes.data (标准 Taro.request 返回)
+      let resData = (updateRes.code !== undefined) ? updateRes : updateRes.data
 
-      // 判断依据：如果返回的数据里有 phone_number，说明绑定成功
-      if (responseData && responseData.phone_number) {
-        // 1. 更新用户信息
-        // 将新的手机号合并到当前的 userInfo 中
-        const updatedUser = { 
-          ...userInfo, 
-          phone_number: responseData.phone_number 
+      // 防御性编程：如果数据还是字符串，尝试解析
+      if (typeof resData === 'string') {
+        try {
+          resData = JSON.parse(resData)
+        } catch (e) {
+          console.error('API响应非JSON格式', resData)
         }
-        setUserInfo(updatedUser)
-        
-        // 2. 状态切换：完全登录成功，不再需要授权手机
-        setIsLogin(true)
-        setNeedPhoneAuth(false)
-        
-        Taro.showToast({ title: '绑定成功', icon: 'success' })
-      } else {
-        // 如果没有 phone_number 字段，视为失败
-        const errorMsg = (responseData as any).msg || '绑定失败'
-        Taro.showToast({ title: errorMsg, icon: 'none' })
       }
 
-    } catch (err) {
+      // 判断业务状态码
+      if (resData && resData.code === 200) {
+        setUserInfo({
+          ...userInfo,
+          nickname: tempNickname,
+          avatar_url: finalAvatarUrl
+        })
+        setShowAuthModal(false)
+        Taro.showToast({ title: '保存成功', icon: 'success' })
+      } else {
+        Taro.showToast({ title: resData?.msg || '保存失败', icon: 'none' })
+      }
+
+    } catch (err: any) {
       Taro.hideLoading()
       console.error(err)
-      Taro.showToast({ title: '绑定请求失败', icon: 'none' })
+      Taro.showToast({ title: err.message || '操作失败', icon: 'none' })
     }
   }
 
-  // 计算属性：如果有用户信息（无论是已登录 还是 待绑定手机），都显示数据
+  // 界面配置
   const hasData = isLogin || needPhoneAuth;
-
-  // 映射接口数据到界面统计
   const stats = [
     { label: '关注', value: hasData ? userStats.following : '-' },
     { label: '粉丝', value: hasData ? userStats.follower : '-' },
     { label: '赞/收藏', value: hasData ? userStats.likes : '-' },
   ];
-
-  // 中间圆圈导航
   const mainNavItems = [
     { icon: 'list', label: '订单', action: '全部订单' },
     { icon: 'sketch', label: '钱包', action: '充值' },
@@ -160,18 +238,15 @@ export default function UserPage() {
        Taro.showToast({title: '请先登录', icon: 'none'})
        return
     }
-    // ... 原有跳转逻辑不变 ...
     Taro.showToast({ title: `点击了${label}`, icon: 'none' })
   }
 
   return (
     <View className='user-page'>
-      {/* Top Header Section */}
+      {/* Header Section */}
       <View className='header-section'>
-        {/* User Info Row */}
         <View className='user-profile'>
           <View className='avatar-container'>
-            {/* 如果有头像url (userInfo.avatar_url) 则显示，否则显示默认 */}
             {hasData && userInfo.avatar_url ? (
                <Image className='avatar-img' src={userInfo.avatar_url} />
             ) : (
@@ -182,8 +257,6 @@ export default function UserPage() {
           </View>
 
           <View className='info-container'>
-            {/* 登录成功：显示 昵称 + ID */}
-            {/* 待绑定手机：也可以显示昵称(接口已返回)，但下方显示绑定按钮 */}
             {isLogin ? (
               <>
                 <View className='name-row'>
@@ -196,14 +269,11 @@ export default function UserPage() {
               </>
             ) : (
               <View className='login-actions'>
-                {/* 这里的文案可以根据状态稍微变化，增强体验 */}
                 {needPhoneAuth ? (
-                   // 已经获取了昵称，显示欢迎语
                    <Text className='welcome-text'>你好，{userInfo.nickname}</Text>
                 ) : (
                    <Text className='welcome-text'>欢迎来到HyperFun</Text>
                 )}
-                
                 {needPhoneAuth ? (
                   <Button 
                     className='login-btn phone-btn'
@@ -230,7 +300,6 @@ export default function UserPage() {
           </View>
         </View>
 
-        {/* Stats Row */}
         <View className='stats-row'>
           {stats.map((stat, index) => (
             <View key={index} className='stat-item'>
@@ -244,7 +313,7 @@ export default function UserPage() {
         </View>
       </View>
 
-      {/* Main Circular Navigation */}
+      {/* Main Nav */}
       <View className='main-nav-card'>
         {mainNavItems.map((item, index) => (
           <View key={index} className='nav-item' onClick={() => handleItemClick(item.action)}>
@@ -256,7 +325,7 @@ export default function UserPage() {
         ))}
       </View>
 
-      {/* 剩余 UI 代码保持不变 (我的订阅/我参与的) ... */}
+      {/* Subscription Section */}
       <View className='section-card'>
          <View className='section-header'>
             <View className='tab-active'><Text>我的订阅</Text></View>
@@ -274,6 +343,7 @@ export default function UserPage() {
          </View>
       </View>
 
+      {/* Participation Section */}
       <View className='section-card'>
          <View className='section-header'>
             <Text className='section-title'>我参与的</Text>
@@ -285,6 +355,46 @@ export default function UserPage() {
              ))}
          </View>
       </View>
+
+      {/* 完善信息弹窗 (修复后) */}
+      {showAuthModal && (
+        <View className='auth-modal-overlay'>
+          <View className='auth-modal-content'>
+            {/* 关闭按钮 */}
+            <View className='close-icon' onClick={handleCloseModal}>
+              <AtIcon value='close' size='20' color='#999' />
+            </View>
+
+            <Text className='modal-title'>完善个人信息</Text>
+            <Text className='modal-subtitle'>获取您的头像和昵称以展示</Text>
+            
+            <Button 
+              className='avatar-wrapper-btn' 
+              openType="chooseAvatar" 
+              onChooseAvatar={onChooseAvatar}
+            >
+              <Image className='chosen-avatar' src={tempAvatar} mode='aspectFill' />
+              <View className='edit-badge'>
+                <AtIcon value='camera' size='12' color='#fff' />
+              </View>
+            </Button>
+
+            <View className='input-group'>
+              <Text className='label'>昵称</Text>
+              <Input 
+                type="nickname" 
+                className='nickname-input' 
+                placeholder="请输入昵称" 
+                value={tempNickname}
+                onBlur={onNicknameBlur}
+                onInput={(e) => setTempNickname(e.detail.value)}
+              />
+            </View>
+
+            <Button className='save-btn' onClick={handleSubmitProfile}>保存信息</Button>
+          </View>
+        </View>
+      )}
     </View>
   )
 }

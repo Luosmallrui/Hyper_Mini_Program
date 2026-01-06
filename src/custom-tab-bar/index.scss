@@ -1,116 +1,90 @@
-@import 'taro-ui/dist/style/components/icon.scss';
-
-/* 1. 外部容器 - 稍微增加一点底部间距，防止大图标贴底 */
+/* 1. 外部容器 */
 .custom-tab-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   z-index: 9999;
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-  padding-bottom: calc(28px + env(safe-area-inset-bottom)); /* 24px -> 28px */
+  background: transparent; 
+  pointer-events: none; 
+  /* 底部留白，把图标托起来 */
+  padding-bottom: calc(30px + env(safe-area-inset-bottom));
 }
 
-/* 2. 胶囊本体 - 保持宽度，高度微调 */
-.tab-bar-capsule {
-  pointer-events: auto;
-  width: 92%;
-  height: 80px; /* 76px -> 80px，给大图标更多空间 */
-  
-  background: rgba(20, 20, 20, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  
-  border-radius: 60px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-
+/* 2. 内容容器 */
+.tab-bar-container {
+  pointer-events: auto; 
+  width: 100%;
+  height: 80px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 10px; /* 左右内边距稍微减小，防止图标挤 */
+  justify-content: space-around;
+  align-items: center; 
+  padding: 0 20px;
   box-sizing: border-box;
 }
 
 /* 3. 单个 Tab 项 */
 .tab-item {
   flex: 1;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-
-/* 4. 图标容器 */
-.icon-wrapper {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  
-  /* 使用 Flex 布局让内部的 Icon 绝对居中 */
   display: flex;
   justify-content: center;
   align-items: center;
+  height: 100%; 
   
-  margin-bottom: 2px;
-  transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
-  background-color: transparent;
-}
-
-/* 5. AtIcon 图标样式 */
-.tab-at-icon {
-  /* 【核心修复】移除 display: flex !important，Icon 本质是字体，不应作为容器 */
-  /* display: flex !important; <--- 删除这行 */
-  
-  /* 确保行高为 1，防止字体本身自带的行高导致偏移 */
-  line-height: 1 !important;
-  
-  transition: all 0.3s ease;
-  
-  /* 未选中状态 */
-  color: rgba(255, 255, 255, 0.55) !important; 
-  font-size: 30px !important; 
-  font-weight: normal;
-}
-
-/* 6. 文字样式 */
-.tab-text {
-  font-size: 11px;
-  line-height: 1; /* 紧凑一点 */
-  color: rgba(255, 255, 255, 0.5);
-  font-weight: 400;
-  transition: color 0.3s ease;
-  margin-top: 4px;
-}
-
-/* ========== 选中状态 (Active) ========== */
-.tab-item.active {
   .icon-wrapper {
-    width: 56px; 
+    width: 44px;
+    height: 44px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+  }
+
+  .tab-icon-image {
+    width: 44px;
+    height: 44px;
+    display: block;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+
+  &.active {
+    .tab-icon-image {
+      width: 46px;
+      height: 46px;
+    }
+  }
+}
+
+/* 4. 中间特殊按钮 (红色圆角矩形 + 纯文本加号) */
+.tab-item.special-item {
+  flex: 1.5; 
+  
+  .icon-wrapper {
+    width: 86px;
     height: 56px;
-    background-color: #ffffff;
-    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.35);
-    transform: translateY(-16px); 
+    
+    background-color: #FF2E4D; 
+
+    border-radius: 30px; 
+    
+    box-shadow: 0 6px 16px rgba(255, 46, 77, 0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 
-  .tab-at-icon {
-    transform: scale(1.05);
-    color: #1a1a1a !important; 
-    
-    /* 选中时稍微加粗 (注意：部分图标字体不支持 bold，如果变样请去掉) */
-    font-weight: bold; 
-    
-    font-size: 34px !important; 
-  }
-
-  .tab-text {
+  .tab-text-plus {
     color: #ffffff;
-    font-weight: 600;
-    opacity: 1;
-    /* 文字跟随上移 */
-    transform: translateY(-10px); 
+    font-size: 48px; 
+    font-weight: 500; 
+    line-height: 1;
+    /* 视觉微调：纯文本 + 号在胶囊里可能需要微调垂直位置 */
+    margin-top: -5px; 
+  }
+  
+  &:active .icon-wrapper {
+    transform: scale(0.95);
+    background-color: #E02844;
   }
 }
