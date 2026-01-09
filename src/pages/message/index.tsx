@@ -32,7 +32,7 @@ export default function MessagePage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   Taro.useDidShow(() => {
-    setTabBarIndex(2) 
+    setTabBarIndex(3) 
     fetchSessionList()
   })
 

@@ -26,7 +26,7 @@ export async function wxLogin(): Promise<LoginResponse> {
 
     // 2. 将 code 发送到后端
     const res = await Taro.request({
-      url: `${API_BASE_URL}/api/auth/wx-login`,
+      url: `${API_BASE_URL}/api/v1/auth/wx-login`,
       method: 'POST',
       data: {
         code

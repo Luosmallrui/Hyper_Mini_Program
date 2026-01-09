@@ -27,11 +27,20 @@ const doRefreshToken = async (): Promise<string | null> => {
 
   try {
     console.log('[Request] 正在尝试刷新 Token...')
+    
+    // 【修改 1】URL 增加 v1
+    const url = `${BASE_URL}/api/v1/auth/refresh`
+    
+    // 【修改 2】根据要求，将 refresh_token 放入 Authorization 头
     const res = await Taro.request({
-      url: `${BASE_URL}/api/auth/refresh`,
+      url: url,
       method: 'POST',
-      // 注意：根据你的接口文档，refresh_token 通常放在 body 中
-      data: { refresh_token: refreshToken } 
+      header: {
+        'Content-Type': 'application/json',
+        // 关键：Bearer + refresh_token
+        'Authorization': `Bearer ${refreshToken}` 
+      },
+      data: {} // POST 请求通常带个空 body，视后端框架而定
     })
 
     console.log('[Request] 刷新接口返回:', res)
@@ -41,17 +50,16 @@ const doRefreshToken = async (): Promise<string | null> => {
       try { data = JSON.parse(data) } catch (e) {}
     }
 
-    // 假设刷新接口返回结构: { code: 200, data: { access_token: "...", refresh_token: "..." } }
-    // 如果你的接口直接返回 token 字符串，请调整这里
+    // 假设刷新接口返回结构: { code: 200, data: { access_token: "..." } }
     if (res.statusCode === 200 && data && data.code === 200) {
-      const newAccess = data.data?.access_token
-      const newRefresh = data.data?.refresh_token // 有些后端刷新也会给新的 refresh_token
+      const newAccess = data.data?.access_token || data.access_token
+      const newRefresh = data.data?.refresh_token || data.refresh_token
 
       if (newAccess) {
         console.log('[Request] 刷新成功，新 Token:', newAccess.substring(0, 10) + '...')
         saveTokens(newAccess, newRefresh)
         
-        // 【关键】广播事件：通知 WebSocket 和其他组件 Token 已更新
+        // 广播事件：通知 WebSocket 和其他组件 Token 已更新
         Taro.eventCenter.trigger('TOKEN_REFRESHED', newAccess)
         
         return newAccess
@@ -80,12 +88,14 @@ export const request = async (options: Taro.request.Option) => {
     header
   })
 
-  // 检查 header 中的自动续期 (如果有)
-  if (res.header && (res.header['X-New-Access-Token'] || res.header['x-new-access-token'])) {
-      const newToken = res.header['X-New-Access-Token'] || res.header['x-new-access-token']
-      Taro.setStorageSync(KEY_ACCESS_TOKEN, newToken)
-      // 这里的 header 自动续期通常不需要重发请求，但建议也广播一下
-      Taro.eventCenter.trigger('TOKEN_REFRESHED', newToken)
+  // 检查 header 中的自动续期 (如果有 X-New-Access-Token)
+  if (res.header) {
+      const newAccess = res.header['X-New-Access-Token'] || res.header['x-new-access-token']
+      if (newAccess) {
+          console.log('[Request] Header 自动续期 Access Token')
+          Taro.setStorageSync(KEY_ACCESS_TOKEN, newAccess)
+          Taro.eventCenter.trigger('TOKEN_REFRESHED', newAccess)
+      }
   }
 
   let data = res.data
@@ -95,6 +105,8 @@ export const request = async (options: Taro.request.Option) => {
 
   // 拦截 401
   if (res.statusCode === 401 || (data && data.code === 401)) {
+    console.log('[Request] 401 Detected, queueing request...')
+    
     if (isRefreshing) {
       return new Promise((resolve) => {
         requestQueue.push((newToken: string) => {
@@ -111,6 +123,7 @@ export const request = async (options: Taro.request.Option) => {
     isRefreshing = false
 
     if (newToken) {
+      console.log('[Request] Retrying queued requests...')
       requestQueue.forEach(cb => cb(newToken))
       requestQueue = []
       return request({
@@ -118,13 +131,13 @@ export const request = async (options: Taro.request.Option) => {
         header: { ...header, 'Authorization': `Bearer ${newToken}` }
       })
     } else {
-      // 刷新彻底失败 (Refresh Token 也过期)
+      console.warn('[Request] 刷新失败，执行强制登出')
+      // 刷新彻底失败 (Refresh Token 也过期或无效)
       Taro.removeStorageSync(KEY_ACCESS_TOKEN)
       Taro.removeStorageSync(KEY_REFRESH_TOKEN)
       Taro.removeStorageSync(KEY_USER_INFO)
       Taro.eventCenter.trigger('FORCE_LOGOUT')
       
-      // 返回包含错误信息的对象，避免前端 crash
       return { ...res, data: { code: 401, msg: '登录已过期' } } 
     }
   }

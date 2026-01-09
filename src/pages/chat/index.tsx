@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import 'taro-ui/dist/style/components/activity-indicator.scss'
+import { request } from '../../utils/request'
 import './index.scss'
-import { request } from '../../utils/request' // 引入封装好的请求工具
 
 interface MessageItem {
   id: string
@@ -21,43 +21,35 @@ export default function ChatPage() {
   const router = useRouter()
   const { peer_id, title, type } = router.params 
 
-  // --- 状态管理 ---
   const [msgList, setMsgList] = useState<MessageItem[]>([])
-  const msgListRef = useRef<MessageItem[]>([]) // Ref 同步
+  const msgListRef = useRef<MessageItem[]>([]) 
   
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
-  
-  // 分页游标
   const [nextCursor, setNextCursor] = useState<number | null>(null)
   const nextCursorRef = useRef<number | null>(null)
   const [hasMore, setHasMore] = useState(true)
   const hasMoreRef = useRef(true)
   
-  // 用户信息
   const [peerAvatar, setPeerAvatar] = useState('') 
   const [selfAvatar, setSelfAvatar] = useState('') 
   const [myUserId, setMyUserId] = useState<number>(0)
   
-  // 滚动控制
   const [scrollId, setScrollId] = useState('')
   
-  // 优化状态
   const [firstLoaded, setFirstLoaded] = useState(false) 
   const [isHistoryLoading, setIsHistoryLoading] = useState(false) 
   
-  // 布局适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
   const [menuButtonWidth, setMenuButtonWidth] = useState(0) 
   const [keyboardHeight, setKeyboardHeight] = useState(0)
 
-  // 1. Ref 同步
+  // Ref 同步
   useEffect(() => { msgListRef.current = msgList }, [msgList])
   useEffect(() => { nextCursorRef.current = nextCursor }, [nextCursor])
   useEffect(() => { hasMoreRef.current = hasMore }, [hasMore])
 
-  // 2. 初始化与监听
   useEffect(() => {
     try {
       const userInfo = Taro.getStorageSync('userInfo')
@@ -84,6 +76,7 @@ export default function ChatPage() {
     }
     Taro.onKeyboardHeightChange(onKeyboardChange)
 
+    // 监听 IM 消息
     const onNewMessage = (res: any) => {
         const newMsg = res.payload || res
         if (res.event && res.event !== 'chat') return
@@ -94,6 +87,7 @@ export default function ChatPage() {
         const currentMyId = String(myUserId || Taro.getStorageSync('userInfo')?.user_id || 0)
 
         let isCurrentChat = false
+        // 判断是否是自己发的 (多端同步的关键)
         let isSelfMsg = (msgSenderId === currentMyId)
 
         if (Number(type) === 2) {
@@ -120,12 +114,34 @@ export default function ChatPage() {
             }
 
             setMsgList(prev => {
+                // 1. 绝对去重：如果ID完全一致，直接跳过
                 if (prev.some(m => m.id === incomingMsg.id)) return prev
+
+                // 2. 乐观更新去重 (核心修复)
+                // 如果是自己发的消息，检查列表里是否有内容相同的临时消息
+                if (isSelfMsg) {
+                    const tempIndex = prev.findIndex(m => 
+                        m.id.toString().startsWith('temp_') && // 是本地临时ID
+                        m.content === incomingMsg.content      // 内容一致
+                        // 严谨的话还可以判断发送时间差在几秒内
+                    )
+                    
+                    if (tempIndex !== -1) {
+                        // 找到了临时消息，直接替换成真实消息，避免重复
+                        const newList = [...prev]
+                        newList[tempIndex] = incomingMsg
+                        return newList
+                    }
+                    // 没找到（说明是其他设备发的），走下面正常追加流程
+                }
+
+                // 3. 正常追加
                 const newList = [...prev, incomingMsg]
                 scrollToBottom(newList)
                 return newList
             })
             
+            // 只有对方发的消息才清未读
             if (!isSelfMsg) {
                 clearUnread()
             }
@@ -135,6 +151,14 @@ export default function ChatPage() {
 
     fetchMessages(true)
     clearUnread()
+    // 获取最新用户信息
+    try {
+        const u = Taro.getStorageSync('userInfo')
+        if (u) {
+            if (u.user_id) setMyUserId(Number(u.user_id))
+            if (u.avatar_url) setSelfAvatar(u.avatar_url)
+        }
+    } catch(e) {}
 
     return () => {
       Taro.offKeyboardHeightChange(onKeyboardChange)
@@ -142,7 +166,6 @@ export default function ChatPage() {
     }
   }, [peer_id, type, myUserId])
 
-  // 清除未读 (改为 request)
   const clearUnread = async () => {
       try {
         await request({
@@ -153,16 +176,12 @@ export default function ChatPage() {
       } catch(e) {}
   }
 
-  // --- 核心：获取消息列表 (改为 request) ---
   const fetchMessages = async (isRefresh = false) => {
     if (loading) return
     if (!isRefresh && !hasMoreRef.current) return
 
     setLoading(true)
-    
-    if (!isRefresh) {
-        setIsHistoryLoading(true)
-    }
+    if (!isRefresh) setIsHistoryLoading(true)
     
     try {
       const params: any = {
@@ -183,17 +202,13 @@ export default function ChatPage() {
           await new Promise(resolve => setTimeout(resolve, 500))
       }
 
-      // 使用 request 封装
       const res = await request({
         url: '/api/v1/message/list',
         method: 'GET',
         data: params
       })
 
-      // request 工具已经处理了 data 的解析，res.data 通常是对象
       let resBody: any = res.data
-
-      // 防御性解析
       if (typeof resBody === 'string') {
         try { resBody = JSON.parse(resBody) } catch (e) {}
       }
@@ -217,7 +232,6 @@ export default function ChatPage() {
         } else {
           if (sortedMsgs.length > 0) {
              setMsgList(prev => [...sortedMsgs, ...prev])
-             
              if (anchorMsgId) {
                  setScrollId('') 
                  setTimeout(() => {
@@ -238,12 +252,12 @@ export default function ChatPage() {
     }
   }
 
-  // 发送消息 (改为 request)
   const handleSend = async () => {
       if (!inputText.trim()) return
       const contentToSend = inputText
       setInputText('') 
       
+      // 乐观更新：插入临时消息，ID以 temp_ 开头
       const tempId = `temp_${Date.now()}`
       const tempMsg: MessageItem = {
         id: tempId,
@@ -280,10 +294,30 @@ export default function ChatPage() {
     }
   }
 
+  // 格式化时间 (优化版)
   const formatTime = (ts: number) => {
+    if (!ts) return ''
     const date = new Date(ts * 1000)
+    const now = new Date()
+    
     const z = (n: number) => (n < 10 ? `0${n}` : n)
-    return `${z(date.getHours())}:${z(date.getMinutes())}`
+    const timeStr = `${z(date.getHours())}:${z(date.getMinutes())}`
+    
+    // 判断是否是今天
+    const isToday = date.getDate() === now.getDate() && 
+                    date.getMonth() === now.getMonth() && 
+                    date.getFullYear() === now.getFullYear()
+    
+    // 判断是否是今年
+    const isThisYear = date.getFullYear() === now.getFullYear()
+
+    if (isToday) {
+      return timeStr
+    } else if (isThisYear) {
+      return `${date.getMonth() + 1}/${date.getDate()} ${timeStr}`
+    } else {
+      return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()} ${timeStr}`
+    }
   }
 
   return (

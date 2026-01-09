@@ -1,10 +1,10 @@
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/index.scss'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { View, Text, Button, Image, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { setTabBarIndex } from '../../store/tabbar'
-// 引入封装好的请求工具 (用于非登录接口)
+// 引入封装好的请求工具
 import { request } from '../../utils/request'
 import './index.scss'
 
@@ -34,36 +34,31 @@ export default function UserPage() {
     // 1. 布局适配计算
     const sysInfo = Taro.getWindowInfo()
     const menuInfo = Taro.getMenuButtonBoundingClientRect()
+    
     const sbHeight = sysInfo.statusBarHeight || 20
     setStatusBarHeight(sbHeight)
+    
     const nbHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
 
-    // 2. 监听全局事件
+    // 2. 监听全局用户信息更新
     const onUserUpdate = (u: any) => {
         setUserInfo(u)
         setIsLogin(true)
+        setNeedPhoneAuth(!u.phone_number)
     }
-    const onForceLogout = () => {
-        handleLogout()
-        Taro.showToast({ title: '登录已过期', icon: 'none' })
-    }
-
     Taro.eventCenter.on('USER_INFO_UPDATED', onUserUpdate)
-    Taro.eventCenter.on('FORCE_LOGOUT', onForceLogout)
 
     // 3. 初始化登录状态
     initLoginState()
 
     return () => {
         Taro.eventCenter.off('USER_INFO_UPDATED', onUserUpdate)
-        Taro.eventCenter.off('FORCE_LOGOUT', onForceLogout)
     }
   }, [])
 
   Taro.useDidShow(() => {
     setTabBarIndex(4)
-    // 每次显示页面，如果有 token 则尝试从服务器拉取最新信息
     if (Taro.getStorageSync('access_token')) {
        fetchLatestUserInfo()
     }
@@ -76,57 +71,50 @@ export default function UserPage() {
     const token = Taro.getStorageSync('access_token')
     const cachedUser = Taro.getStorageSync('userInfo')
 
-    if (token && cachedUser) {
-      setUserInfo(cachedUser)
-      setIsLogin(true)
+    if (token) {
+      if (cachedUser) {
+        setUserInfo(cachedUser)
+        setIsLogin(true)
+        setNeedPhoneAuth(!cachedUser.phone_number)
+      }
+      // 有 Token 就尝试去拉取最新信息
+      fetchLatestUserInfo()
     } else {
-      // 无缓存，尝试静默登录
       handleLogin(true) 
     }
   }
 
-  // 获取最新用户信息 (实际上是静默重新登录)
-  // 因为没有 GET /user/info，所以通过 wx-login 接口刷新数据
+  // 获取最新用户信息 (GET /user/info)
   const fetchLatestUserInfo = async () => {
     try {
-      const loginRes = await Taro.login()
-      
-      // 使用原生 request，避免封装工具的拦截器逻辑干扰登录流程
-      const res = await Taro.request({
-        url: `${BASE_URL}/api/auth/wx-login`,
-        method: 'POST',
-        data: { code: loginRes.code }
+      const res = await request({
+          url: '/api/v1/user/info',
+          method: 'GET'
       })
-
-      let responseData = res.data
-      if (typeof responseData === 'string') {
-        try { responseData = JSON.parse(responseData) } catch(e){}
+      
+      let resData: any = res.data
+      if (typeof resData === 'string') {
+        try { resData = JSON.parse(resData) } catch(e){}
       }
 
-      if (responseData && responseData.code === 200 && responseData.data) {
-        const { user, stats, access_token, refresh_token } = responseData.data
-        
-        setUserInfo(user)
-        if (stats) setUserStats(stats)
-        
-        // 更新双 Token 和缓存
-        Taro.setStorageSync('access_token', access_token)
-        Taro.setStorageSync('refresh_token', refresh_token)
-        Taro.setStorageSync('userInfo', user)
-        
-        // 广播更新
-        Taro.eventCenter.trigger('USER_INFO_UPDATED', user)
-        
-        setIsLogin(true)
-        setNeedPhoneAuth(!user.phone_number)
+      if (resData && resData.code === 200 && resData.data) {
+          const { user, stats } = resData.data
+          
+          setUserInfo(user)
+          if (stats) {
+              setUserStats(stats)
+          }
+          
+          Taro.setStorageSync('userInfo', user)
+          Taro.eventCenter.trigger('USER_INFO_UPDATED', user)
+          
+          setIsLogin(true)
+          setNeedPhoneAuth(!user.phone_number)
       } else {
-        // 如果静默刷新失败（例如 code 无效），且是 401，则登出
-        if (responseData?.code === 401 || res.statusCode === 401) {
-             handleLogout()
-        }
+          console.warn('获取用户信息失败', resData)
       }
     } catch (e) {
-      console.error('刷新用户信息失败', e)
+      console.error('获取用户信息网络异常', e)
     }
   }
 
@@ -163,8 +151,10 @@ export default function UserPage() {
     try {
       const loginRes = await Taro.login()
       
+      // 使用原生 request，避免死循环
+      // 【修改】URL 增加 v1
       const res = await Taro.request({
-        url: `${BASE_URL}/api/auth/wx-login`,
+        url: `${BASE_URL}/api/v1/auth/wx-login`,
         method: 'POST',
         data: { code: loginRes.code }
       })
@@ -177,26 +167,21 @@ export default function UserPage() {
       }
 
       if (responseData && responseData.code === 200 && responseData.data) {
-        const { user, stats, access_token, refresh_token } = responseData.data
+        const { access_token, refresh_token } = responseData.data
         
         Taro.setStorageSync('access_token', access_token)
         Taro.setStorageSync('refresh_token', refresh_token)
-        Taro.setStorageSync('userInfo', user) 
         
-        setUserInfo(user)
-        setUserStats(stats || { following: 0, follower: 0, likes: 0 })
+        // 登录成功后，立即调用 /user/info 获取用户信息
+        await fetchLatestUserInfo()
         
-        Taro.eventCenter.trigger('USER_INFO_UPDATED', user)
-
-        if (user.phone_number) {
-          setIsLogin(true)
-          setNeedPhoneAuth(false)
-          if (!isSilent) Taro.showToast({ title: '登录成功', icon: 'success' })
-        } else {
-          setNeedPhoneAuth(true)
+        if (!isSilent) {
+          Taro.hideLoading()
+          Taro.showToast({ title: '登录成功', icon: 'success' })
         }
       } else {
         if (!isSilent) {
+            Taro.hideLoading()
             const errorMsg = responseData?.msg || '登录失败'
             Taro.showToast({ title: errorMsg, icon: 'none' })
         }
@@ -209,30 +194,30 @@ export default function UserPage() {
     }
   }
 
-  // 手机号绑定 (使用 request 封装)
+  // 手机号绑定
   const onGetPhoneNumber = async (e: any) => { 
     if (!e.detail?.code) return
     Taro.showLoading({ title: '绑定中...' })
     
-    const res = await request({
-        url: '/api/auth/bind-phone',
-        method: 'POST',
-        data: { phone_code: e.detail.code }
-    })
-    
-    Taro.hideLoading()
-    const rd: any = res.data // request 工具已处理解析
-
-    if (rd && rd.code === 200 && rd.data && rd.data.phone_number) {
-        const u = { ...userInfo, phone_number: rd.data.phone_number }
-        setUserInfo(u)
-        Taro.setStorageSync('userInfo', u)
-        Taro.eventCenter.trigger('USER_INFO_UPDATED', u) 
-        setIsLogin(true)
-        setNeedPhoneAuth(false)
-        Taro.showToast({ title: '绑定成功', icon: 'success' })
-    } else {
-        Taro.showToast({ title: rd?.msg || '绑定失败', icon: 'none' })
+    try {
+        // 【修改】URL 增加 v1
+        const res = await request({
+            url: '/api/v1/auth/bind-phone',
+            method: 'POST',
+            data: { phone_code: e.detail.code }
+        })
+        
+        Taro.hideLoading()
+        const rd: any = res.data
+        if (rd && rd.code === 200) {
+            Taro.showToast({ title: '绑定成功', icon: 'success' })
+            fetchLatestUserInfo()
+        } else {
+            Taro.showToast({ title: rd?.msg || '绑定失败', icon: 'none' })
+        }
+    } catch (error) {
+        Taro.hideLoading()
+        Taro.showToast({ title: '网络请求失败', icon: 'none' })
     }
   }
 
@@ -246,14 +231,13 @@ export default function UserPage() {
         handleLogin(false)
         return
     }
-    // 回显当前数据
     setTempAvatar(userInfo.avatar_url || '')
     setTempNickname(userInfo.nickname || '')
     setIsEditMode(true)
     setShowAuthModal(true)
   }
 
-  // 保存资料 (POST /user/info 更新，然后重新 fetchLatestUserInfo 获取最新状态)
+  // 保存资料
   const handleSubmitProfile = async () => { 
       if (!tempNickname) { Taro.showToast({ title: '请输入昵称', icon: 'none' }); return }
       Taro.showLoading({ title: '保存中...' })
@@ -263,7 +247,6 @@ export default function UserPage() {
         let finalAvatarUrl = userInfo.avatar_url 
         const isNewImage = tempAvatar.startsWith('http') && !tempAvatar.includes('mmbiz.qpic.cn') || tempAvatar.startsWith('wxfile')
         
-        // 上传头像 (uploadFile 需手动处理 header)
         if (isNewImage) {
             const upRes = await Taro.uploadFile({
                 url: `${BASE_URL}/api/v1/user/avatar`,
@@ -283,7 +266,6 @@ export default function UserPage() {
             finalAvatarUrl = tempAvatar
         }
 
-        // 更新信息 (使用 request 封装)
         const upInfoRes = await request({
             url: '/api/v1/user/info',
             method: 'POST',
@@ -296,7 +278,6 @@ export default function UserPage() {
         if (rd && rd.code === 200) {
             setShowAuthModal(false)
             Taro.showToast({ title: '保存成功', icon: 'success' })
-            // 保存成功后，立即调用 fetchLatestUserInfo 刷新界面和缓存
             fetchLatestUserInfo() 
         } else {
             Taro.showToast({ title: rd?.msg || '保存失败', icon: 'none' })
@@ -337,10 +318,7 @@ export default function UserPage() {
           </View>
       </View>
 
-      <View 
-        className='header-section' 
-        style={{ marginTop: `${statusBarHeight + navBarHeight}px` }}
-      >
+      <View className='header-section' style={{ marginTop: `${statusBarHeight + navBarHeight}px` }}>
         <View className='user-profile'>
           <View className='avatar-container'>
             {hasData && userInfo.avatar_url ? (
@@ -426,7 +404,6 @@ export default function UserPage() {
          </View>
       </View>
 
-      {/* 退出登录按钮 (仅登录时显示) */}
       {isLogin && (
         <View className='logout-section'>
           <View className='logout-btn' onClick={handleLogoutClick}>
@@ -435,7 +412,6 @@ export default function UserPage() {
         </View>
       )}
 
-      {/* 弹窗部分 */}
       {showAuthModal && (
         <View className='auth-modal-overlay'>
           <View className='auth-modal-content'>
