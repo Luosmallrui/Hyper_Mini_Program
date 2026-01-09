@@ -1,11 +1,18 @@
-import { View, Text, Map, Swiper, SwiperItem, Image } from '@tarojs/components'
+import { View, Text, Map, Swiper, SwiperItem, Image, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, useEffect, useRef } from 'react'
-import { AtIcon, AtSlider } from 'taro-ui'
+import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import 'taro-ui/dist/style/components/slider.scss'
 import { setTabBarIndex } from '../../store/tabbar'
 import './index.less'
+
+// --- 静态数据配置 ---
+const CATEGORIES = ['全部分类', '滑板', '派对', '汽车', '纹身', '体育运动', '活动', '露营', '酒吧/场地', '篮球']
+const AREA_LEVEL1 = [{ key: 'dist', name: '距离' }, { key: 'region', name: '行政区/商圈' }]
+const AREA_LEVEL2 = ['不限', '热门商圈', '高新区', '锦江区'] // 模拟二级
+const AREA_LEVEL3 = ['春熙路', '宽窄巷子', '兰桂坊', '铁像寺', 'SKP', '玉林', '望平街'] // 模拟三级
+const MORE_TAGS = ['积分立减', '买单立减', '新人优惠']
 
 // 模拟 Party 数据
 const PARTY_DATA = [
@@ -74,21 +81,24 @@ const PARTY_DATA = [
 export default function IndexPage() {
   const [current, setCurrent] = useState(0)
   const [markers, setMarkers] = useState<any[]>([])
+  
+  // 筛选状态
   const [filterOpen, setFilterOpen] = useState<'none' | 'all' | 'area' | 'more'>('none')
   
+  // 筛选选中项
+  const [selectedCategory, setSelectedCategory] = useState('全部分类')
+  const [areaL1, setAreaL1] = useState('region')
+  const [areaL2, setAreaL2] = useState('热门商圈')
+  const [selectedRegion, setSelectedRegion] = useState('')
+  const [selectedTags] = useState<string[]>([])
+
+  // 布局状态
   const [navBarHeight, setNavBarHeight] = useState(44)
   const [statusBarHeight, setStatusBarHeight] = useState(20)
-
-  const [initialCenter] = useState({
-    lng: PARTY_DATA[0].lng,
-    lat: PARTY_DATA[0].lat
-  })
-
+  const [initialCenter] = useState({ lng: PARTY_DATA[0].lng, lat: PARTY_DATA[0].lat })
   const mapCtx = useRef<any>(null)
 
-  Taro.useDidShow(() => {
-    setTabBarIndex(0)
-  })
+  Taro.useDidShow(() => { setTabBarIndex(0) })
 
   useEffect(() => {
     const sysInfo = Taro.getWindowInfo()
@@ -150,45 +160,103 @@ export default function IndexPage() {
   const navigateTo = (path: string) => Taro.navigateTo({ url: path })
 
   // 样式计算
-  const topHeaderStyle = {
-    top: `${statusBarHeight}px`,
-    height: `${navBarHeight}px`
-  }
-  
-  const filterBarStyle = {
-    top: `${statusBarHeight + navBarHeight + 10}px`
+  const topHeaderStyle = { top: `${statusBarHeight}px`, height: `${navBarHeight}px` }
+  const filterContainerStyle = { top: `${statusBarHeight + navBarHeight + 10}px` }
+
+  const toggleFilter = (type: 'all' | 'area' | 'more') => {
+    setFilterOpen(filterOpen === type ? 'none' : type)
   }
 
-  // 渲染筛选弹窗 (根据 filterOpen 渲染不同内容)
-  const renderFilterModal = () => {
+  // 判断高亮
+  const isHighlight = (type: string) => {
+    if (type === 'all') return selectedCategory !== '全部分类'
+    if (type === 'area') return selectedRegion !== ''
+    if (type === 'more') return selectedTags.length > 0
+    return false
+  }
+
+  // 渲染下拉内容 (根据 filterOpen 渲染不同内容)
+  const renderDropdownContent = () => {
     if (filterOpen === 'none') return null
+
     return (
-      <View className='filter-modal' onClick={() => setFilterOpen('none')} style={{ top: `${statusBarHeight + navBarHeight + 70}px` }}>
-        <View className='filter-content' onClick={e => e.stopPropagation()}>
-          {filterOpen === 'all' && (
-            <View className='list-filter'>
-              {['全部', '演出', '滑板', '骑行', '汽车', '派对'].map(tag => (
-                <View key={tag} className='filter-item'>{tag}</View>
+      <View className='dropdown-content'>
+        {/* 1. 全部 - 单列列表 */}
+        {filterOpen === 'all' && (
+          <ScrollView scrollY className='list-scroll'>
+            {CATEGORIES.map(cat => (
+              <View 
+                key={cat} 
+                className={`list-item ${selectedCategory === cat ? 'active' : ''}`}
+                onClick={() => { setSelectedCategory(cat); setFilterOpen('none'); }}
+              >
+                <Text>{cat}</Text>
+                {selectedCategory === cat && <AtIcon value='check' size='16' color='#FF2E4D' />}
+              </View>
+            ))}
+          </ScrollView>
+        )}
+
+        {/* 2. 区域 - 三级联动 (仿链家/贝壳风格) */}
+        {filterOpen === 'area' && (
+          <View className='split-view'>
+            {/* 一级：距离/商圈 */}
+            <ScrollView scrollY className='col col-1'>
+              {AREA_LEVEL1.map(item => (
+                <View 
+                  key={item.key} 
+                  className={`item ${areaL1 === item.key ? 'active' : ''}`}
+                  onClick={() => setAreaL1(item.key)}
+                >
+                  {item.name}
+                </View>
+              ))}
+            </ScrollView>
+            {/* 二级：具体商圈分类 */}
+            <ScrollView scrollY className='col col-2'>
+              {AREA_LEVEL2.map(item => (
+                <View 
+                  key={item} 
+                  className={`item ${areaL2 === item ? 'active' : ''}`}
+                  onClick={() => setAreaL2(item)}
+                >
+                  {item}
+                </View>
+              ))}
+            </ScrollView>
+            {/* 三级：具体地点 */}
+            <ScrollView scrollY className='col col-3'>
+              {AREA_LEVEL3.map(item => (
+                <View 
+                  key={item} 
+                  className={`item ${selectedRegion === item ? 'active' : ''}`}
+                  onClick={() => { setSelectedRegion(item); setFilterOpen('none'); }}
+                >
+                  {item}
+                  {selectedRegion === item && <AtIcon value='check' size='14' color='#FF2E4D' />}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* 3. 更多筛选 - 标签 */}
+        {filterOpen === 'more' && (
+          <View className='more-view'>
+            <Text className='label'>优惠</Text>
+            <View className='tags'>
+              {MORE_TAGS.map(tag => (
+                <View key={tag} className='tag'>
+                   {tag}
+                </View>
               ))}
             </View>
-          )}
-          {filterOpen === 'area' && (
-             <View className='list-filter'>
-                <View className='filter-group-title'>行政区</View>
-                <View className='row-wrap'>
-                  {['锦江区', '青羊区', '武侯区', '高新区'].map(item => <View key={item} className='tag-item'>{item}</View>)}
-                </View>
-             </View>
-          )}
-           {filterOpen === 'more' && (
-             <View className='more-filter'>
-                <View className='section'>
-                  <Text className='label'>价格</Text>
-                  <AtSlider value={50} min={0} max={500} activeColor='#333' backgroundColor='#eee' />
-                </View>
-             </View>
-          )}
-        </View>
+            <View className='btn-row'>
+               <View className='btn reset'>重置</View>
+               <View className='btn confirm' onClick={() => setFilterOpen('none')}>确定</View>
+            </View>
+          </View>
+        )}
       </View>
     )
   }
@@ -204,11 +272,18 @@ export default function IndexPage() {
         markers={markers}
         showLocation
         setting={{ enableSatellite: false, enableTraffic: false }}
+        onError={(e) => {
+          console.error('Map error:', e)
+        }}
       />
 
-      {/* 1. 顶部 Header (修复居中) */}
+      {/* 遮罩层 (放在地图之上，筛选器之下) */}
+      {filterOpen !== 'none' && (
+        <View className='mask-layer' onClick={() => setFilterOpen('none')} />
+      )}
+
+      {/* Header */}
       <View className='custom-header' style={topHeaderStyle}>
-        {/* 左侧 */}
         <View className='left-area'>
           <Text className='city-text'>成都</Text>
           <AtIcon value='chevron-right' size='16' color='#fff' />
@@ -216,49 +291,76 @@ export default function IndexPage() {
             <AtIcon value='search' size='22' color='#fff' />
           </View>
         </View>
-        
-        {/* 绝对居中 LOGO */}
         <View className='center-logo-container'>
            <Image src={require('../../assets/images/hyper-icon.png')} mode='heightFix' className='logo-img' />
         </View>
-        
-        {/* 右侧空容器(用于占位避让胶囊) */}
-        <View className='right-area-placeholder' />
       </View>
 
-      {/* 2. 筛选栏 (单一白条) */}
-      <View className='filter-bar-unified' style={filterBarStyle}>
-        <View className='filter-item' onClick={() => setFilterOpen(filterOpen === 'all' ? 'none' : 'all')}>
-          <Text>全部</Text>
-          <AtIcon value='chevron-down' size='10' color='#333'/>
+      {/* 核心修改：一体化筛选容器 */}
+      <View 
+        className={`filter-container-wrapper ${filterOpen !== 'none' ? 'is-open' : ''}`} 
+        style={filterContainerStyle}
+      >
+        {/* 上部：筛选按钮条 (白色圆角背景) */}
+        <View className='filter-bar-header'>
+          {/* 灰色胶囊 1 */}
+          <View 
+            className={`capsule-item ${isHighlight('all') || filterOpen === 'all' ? 'highlight-bg' : ''}`} 
+            onClick={() => toggleFilter('all')}
+          >
+            <Text className={isHighlight('all') || filterOpen === 'all' ? 'highlight-text' : ''}>
+              {selectedCategory === '全部分类' ? '全部' : selectedCategory}
+            </Text>
+            <AtIcon 
+              value={filterOpen === 'all' ? 'chevron-up' : 'chevron-down'} 
+              size='10' 
+              color={isHighlight('all') || filterOpen === 'all' ? '#FF2E4D' : '#666'}
+            />
+          </View>
+
+          {/* 灰色胶囊 2 */}
+          <View 
+            className={`capsule-item ${filterOpen === 'area' ? 'highlight-bg' : ''}`} 
+            onClick={() => toggleFilter('area')}
+          >
+            <Text className={isHighlight('area') || filterOpen === 'area' ? 'highlight-text' : ''}>区域</Text>
+            <AtIcon 
+              value={filterOpen === 'area' ? 'chevron-up' : 'chevron-down'} 
+              size='10' 
+              color={isHighlight('area') || filterOpen === 'area' ? '#FF2E4D' : '#666'}
+            />
+          </View>
+
+          {/* 灰色胶囊 3 */}
+          <View 
+            className={`capsule-item ${filterOpen === 'more' ? 'highlight-bg' : ''}`} 
+            onClick={() => toggleFilter('more')}
+          >
+            <Text className={isHighlight('more') || filterOpen === 'more' ? 'highlight-text' : ''}>更多筛选</Text>
+            <AtIcon 
+              value={filterOpen === 'more' ? 'chevron-up' : 'chevron-down'} 
+              size='10' 
+              color={isHighlight('more') || filterOpen === 'more' ? '#FF2E4D' : '#666'}
+            />
+          </View>
         </View>
-        {/* 分割线 */}
-        <View className='divider' /> 
-        <View className='filter-item' onClick={() => setFilterOpen(filterOpen === 'area' ? 'none' : 'area')}>
-          <Text>区域</Text>
-          <AtIcon value='chevron-down' size='10' color='#333'/>
-        </View>
-        <View className='divider' />
-        <View className='filter-item' onClick={() => setFilterOpen(filterOpen === 'more' ? 'none' : 'more')}>
-          <Text>更多筛选</Text>
-          <AtIcon value='chevron-down' size='10' color='#333'/>
-        </View>
+
+        {/* 下部：展开的内容 (直接衔接在 Header 下方) */}
+        {renderDropdownContent()}
       </View>
 
-      {renderFilterModal()}
-
-      {/* 3. 右侧悬浮按钮组 */}
+      {/* 右侧悬浮按钮组 */}
       <View className='floating-group'>
         <View className='circle-btn locate-btn' onClick={handleLocate}>
-          <Image className='map-pin' src={require('../../assets/icons/map-pin.svg')} mode='heightFix' />
+          <AtIcon value='map-pin' size='20' color='#333'/>
         </View>
         <View className='capsule-btn list-btn' onClick={() => navigateTo('/pages/activity-list/index')}>
-          <AtIcon value='list' size='13' color='#000000'/>
+          <AtIcon value='list' size='16' color='#333'/>
           <Text className='txt'>查看列表</Text>
         </View>
       </View>
 
-      {/* 4. 底部卡片 Swiper */}
+      {/* 底部卡片 Swiper (保持不变) */}
       <View className='bottom-card-container'>
         <Swiper
           className='card-swiper'
@@ -275,7 +377,6 @@ export default function IndexPage() {
                 className='party-card-pro'
                 onClick={() => navigateTo(`/pages/activity-detail/index?id=${item.id}`)}
               >
-                {/* 图片背景 Header */}
                 <View className='card-header-bg'>
                    {item.rank && (
                      <View className='rank-badge'>
@@ -283,12 +384,11 @@ export default function IndexPage() {
                         <Text className='txt'>{item.rank}</Text>
                      </View>
                    )}
-                   {/* 报名人数胶囊 */}
                    <View className='attendees-capsule'>
                       <View className='avatars'>
-                         <View className='av' style={{zIndex:1}} />
+                         <View className='av' style={{zIndex:3}} />
                          <View className='av' style={{zIndex:2, left: '14px'}} />
-                         <View className='av' style={{zIndex:3, left: '28px'}} />
+                         <View className='av' style={{zIndex:1, left: '28px'}} />
                       </View>
                       <View className='count-info'>
                         <Text className='num-italic'>{item.attendees}</Text>
@@ -297,20 +397,18 @@ export default function IndexPage() {
                    </View>
                 </View>
 
-                {/* 内容 Body */}
                 <View className='card-body'>
                    <View className='title-row'>
                       <Text className='title'>{item.title}</Text>
                       <Text className='type-tag'>{item.type}</Text>
                    </View>
-                   
                    <View className='info-row'>
                       <AtIcon value='clock' size='14' color='#999' />
-                      <Text className='info-txt info-first'>{item.time}</Text>
+                      <Text className='info-txt'>{item.time}</Text>
+                      <Text className='info-txt gap'>|</Text>
                       <Text className='info-txt'>{item.dynamicCount}条动态</Text>
-                      <Text className='info-txt'>¥{item.price}/人</Text>
+                      <Text className='price'>¥{item.price}/人</Text>
                    </View>
-
                    <View className='card-footer'>
                       <View className='user-info'>
                          <View className='avatar' />
@@ -323,8 +421,8 @@ export default function IndexPage() {
                          </View>
                       </View>
                       <View className='action-btns'>
-                        <View className='card-action-btn outline'>关注</View>
-                        <View className='card-action-btn primary'>订阅活动</View>
+                         <View className='card-action-btn outline'>关注</View>
+                         <View className='card-action-btn primary'>订阅活动</View>
                       </View>
                    </View>
                 </View>

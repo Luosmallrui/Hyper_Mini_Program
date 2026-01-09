@@ -1,230 +1,320 @@
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/index.scss'
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { View, Text, Button, Image, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { setTabBarIndex } from '../../store/tabbar'
+// 引入封装好的请求工具 (用于非登录接口)
+import { request } from '../../utils/request'
 import './index.scss'
 
 const BASE_URL = 'https://www.hypercn.cn'
 
 export default function UserPage() {
-  // 状态管理
-  const [isLogin, setIsLogin] = useState(false) // 是否完全登录
-  const [userInfo, setUserInfo] = useState<any>({}) // 用户基础信息
-  const [userStats, setUserStats] = useState<any>({ following: 0, follower: 0, likes: 0 }) // 用户统计
-  const [needPhoneAuth, setNeedPhoneAuth] = useState(false) // 是否需要手机号
+  // --- 状态管理 ---
+  const [isLogin, setIsLogin] = useState(false) 
+  const [userInfo, setUserInfo] = useState<any>({}) 
+  const [userStats, setUserStats] = useState<any>({ following: 0, follower: 0, likes: 0 }) 
+  const [needPhoneAuth, setNeedPhoneAuth] = useState(false) 
 
-  // 完善信息弹窗状态
+  // 弹窗状态
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [tempAvatar, setTempAvatar] = useState('')
   const [tempNickname, setTempNickname] = useState('')
+  const [isEditMode, setIsEditMode] = useState(false)
 
+  // 布局适配状态
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [navBarHeight, setNavBarHeight] = useState(44)
+
+  // --- 生命周期 ---
   useEffect(() => {
     setTabBarIndex(4)
+    
+    // 1. 布局适配计算
+    const sysInfo = Taro.getWindowInfo()
+    const menuInfo = Taro.getMenuButtonBoundingClientRect()
+    const sbHeight = sysInfo.statusBarHeight || 20
+    setStatusBarHeight(sbHeight)
+    const nbHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
+    setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
+
+    // 2. 监听全局事件
+    const onUserUpdate = (u: any) => {
+        setUserInfo(u)
+        setIsLogin(true)
+    }
+    const onForceLogout = () => {
+        handleLogout()
+        Taro.showToast({ title: '登录已过期', icon: 'none' })
+    }
+
+    Taro.eventCenter.on('USER_INFO_UPDATED', onUserUpdate)
+    Taro.eventCenter.on('FORCE_LOGOUT', onForceLogout)
+
+    // 3. 初始化登录状态
+    initLoginState()
+
+    return () => {
+        Taro.eventCenter.off('USER_INFO_UPDATED', onUserUpdate)
+        Taro.eventCenter.off('FORCE_LOGOUT', onForceLogout)
+    }
   }, [])
 
   Taro.useDidShow(() => {
     setTabBarIndex(4)
-    // 可选：检查 token 有效性
-    const token = Taro.getStorageSync('token')
-    if (token && !isLogin) {
-      // 实际项目中可以在这里调接口刷新用户信息
+    // 每次显示页面，如果有 token 则尝试从服务器拉取最新信息
+    if (Taro.getStorageSync('access_token')) {
+       fetchLatestUserInfo()
     }
   })
 
-  // 监听登录状态，如果已登录但无头像，弹出完善框
-  useEffect(() => {
-    if (isLogin && (!userInfo.avatar_url || userInfo.avatar_url === '')) {
-      setShowAuthModal(true)
-      // 设置默认头像
-      setTempAvatar('https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0')
-      setTempNickname(userInfo.nickname || '')
-    }
-  }, [isLogin, userInfo])
+  // --- 业务逻辑 ---
 
-  // 1. 登录逻辑
-  const handleLogin = async () => {
-    Taro.showLoading({ title: '登录中...' })
+  // 初始化检查本地缓存
+  const initLoginState = () => {
+    const token = Taro.getStorageSync('access_token')
+    const cachedUser = Taro.getStorageSync('userInfo')
+
+    if (token && cachedUser) {
+      setUserInfo(cachedUser)
+      setIsLogin(true)
+    } else {
+      // 无缓存，尝试静默登录
+      handleLogin(true) 
+    }
+  }
+
+  // 获取最新用户信息 (实际上是静默重新登录)
+  // 因为没有 GET /user/info，所以通过 wx-login 接口刷新数据
+  const fetchLatestUserInfo = async () => {
     try {
       const loginRes = await Taro.login()
-      console.log('wx.login code:', loginRes.code)
-
+      
+      // 使用原生 request，避免封装工具的拦截器逻辑干扰登录流程
       const res = await Taro.request({
         url: `${BASE_URL}/api/auth/wx-login`,
         method: 'POST',
         data: { code: loginRes.code }
       })
 
-      Taro.hideLoading()
-      const responseData = res.data
+      let responseData = res.data
+      if (typeof responseData === 'string') {
+        try { responseData = JSON.parse(responseData) } catch(e){}
+      }
 
-      if (responseData && responseData.token) {
-        const { user, stats, token } = responseData
-        Taro.setStorageSync('token', token)
+      if (responseData && responseData.code === 200 && responseData.data) {
+        const { user, stats, access_token, refresh_token } = responseData.data
+        
         setUserInfo(user)
-        setUserStats(stats)
+        if (stats) setUserStats(stats)
+        
+        // 更新双 Token 和缓存
+        Taro.setStorageSync('access_token', access_token)
+        Taro.setStorageSync('refresh_token', refresh_token)
+        Taro.setStorageSync('userInfo', user)
+        
+        // 广播更新
+        Taro.eventCenter.trigger('USER_INFO_UPDATED', user)
+        
+        setIsLogin(true)
+        setNeedPhoneAuth(!user.phone_number)
+      } else {
+        // 如果静默刷新失败（例如 code 无效），且是 401，则登出
+        if (responseData?.code === 401 || res.statusCode === 401) {
+             handleLogout()
+        }
+      }
+    } catch (e) {
+      console.error('刷新用户信息失败', e)
+    }
+  }
 
-        if (user.phone_number && user.phone_number !== "") {
+  // 执行登出操作
+  const handleLogout = () => {
+    Taro.removeStorageSync('access_token')
+    Taro.removeStorageSync('refresh_token')
+    Taro.removeStorageSync('userInfo')
+    setIsLogin(false)
+    setUserInfo({})
+    setUserStats({ following: 0, follower: 0, likes: 0 })
+  }
+
+  // 点击登出按钮
+  const handleLogoutClick = () => {
+    setTimeout(() => {
+        Taro.showModal({
+        title: '提示',
+        content: '确定要退出登录吗？',
+        confirmColor: '#FF2E4D',
+        success: function (res) {
+            if (res.confirm) {
+               handleLogout()
+            }
+        }
+        })
+    }, 50)
+  }
+
+  // 登录 (支持静默)
+  const handleLogin = async (isSilent = false) => {
+    if (!isSilent) Taro.showLoading({ title: '登录中...' })
+    
+    try {
+      const loginRes = await Taro.login()
+      
+      const res = await Taro.request({
+        url: `${BASE_URL}/api/auth/wx-login`,
+        method: 'POST',
+        data: { code: loginRes.code }
+      })
+
+      if (!isSilent) Taro.hideLoading()
+      
+      let responseData = res.data
+      if (typeof responseData === 'string') {
+          try { responseData = JSON.parse(responseData) } catch(e){}
+      }
+
+      if (responseData && responseData.code === 200 && responseData.data) {
+        const { user, stats, access_token, refresh_token } = responseData.data
+        
+        Taro.setStorageSync('access_token', access_token)
+        Taro.setStorageSync('refresh_token', refresh_token)
+        Taro.setStorageSync('userInfo', user) 
+        
+        setUserInfo(user)
+        setUserStats(stats || { following: 0, follower: 0, likes: 0 })
+        
+        Taro.eventCenter.trigger('USER_INFO_UPDATED', user)
+
+        if (user.phone_number) {
           setIsLogin(true)
           setNeedPhoneAuth(false)
-          Taro.showToast({ title: '登录成功', icon: 'success' })
+          if (!isSilent) Taro.showToast({ title: '登录成功', icon: 'success' })
         } else {
           setNeedPhoneAuth(true)
         }
       } else {
-        const errorMsg = (responseData as any).msg || '登录失败'
-        Taro.showToast({ title: errorMsg, icon: 'none' })
+        if (!isSilent) {
+            const errorMsg = responseData?.msg || '登录失败'
+            Taro.showToast({ title: errorMsg, icon: 'none' })
+        }
       }
     } catch (err) {
-      Taro.hideLoading()
-      Taro.showToast({ title: '请求失败', icon: 'none' })
+      if (!isSilent) {
+          Taro.hideLoading()
+          Taro.showToast({ title: '请求失败', icon: 'none' })
+      }
     }
   }
 
-  // 2. 手机号绑定逻辑
-  const onGetPhoneNumber = async (e: any) => {
-    if (!e.detail?.code) {
-      Taro.showToast({ title: '需授权手机号', icon: 'none' })
-      return
-    }
+  // 手机号绑定 (使用 request 封装)
+  const onGetPhoneNumber = async (e: any) => { 
+    if (!e.detail?.code) return
     Taro.showLoading({ title: '绑定中...' })
-    try {
-      const res = await Taro.request({
-        url: `${BASE_URL}/api/auth/bind-phone`,
+    
+    const res = await request({
+        url: '/api/auth/bind-phone',
         method: 'POST',
-        header: { 'Authorization': `Bearer ${Taro.getStorageSync('token')}` },
         data: { phone_code: e.detail.code }
-      })
-      Taro.hideLoading()
-      const responseData = res.data
-      if (responseData && responseData.phone_number) {
-        const updatedUser = { ...userInfo, phone_number: responseData.phone_number }
-        setUserInfo(updatedUser)
+    })
+    
+    Taro.hideLoading()
+    const rd: any = res.data // request 工具已处理解析
+
+    if (rd && rd.code === 200 && rd.data && rd.data.phone_number) {
+        const u = { ...userInfo, phone_number: rd.data.phone_number }
+        setUserInfo(u)
+        Taro.setStorageSync('userInfo', u)
+        Taro.eventCenter.trigger('USER_INFO_UPDATED', u) 
         setIsLogin(true)
         setNeedPhoneAuth(false)
         Taro.showToast({ title: '绑定成功', icon: 'success' })
-      } else {
-        Taro.showToast({ title: (responseData as any).msg || '绑定失败', icon: 'none' })
-      }
-    } catch (err) {
-      Taro.hideLoading()
-      Taro.showToast({ title: '网络请求失败', icon: 'none' })
+    } else {
+        Taro.showToast({ title: rd?.msg || '绑定失败', icon: 'none' })
     }
   }
 
-  // 3. 头像选择
-  const onChooseAvatar = (e: any) => {
-    const { avatarUrl } = e.detail
-    setTempAvatar(avatarUrl)
-  }
+  // 编辑资料相关
+  const onChooseAvatar = (e: any) => { setTempAvatar(e.detail.avatarUrl) }
+  const onNicknameBlur = (e: any) => { setTempNickname(e.detail.value) }
+  const handleCloseModal = () => { setShowAuthModal(false) }
 
-  // 4. 昵称输入
-  const onNicknameBlur = (e: any) => {
-    setTempNickname(e.detail.value)
-  }
-
-  // 5. 关闭弹窗
-  const handleCloseModal = () => {
-    setShowAuthModal(false)
-  }
-
-  // 6. 保存个人信息 (修复 BUG)
-  const handleSubmitProfile = async () => {
-    if (!tempNickname) {
-      Taro.showToast({ title: '请输入昵称', icon: 'none' })
-      return
+  const handleOpenEdit = () => {
+    if (!isLogin) {
+        handleLogin(false)
+        return
     }
+    // 回显当前数据
+    setTempAvatar(userInfo.avatar_url || '')
+    setTempNickname(userInfo.nickname || '')
+    setIsEditMode(true)
+    setShowAuthModal(true)
+  }
 
-    Taro.showLoading({ title: '保存中...' })
-    const token = Taro.getStorageSync('token')
+  // 保存资料 (POST /user/info 更新，然后重新 fetchLatestUserInfo 获取最新状态)
+  const handleSubmitProfile = async () => { 
+      if (!tempNickname) { Taro.showToast({ title: '请输入昵称', icon: 'none' }); return }
+      Taro.showLoading({ title: '保存中...' })
+      const token = Taro.getStorageSync('access_token')
 
-    try {
-      let finalAvatarUrl = userInfo.avatar_url // 默认维持原头像
-
-      // 判断是否是临时文件
-      const isNewImage = tempAvatar.startsWith('http') && !tempAvatar.includes('mmbiz.qpic.cn') || tempAvatar.startsWith('wxfile')
-      
-      // 1. 上传图片 (UploadFile 返回结构通常是标准的，data 为字符串)
-      if (isNewImage) {
-        const uploadRes = await Taro.uploadFile({
-          url: `${BASE_URL}/api/v1/user/avatar`,
-          filePath: tempAvatar,
-          name: 'image',
-          header: { 'Authorization': `Bearer ${token}` }
-        })
-
-        let uploadData: any = {}
-        try {
-          uploadData = JSON.parse(uploadRes.data)
-        } catch (e) {
-          throw new Error('头像上传响应解析失败')
-        }
+      try {
+        let finalAvatarUrl = userInfo.avatar_url 
+        const isNewImage = tempAvatar.startsWith('http') && !tempAvatar.includes('mmbiz.qpic.cn') || tempAvatar.startsWith('wxfile')
         
-        if (uploadData.code === 200) {
-           finalAvatarUrl = (typeof uploadData.data === 'string') ? uploadData.data : uploadData.data?.url
-        } else {
-           throw new Error(uploadData.msg || '头像上传失败')
+        // 上传头像 (uploadFile 需手动处理 header)
+        if (isNewImage) {
+            const upRes = await Taro.uploadFile({
+                url: `${BASE_URL}/api/v1/user/avatar`,
+                filePath: tempAvatar,
+                name: 'image',
+                header: { 'Authorization': `Bearer ${token}` }
+            })
+            let upData: any = {}
+            try { upData = JSON.parse(upRes.data) } catch(e) { throw new Error('头像上传解析失败') }
+            
+            if (upData.code === 200) {
+                 finalAvatarUrl = (typeof upData.data === 'string') ? upData.data : upData.data?.url
+            } else {
+                 throw new Error(upData.msg || '头像上传失败')
+            }
+        } else if (tempAvatar !== userInfo.avatar_url) {
+            finalAvatarUrl = tempAvatar
         }
-      } else {
-        finalAvatarUrl = tempAvatar
-      }
 
-      // 2. 更新用户信息接口
-      // 注意：这里的 updateRes 根据你的描述，可能已经被拦截器处理过，直接就是 {code:200, ...}
-      const updateRes: any = await Taro.request({
-        url: `${BASE_URL}/api/v1/user/info`,
-        method: 'POST',
-        header: { 'Authorization': `Bearer ${token}` },
-        data: {
-          nickname: tempNickname,
-          avatar: finalAvatarUrl
-        }
-      })
-
-      Taro.hideLoading()
-
-      // 【核心修复】：智能判断 updateRes 的结构
-      // 1. 如果 updateRes 直接有 code 字段，说明它就是数据对象 (拦截器处理过)
-      // 2. 否则，尝试取 updateRes.data (标准 Taro.request 返回)
-      let resData = (updateRes.code !== undefined) ? updateRes : updateRes.data
-
-      // 防御性编程：如果数据还是字符串，尝试解析
-      if (typeof resData === 'string') {
-        try {
-          resData = JSON.parse(resData)
-        } catch (e) {
-          console.error('API响应非JSON格式', resData)
-        }
-      }
-
-      // 判断业务状态码
-      if (resData && resData.code === 200) {
-        setUserInfo({
-          ...userInfo,
-          nickname: tempNickname,
-          avatar_url: finalAvatarUrl
+        // 更新信息 (使用 request 封装)
+        const upInfoRes = await request({
+            url: '/api/v1/user/info',
+            method: 'POST',
+            data: { nickname: tempNickname, avatar: finalAvatarUrl }
         })
-        setShowAuthModal(false)
-        Taro.showToast({ title: '保存成功', icon: 'success' })
-      } else {
-        Taro.showToast({ title: resData?.msg || '保存失败', icon: 'none' })
+        
+        Taro.hideLoading()
+        
+        const rd: any = upInfoRes.data
+        if (rd && rd.code === 200) {
+            setShowAuthModal(false)
+            Taro.showToast({ title: '保存成功', icon: 'success' })
+            // 保存成功后，立即调用 fetchLatestUserInfo 刷新界面和缓存
+            fetchLatestUserInfo() 
+        } else {
+            Taro.showToast({ title: rd?.msg || '保存失败', icon: 'none' })
+        }
+      } catch(err: any) {
+          Taro.hideLoading()
+          Taro.showToast({ title: err.message || '操作失败', icon: 'none' })
       }
-
-    } catch (err: any) {
-      Taro.hideLoading()
-      console.error(err)
-      Taro.showToast({ title: err.message || '操作失败', icon: 'none' })
-    }
   }
 
   // 界面配置
   const hasData = isLogin || needPhoneAuth;
   const stats = [
-    { label: '关注', value: hasData ? userStats.following : '-' },
-    { label: '粉丝', value: hasData ? userStats.follower : '-' },
-    { label: '赞/收藏', value: hasData ? userStats.likes : '-' },
+    { label: '关注', value: hasData ? userStats?.following || 0 : '-' },
+    { label: '粉丝', value: hasData ? userStats?.follower || 0 : '-' },
+    { label: '赞/收藏', value: hasData ? userStats?.likes || 0 : '-' },
   ];
+  
   const mainNavItems = [
     { icon: 'list', label: '订单', action: '全部订单' },
     { icon: 'sketch', label: '钱包', action: '充值' },
@@ -234,24 +324,30 @@ export default function UserPage() {
   ];
 
   const handleItemClick = (label: string) => {
-    if (!isLogin && label !== '设置') {
-       Taro.showToast({title: '请先登录', icon: 'none'})
-       return
-    }
+    if (!isLogin && label !== '设置') { handleLogin(false); return }
     Taro.showToast({ title: `点击了${label}`, icon: 'none' })
   }
 
   return (
-    <View className='user-page'>
-      {/* Header Section */}
-      <View className='header-section'>
+    <View className='user-page-dark'>
+      <View className='custom-nav-bar' style={{ height: `${statusBarHeight + navBarHeight}px` }}>
+          <View style={{ height: `${statusBarHeight}px` }} />
+          <View className='nav-bar-content' style={{ height: `${navBarHeight}px` }}>
+              <Text className='page-title'>我的</Text>
+          </View>
+      </View>
+
+      <View 
+        className='header-section' 
+        style={{ marginTop: `${statusBarHeight + navBarHeight}px` }}
+      >
         <View className='user-profile'>
           <View className='avatar-container'>
             {hasData && userInfo.avatar_url ? (
-               <Image className='avatar-img' src={userInfo.avatar_url} />
+               <Image className='avatar-img' src={userInfo.avatar_url} mode='aspectFill' />
             ) : (
                <View className='avatar-placeholder'>
-                 <AtIcon value='user' size='30' color='#fff' />
+                 <AtIcon value='user' size='30' color='#999' />
                </View>
             )}
           </View>
@@ -261,42 +357,26 @@ export default function UserPage() {
               <>
                 <View className='name-row'>
                   <Text className='username'>{userInfo.nickname || '微信用户'}</Text>
-                  <View className='vip-tag'>
-                    <Text className='vip-text'>{userInfo.vip_level || '普通会员'}</Text>
-                  </View>
+                  <View className='vip-tag'><Text className='vip-text'>VIP会员</Text></View>
                 </View>
                 <Text className='user-id'>ID: {userInfo.user_id}</Text>
               </>
             ) : (
               <View className='login-actions'>
+                <Text className='welcome-text'>{needPhoneAuth ? `你好，${userInfo.nickname || '新用户'}` : '欢迎来到 HyperFun'}</Text>
                 {needPhoneAuth ? (
-                   <Text className='welcome-text'>你好，{userInfo.nickname}</Text>
+                  <Button className='login-btn phone-btn' openType="getPhoneNumber" onGetPhoneNumber={onGetPhoneNumber}>绑定手机号</Button>
                 ) : (
-                   <Text className='welcome-text'>欢迎来到HyperFun</Text>
-                )}
-                {needPhoneAuth ? (
-                  <Button 
-                    className='login-btn phone-btn'
-                    openType="getPhoneNumber"
-                    onGetPhoneNumber={onGetPhoneNumber}
-                  >
-                    点击绑定手机号
-                  </Button>
-                ) : (
-                  <Button 
-                    className='login-btn'
-                    onClick={handleLogin}
-                  >
-                    立即登录/注册
-                  </Button>
+                  <Button className='login-btn' onClick={() => handleLogin(false)}>立即登录 / 注册</Button>
                 )}
               </View>
             )}
           </View>
           
-          <View className='header-tools'>
-             <AtIcon value='streaming' size='20' color='#333' className='tool-icon'/>
-             <AtIcon value='settings' size='20' color='#333' className='tool-icon'/>
+          <View className='edit-btn-wrap'>
+             <View className='edit-profile-btn' onClick={handleOpenEdit}>
+                {isLogin ? '编辑资料' : '去登录'}
+             </View>
           </View>
         </View>
 
@@ -307,88 +387,72 @@ export default function UserPage() {
               <Text className='stat-lbl'>{stat.label}</Text>
             </View>
           ))}
-          <View className='edit-profile-btn'>
-             {isLogin ? <Text>编辑资料</Text> : <Text>设置</Text>}
-          </View>
         </View>
       </View>
 
-      {/* Main Nav */}
       <View className='main-nav-card'>
         {mainNavItems.map((item, index) => (
           <View key={index} className='nav-item' onClick={() => handleItemClick(item.action)}>
-             <View className='nav-icon-circle'>
-               <AtIcon value={item.icon} size='24' color='#999' />
-             </View>
+             <View className='nav-icon-circle'><AtIcon value={item.icon} size='24' color='#fff' /></View>
              <Text className='nav-text'>{item.label}</Text>
           </View>
         ))}
       </View>
 
-      {/* Subscription Section */}
       <View className='section-card'>
          <View className='section-header'>
             <View className='tab-active'><Text>我的订阅</Text></View>
             <View className='tab-inactive'><Text>动态</Text></View>
-            <Text className='section-extra'>3个活动进行中</Text>
+            <Text className='section-extra'>3个活动</Text>
          </View>
          <View className='scroll-row'>
-            {[1, 2, 3, 4].map((i) => (
+            {[1, 2, 3].map((i) => (
                <View key={i} className='activity-card'>
-                  <View className={`status-tag ${i===4 ? 'ended' : 'active'}`}>
-                     <Text>{i===4 ? '已结束' : '进行中'}</Text>
-                  </View>
+                  <View className='status-tag'><Text>进行中</Text></View>
                </View>
             ))}
          </View>
       </View>
 
-      {/* Participation Section */}
       <View className='section-card'>
          <View className='section-header'>
             <Text className='section-title'>我参与的</Text>
             <Text className='section-more'>查看全部</Text>
          </View>
          <View className='scroll-row'>
-             {[1, 2, 3, 4].map((i) => (
+             {[1, 2, 3].map((i) => (
                <View key={i} className='poster-card' />
              ))}
          </View>
       </View>
 
-      {/* 完善信息弹窗 (修复后) */}
+      {/* 退出登录按钮 (仅登录时显示) */}
+      {isLogin && (
+        <View className='logout-section'>
+          <View className='logout-btn' onClick={handleLogoutClick}>
+            <Text>退出登录</Text>
+          </View>
+        </View>
+      )}
+
+      {/* 弹窗部分 */}
       {showAuthModal && (
         <View className='auth-modal-overlay'>
           <View className='auth-modal-content'>
-            {/* 关闭按钮 */}
             <View className='close-icon' onClick={handleCloseModal}>
-              <AtIcon value='close' size='20' color='#999' />
+              <AtIcon value='close' size='20' color='#666' />
             </View>
-
-            <Text className='modal-title'>完善个人信息</Text>
+            <Text className='modal-title'>{isEditMode ? '编辑个人信息' : '完善个人信息'}</Text>
             <Text className='modal-subtitle'>获取您的头像和昵称以展示</Text>
             
-            <Button 
-              className='avatar-wrapper-btn' 
-              openType="chooseAvatar" 
-              onChooseAvatar={onChooseAvatar}
-            >
+            <Button className='avatar-wrapper-btn' openType="chooseAvatar" onChooseAvatar={onChooseAvatar}>
               <Image className='chosen-avatar' src={tempAvatar} mode='aspectFill' />
-              <View className='edit-badge'>
-                <AtIcon value='camera' size='12' color='#fff' />
-              </View>
+              <View className='edit-badge'><AtIcon value='camera' size='12' color='#fff' /></View>
             </Button>
 
             <View className='input-group'>
               <Text className='label'>昵称</Text>
-              <Input 
-                type="nickname" 
-                className='nickname-input' 
-                placeholder="请输入昵称" 
-                value={tempNickname}
-                onBlur={onNicknameBlur}
-                onInput={(e) => setTempNickname(e.detail.value)}
-              />
+              <Input type="nickname" className='nickname-input' placeholder="请输入昵称" value={tempNickname} onBlur={onNicknameBlur} onInput={(e) => setTempNickname(e.detail.value)}/>
             </View>
 
             <Button className='save-btn' onClick={handleSubmitProfile}>保存信息</Button>

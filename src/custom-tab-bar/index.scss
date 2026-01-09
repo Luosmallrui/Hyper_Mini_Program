@@ -5,9 +5,18 @@
   left: 0;
   right: 0;
   z-index: 9999;
-  background: transparent; 
-  pointer-events: none; 
-  /* 底部留白，把图标托起来 */
+
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.6) 40%,
+    rgba(0, 0, 0, 0.85) 70%,
+    rgba(0, 0, 0, 1) 100%
+  );
+
+  pointer-events: none;
+
+  /* 底部安全区 */
   padding-bottom: calc(30px + env(safe-area-inset-bottom));
 }
 

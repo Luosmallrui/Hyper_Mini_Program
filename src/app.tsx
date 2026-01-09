@@ -1,13 +1,7 @@
-/*
- * @Author: {zhengzhuang}
- * @Date: 2024-06-13 17:48:17
- * @LastEditors: {zhengzhuang}
- * @LastEditTime: 2024-06-21 11:07:18
- * @Description:
- */
-import {PropsWithChildren} from 'react'
-import {useLaunch} from '@tarojs/taro'
+import {PropsWithChildren, useEffect} from 'react'
+import Taro, {useLaunch} from '@tarojs/taro'
 import {appUpdate} from './utils'
+import IMService from './utils/im'
 import './app.less'
 // 在app.js或app.tsx文件顶部添加这段代码
 if (typeof console.time !== 'function') {
@@ -40,6 +34,27 @@ function App({children}: PropsWithChildren<any>) {
       "background: #008bf8; padding:5px 0; font-size:12px;"
     );
   })
+
+  useEffect(() => {
+    // 检查登录状态
+    const token = Taro.getStorageSync('token')
+    if (token) {
+      // 如果已登录，启动 IM 连接
+      IMService.getInstance().connect()
+    }
+    
+    // 监听全局登录成功事件（如果你在登录页登录成功后触发了这个事件）
+    // 或者在登录页直接调用 IMService.getInstance().connect()
+    Taro.eventCenter.on('LOGIN_SUCCESS', () => {
+       IMService.getInstance().connect()
+    })
+    
+    // 监听退出登录
+    Taro.eventCenter.on('LOGOUT', () => {
+       IMService.getInstance().close()
+    })
+    
+  }, [])
 
   // children 是将要会渲染的页面
   return children

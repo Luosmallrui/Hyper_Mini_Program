@@ -1,0 +1,256 @@
+.chat-page {
+  background-color: #000000;
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+  overflow: hidden; 
+}
+
+/* 1. 顶部导航 */
+.custom-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200; 
+  background-color: #1C1C1E;
+  display: flex;
+  align-items: center;
+  padding-left: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  box-sizing: content-box;
+
+  .nav-left {
+    width: 40px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+  }
+
+  .nav-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 10px;
+    
+    .nav-title {
+      color: #fff;
+      font-size: 32px;
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 300px;
+    }
+  }
+}
+
+/* 2. 聊天滚动区 */
+.chat-scroll {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* top 和 bottom 由行内样式动态控制 */
+  background-color: #000;
+  
+  /* 增加 opacity 过渡，让页面加载和键盘弹起更顺滑 */
+  transition: opacity 0.3s ease-in-out, bottom 0.1s ease-out;
+  
+  .msg-container {
+    padding: 0 24px;
+    padding-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%; 
+  }
+
+  /* 顶部加载状态样式 */
+  .history-loader {
+    /* 使用 transition 实现高度平滑变化，避免突然跳动 */
+    transition: min-height 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    overflow: hidden; /* 隐藏高度为0时的内容 */
+    
+    .no-more-text {
+      color: #444;
+      font-size: 22px;
+      padding: 20px 0;
+    }
+    
+    /* 自定义加载容器 */
+    .custom-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px; /* 图标和文字的间距 */
+      padding: 20px 0;
+
+      .loading-text {
+        color: #888;
+        font-size: 24px;
+      }
+
+      /* 旋转动画 */
+      .spin-icon {
+        animation: rotate 1s linear infinite;
+        display: block; /* 确保 transform 生效 */
+      }
+    }
+  }
+
+  .time-stamp {
+    align-self: center;
+    background-color: rgba(255,255,255,0.1);
+    padding: 4px 12px;
+    border-radius: 8px;
+    color: #999;
+    font-size: 20px;
+    margin: 20px 0;
+  }
+
+  .msg-row {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 30px;
+    width: 100%;
+
+    .msg-body {
+      display: flex;
+      align-items: flex-start;
+      max-width: 100%;
+    }
+
+    .avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background-color: #333; 
+      flex-shrink: 0;
+      overflow: hidden; 
+
+      .avatar-img {
+        width: 100%;
+        height: 100%;
+      }
+
+      .avatar-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 32px;
+        font-weight: bold;
+      }
+    }
+    
+    .my-avatar {
+      background-color: #555;
+    }
+
+    .bubble {
+      padding: 20px 24px;
+      border-radius: 24px;
+      max-width: 65%;
+      position: relative;
+      font-size: 30px;
+      line-height: 1.5;
+      word-break: break-all;
+    }
+  }
+
+  /* 对方消息 */
+  .msg-left {
+    .msg-body {
+      flex-direction: row;
+    }
+    .bubble {
+      background-color: #2C2C2E;
+      color: #fff;
+      margin-left: 16px;
+      border-top-left-radius: 4px;
+    }
+  }
+
+  /* 我发的消息 */
+  .msg-right {
+    .msg-body {
+      flex-direction: row;
+      justify-content: flex-end;
+    }
+    .bubble {
+      background-color: #FF2E4D;
+      color: #fff;
+      margin-right: 16px;
+      border-top-right-radius: 4px;
+    }
+  }
+}
+
+/* --- 新增：旋转动画关键帧 --- */
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 3. 底部输入框 */
+.input-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  min-height: 100px; 
+  background-color: #1C1C1E; 
+  
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-top: 16px;
+  
+  display: flex;
+  align-items: flex-start;
+  z-index: 200;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  
+  transition: bottom 0.1s ease-out;
+
+  .input-wrapper {
+    flex: 1;
+    background-color: #2C2C2E;
+    min-height: 72px;
+    border-radius: 36px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    margin-right: 20px;
+
+    .chat-input {
+      width: 100%;
+      height: 72px;
+      color: #fff;
+      font-size: 30px;
+    }
+  }
+
+  .send-btn {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background-color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    &.active {
+      background-color: #FF2E4D;
+    }
+  }
+}

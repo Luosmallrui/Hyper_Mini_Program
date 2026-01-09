@@ -74,7 +74,7 @@
   position: absolute;
   left: 24px;
   right: 24px;
-  z-index: 50;
+  z-index: 60;
   background: #ffffff;
   border-radius: 16px;
   height: 88px;
@@ -97,6 +97,10 @@
     &:active {
       background-color: #f9f9f9;
       border-radius: 8px;
+    }
+
+    &.active-text {
+      color: #FF2E4D;
     }
   }
 
@@ -195,7 +199,6 @@
            content: '';
            position: absolute;
            top:0; left:0; right:0; bottom:0;
-           background-image: url('https://lanhu-oss-proxy.lanhuapp.com/SketchPng16fd5984e6d7ea9ae39d6d392f067361c9d5a637e100b0ec825df6fa8b765a9e');
            background-size: cover;
            background-position: center;
            opacity: 0.8;
@@ -404,39 +407,169 @@
   }
 }
 
-/* 筛选弹窗保持不变 */
-.filter-modal {
+/* 遮罩层 */
+.mask-layer {
   position: absolute;
-  left: 24px;
-  right: 24px;
-  z-index: 40;
-  .filter-content {
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 55;
+}
+
+/* =================================
+   一体化筛选容器 (核心修改)
+   ================================= */
+.filter-container-wrapper {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  z-index: 60; /* 最高层级 */
+  background: #ffffff;
+  border-radius: 16px; /* 默认全圆角 */
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  transition: all 0.2s ease;
+  overflow: hidden; /* 裁剪圆角 */
+
+  /* 展开时的状态 */
+  &.is-open {
+    /* 展开时，只保留上部圆角，下部直角以衔接内容 */
+    border-radius: 16px 16px 16px 16px; 
+    /* 或者如果你希望内容区很大，可以不做边框变化，直接让内容撑开容器 */
+  }
+
+  /* 上部：按钮条区域 */
+  .filter-bar-header {
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
     background: #fff;
-    border-radius: 20px;
-    padding: 30px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-    
-    .list-filter {
-       display: flex;
-       flex-wrap: wrap;
-       gap: 24px;
-       .filter-item {
-          padding: 12px 28px;
-          background: #f7f7f7;
-          border-radius: 12px;
-          font-size: 26px;
-          color: #333;
-          font-weight: 500;
-       }
-       .filter-group-title { width: 100%; font-weight: 800; margin-bottom: 16px; font-size: 30px;}
-       .row-wrap { display: flex; gap: 20px; flex-wrap: wrap; 
-          .tag-item { padding: 10px 24px; background: #f7f7f7; border-radius: 12px; font-size: 26px; }
-       }
+    position: relative;
+    z-index: 2;
+
+    /* 灰色小胶囊 */
+    .capsule-item {
+      flex: 1;
+      width: 204px;
+      height: 47px;
+      margin: 0 6px;
+      padding: 0 25px;
+      background: #F1F1F1; /* 浅灰背景 */
+      border-radius: 30px; /* 胶囊圆角 */
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      
+      font-size: 22px;
+      color: #333;
+      font-weight: 500;
+
+      /* 选中/展开态 */
+      &.highlight-bg {
+        background: #FEF5F1;
+      }
+      
+      .highlight-text {
+        color: #FE5A5A;
+      }
     }
+  }
+
+  /* 下部：下拉内容区域 */
+  .dropdown-content {
+    background: #fff;
+    border-top: 1px solid #f5f5f5; /* 分割线 */
+    max-height: 800px; /* 限制最大高度 */
     
-    .more-filter .section {
-        margin-bottom: 30px;
-        .label { font-weight: 800; font-size: 30px; margin-bottom: 20px; display: block;}
+    /* 1. 列表模式 */
+    .list-scroll {
+      height: 500px;
+      .list-item {
+        padding: 24px 40px;
+        font-size: 28px;
+        color: #333;
+        display: flex;
+        justify-content: space-between;
+        
+        &.active {
+          color: #FE5A5A;
+          background: #FFF5F6;
+        }
+      }
+    }
+
+    /* 2. 区域分栏模式 (三栏布局) */
+    .split-view {
+      display: flex;
+      height: 600px;
+      
+      /* 第一栏：最深灰 */
+      .col-1 {
+        width: 180px;
+        background: #F7F8FA;
+        .item {
+          padding: 30px 0;
+          text-align: center;
+          font-size: 28px;
+          color: #666;
+          &.active { background: #fff; color: #FF2E4D; font-weight: bold;}
+        }
+      }
+      
+      /* 第二栏：稍浅灰或白 */
+      .col-2 {
+        width: 200px;
+        background: #fff; /* 或 #FAFAFA */
+        border-right: 1px solid #f5f5f5;
+        .item {
+          padding: 30px 0;
+          text-align: center;
+          font-size: 28px;
+          color: #333;
+          &.active { color: #FF2E4D; font-weight: bold;}
+        }
+      }
+      
+      /* 第三栏：白色详情 */
+      .col-3 {
+        flex: 1;
+        background: #fff;
+        .item {
+          padding: 30px 40px;
+          font-size: 28px;
+          color: #333;
+          display: flex;
+          justify-content: space-between;
+          &.active { color: #FF2E4D;}
+        }
+      }
+    }
+
+    /* 3. 更多筛选 */
+    .more-view {
+      padding: 30px;
+      .label { font-size: 28px; font-weight: bold; margin-bottom: 20px; display: block;}
+      .tags {
+         display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 40px;
+         .tag {
+            padding: 12px 30px;
+            background: #F7F8FA;
+            border-radius: 8px;
+            font-size: 26px;
+         }
+      }
+      .btn-row {
+         display: flex; gap: 20px;
+         .btn {
+            flex: 1;
+            height: 80px;
+            border-radius: 40px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px;
+            &.reset { background: #F7F8FA; color: #333; }
+            &.confirm { background: #FF2E4D; color: #fff; font-weight: bold;}
+         }
+      }
     }
   }
 }

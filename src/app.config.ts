@@ -33,6 +33,7 @@ export default defineAppConfig({
     'pages/square/post-create/index', // 发布页
     'pages/square/post-detail/index', // 详情页
     'pages/message/index', // 消息界面
+    'pages/chat/index', // 聊天详情页
     'pages/user/index', // 用户界面
   ],
   window: {
