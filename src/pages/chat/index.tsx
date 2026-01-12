@@ -21,6 +21,7 @@ export default function ChatPage() {
   const router = useRouter()
   const { peer_id, title, type } = router.params 
 
+  // --- 状态管理 ---
   const [msgList, setMsgList] = useState<MessageItem[]>([])
   const msgListRef = useRef<MessageItem[]>([]) 
   
@@ -50,6 +51,38 @@ export default function ChatPage() {
   useEffect(() => { nextCursorRef.current = nextCursor }, [nextCursor])
   useEffect(() => { hasMoreRef.current = hasMore }, [hasMore])
 
+  // --- 关键辅助函数：智能合并消息 ---
+  // 功能：将 newItems (来自服务器) 合并入 oldItems (本地)
+  // 1. 根据 ID 绝对去重
+  // 2. 如果 newItems 包含 "我自己发的消息"，尝试消除本地的 "temp_" 消息
+  const mergeMessages = (oldItems: MessageItem[], newItems: MessageItem[]) => {
+      // 1. 先把 oldItems 里的 temp 消息提取出来待检查
+      let resultList = [...oldItems]
+
+      newItems.forEach(newMsg => {
+          // 如果新消息是自己发的，检查 oldItems 里有没有对应的 temp 消息
+          if (newMsg.is_self) {
+              const tempIndex = resultList.findIndex(local => 
+                  local.id.toString().startsWith('temp_') && 
+                  local.content === newMsg.content
+              )
+              // 如果找到了匹配的 temp 消息，直接移除它（因为我们要插入 real 消息了）
+              if (tempIndex !== -1) {
+                  resultList.splice(tempIndex, 1)
+              }
+          }
+
+          // 检查 ID 是否已存在（防止重复添加）
+          const exists = resultList.some(local => String(local.id) === String(newMsg.id))
+          if (!exists) {
+              resultList.push(newMsg)
+          }
+      })
+      
+      // 再次按时间排序
+      return resultList.sort((a, b) => a.time - b.time)
+  }
+
   useEffect(() => {
     try {
       const userInfo = Taro.getStorageSync('userInfo')
@@ -76,7 +109,7 @@ export default function ChatPage() {
     }
     Taro.onKeyboardHeightChange(onKeyboardChange)
 
-    // 监听 IM 消息
+    // 监听 IM 实时消息 (处理在线时的推送)
     const onNewMessage = (res: any) => {
         const newMsg = res.payload || res
         if (res.event && res.event !== 'chat') return
@@ -87,7 +120,6 @@ export default function ChatPage() {
         const currentMyId = String(myUserId || Taro.getStorageSync('userInfo')?.user_id || 0)
 
         let isCurrentChat = false
-        // 判断是否是自己发的 (多端同步的关键)
         let isSelfMsg = (msgSenderId === currentMyId)
 
         if (Number(type) === 2) {
@@ -113,35 +145,13 @@ export default function ChatPage() {
               is_self: isSelfMsg 
             }
 
+            // 使用 mergeMessages 逻辑处理单条推送
             setMsgList(prev => {
-                // 1. 绝对去重：如果ID完全一致，直接跳过
-                if (prev.some(m => m.id === incomingMsg.id)) return prev
-
-                // 2. 乐观更新去重 (核心修复)
-                // 如果是自己发的消息，检查列表里是否有内容相同的临时消息
-                if (isSelfMsg) {
-                    const tempIndex = prev.findIndex(m => 
-                        m.id.toString().startsWith('temp_') && // 是本地临时ID
-                        m.content === incomingMsg.content      // 内容一致
-                        // 严谨的话还可以判断发送时间差在几秒内
-                    )
-                    
-                    if (tempIndex !== -1) {
-                        // 找到了临时消息，直接替换成真实消息，避免重复
-                        const newList = [...prev]
-                        newList[tempIndex] = incomingMsg
-                        return newList
-                    }
-                    // 没找到（说明是其他设备发的），走下面正常追加流程
-                }
-
-                // 3. 正常追加
-                const newList = [...prev, incomingMsg]
-                scrollToBottom(newList)
-                return newList
+                const merged = mergeMessages(prev, [incomingMsg])
+                scrollToBottom(merged)
+                return merged
             })
             
-            // 只有对方发的消息才清未读
             if (!isSelfMsg) {
                 clearUnread()
             }
@@ -149,20 +159,31 @@ export default function ChatPage() {
     }
     Taro.eventCenter.on('IM_NEW_MESSAGE', onNewMessage)
 
+    // 监听 IM 连接成功事件 (处理断线重连后的补洞)
+    const onImConnected = () => {
+        console.log('[ChatPage] IM已连接，执行消息补洞...')
+        reconnectFetch()
+    }
+    Taro.eventCenter.on('IM_CONNECTED', onImConnected)
+
+    // 监听 Token 刷新 (双重保险)
+    const onTokenRefreshed = () => {
+        // Token 刷新通常会触发 IM 重连，从而触发 onImConnected
+        // 这里可以保留作为兜底，或者直接去掉交给 IM_CONNECTED 处理
+        // 为了稳健，我们保留，但加个防抖标记也可以
+        console.log('[ChatPage] Token刷新')
+    }
+    Taro.eventCenter.on('TOKEN_REFRESHED', onTokenRefreshed)
+
+    // 初始加载
     fetchMessages(true)
     clearUnread()
-    // 获取最新用户信息
-    try {
-        const u = Taro.getStorageSync('userInfo')
-        if (u) {
-            if (u.user_id) setMyUserId(Number(u.user_id))
-            if (u.avatar_url) setSelfAvatar(u.avatar_url)
-        }
-    } catch(e) {}
 
     return () => {
       Taro.offKeyboardHeightChange(onKeyboardChange)
       Taro.eventCenter.off('IM_NEW_MESSAGE', onNewMessage)
+      Taro.eventCenter.off('IM_CONNECTED', onImConnected) // 记得清理
+      Taro.eventCenter.off('TOKEN_REFRESHED', onTokenRefreshed)
     }
   }, [peer_id, type, myUserId])
 
@@ -176,6 +197,62 @@ export default function ChatPage() {
       } catch(e) {}
   }
 
+  // --- 补洞逻辑 ---
+  const reconnectFetch = async () => {
+    try {
+      // 1. 获取本地最新一条消息的时间戳
+      // 过滤掉 temp_ 消息，确保以服务端确认的时间为准
+      const validMsgs = msgListRef.current.filter(m => !String(m.id).startsWith('temp_'))
+      const lastLocalMsg = validMsgs.length > 0 ? validMsgs[validMsgs.length - 1] : null
+      
+      const sinceTime = lastLocalMsg ? lastLocalMsg.time : 0
+      
+      console.log('[ChatPage] 开始补洞，本地最新时间:', sinceTime)
+
+      const params: any = {
+          peer_id: Number(peer_id),
+          limit: 50,
+          since: sinceTime 
+      }
+      
+      const res = await request({
+          url: '/api/v1/message/list',
+          method: 'GET',
+          data: params
+      })
+      
+      let resBody: any = res.data
+      if (typeof resBody === 'string') try { resBody = JSON.parse(resBody) } catch (e) {}
+
+      if (resBody.code === 200 && resBody.data) {
+          const newMsgs: MessageItem[] = resBody.data.list || []
+          
+          // 过滤掉自己刚刚发的可能已经存在于本地的消息 (通过ID去重由 mergeMessages 完成)
+          // 主要是为了打印日志看看补到了几条
+          if (newMsgs.length > 0) {
+              console.log(`[ChatPage] 补洞拉取到 ${newMsgs.length} 条消息`)
+              
+              setMsgList(prev => {
+                  const merged = mergeMessages(prev, newMsgs)
+                  // 如果列表变长了，或者是最新的一条消息变了，就滚动到底部
+                  if (merged.length > prev.length || 
+                     (merged.length > 0 && prev.length > 0 && merged[merged.length-1].id !== prev[prev.length-1].id)) {
+                      scrollToBottom(merged)
+                  }
+                  return merged
+              })
+              
+              clearUnread()
+          } else {
+              console.log('[ChatPage] 补洞完成，无新消息')
+          }
+      }
+    } catch (e) {
+        console.error('[ChatPage] 消息补洞失败', e)
+    }
+}
+
+  // 常规获取消息
   const fetchMessages = async (isRefresh = false) => {
     if (loading) return
     if (!isRefresh && !hasMoreRef.current) return
@@ -199,7 +276,7 @@ export default function ChatPage() {
       }
 
       if (!isRefresh) {
-          await new Promise(resolve => setTimeout(resolve, 500))
+          await new Promise(resolve => setTimeout(resolve, 300))
       }
 
       const res = await request({
@@ -213,7 +290,7 @@ export default function ChatPage() {
         try { resBody = JSON.parse(resBody) } catch (e) {}
       }
 
-      if (resBody && resBody.code === 200 && resBody.data) {
+      if (resBody.code === 200 && resBody.data) {
         const data = resBody.data
         const newMsgs: MessageItem[] = data.list || []
         const cursor = data.next_cursor
@@ -223,6 +300,7 @@ export default function ChatPage() {
           if (data.self_avatar) setSelfAvatar(data.self_avatar)
         }
 
+        // 接口数据倒序 -> 正序
         const sortedMsgs = newMsgs.sort((a, b) => a.time - b.time)
 
         if (isRefresh) {
@@ -230,8 +308,12 @@ export default function ChatPage() {
           scrollToBottom(sortedMsgs)
           setTimeout(() => setFirstLoaded(true), 200)
         } else {
+          // 加载历史
           if (sortedMsgs.length > 0) {
+             // 历史消息可以直接拼在前面，因为 mergeMessages 比较耗时且这里一般不涉及去重 temp
+             // 但为了保险，也可以用 mergeMessages
              setMsgList(prev => [...sortedMsgs, ...prev])
+             
              if (anchorMsgId) {
                  setScrollId('') 
                  setTimeout(() => {
@@ -257,7 +339,6 @@ export default function ChatPage() {
       const contentToSend = inputText
       setInputText('') 
       
-      // 乐观更新：插入临时消息，ID以 temp_ 开头
       const tempId = `temp_${Date.now()}`
       const tempMsg: MessageItem = {
         id: tempId,
@@ -269,6 +350,7 @@ export default function ChatPage() {
         is_self: true 
       }
       
+      // 乐观更新
       setMsgList(prev => {
         const newList = [...prev, tempMsg]
         scrollToBottom(newList)
@@ -276,12 +358,32 @@ export default function ChatPage() {
       })
       
       try {
-        await request({
+        const res = await request({
             url: '/api/v1/message/send',
             method: 'POST',
             data: { target_id: String(peer_id), session_type: Number(type), msg_type: 1, content: contentToSend, ext: {} }
         })
-      } catch (err) {}
+        
+        let resData: any = res.data
+        if (typeof resData === 'string') try { resData = JSON.parse(resData) } catch(e){}
+        
+        // 发送成功，收到后端真实ID，更新本地
+        if (resData && resData.code === 200 && resData.data) {
+             const serverMsg = resData.data 
+             setMsgList(prev => prev.map(m => {
+                 if (m.id === tempId) {
+                     return { 
+                         ...m, 
+                         id: serverMsg.msg_id || serverMsg.id || m.id, 
+                         time: serverMsg.time || m.time || m.time 
+                     }
+                 }
+                 return m
+             }))
+        }
+      } catch (err) {
+          console.error('[ChatPage] 发送失败', err)
+      }
   }
 
   const scrollToBottom = (list: MessageItem[]) => {
@@ -294,21 +396,17 @@ export default function ChatPage() {
     }
   }
 
-  // 格式化时间 (优化版)
   const formatTime = (ts: number) => {
     if (!ts) return ''
     const date = new Date(ts * 1000)
     const now = new Date()
-    
     const z = (n: number) => (n < 10 ? `0${n}` : n)
     const timeStr = `${z(date.getHours())}:${z(date.getMinutes())}`
     
-    // 判断是否是今天
     const isToday = date.getDate() === now.getDate() && 
                     date.getMonth() === now.getMonth() && 
                     date.getFullYear() === now.getFullYear()
     
-    // 判断是否是今年
     const isThisYear = date.getFullYear() === now.getFullYear()
 
     if (isToday) {

@@ -1,8 +1,11 @@
-import {PropsWithChildren, useEffect} from 'react'
-import Taro, {useLaunch} from '@tarojs/taro'
-import {appUpdate} from './utils'
+import { PropsWithChildren, useEffect } from 'react'
+import Taro, { useLaunch } from '@tarojs/taro'
+import { appUpdate } from './utils'
 import IMService from './utils/im'
+// 【新增】引入自动刷新调度器
+import { scheduleAutoRefresh } from './utils/request'
 import './app.less'
+
 // 在app.js或app.tsx文件顶部添加这段代码
 if (typeof console.time !== 'function') {
   const timeMap = {};
@@ -21,7 +24,7 @@ if (typeof console.time !== 'function') {
   };
 }
 
-function App({children}: PropsWithChildren<any>) {
+function App({ children }: PropsWithChildren<any>) {
 
   useLaunch(() => {
     // 小程序更新
@@ -36,23 +39,54 @@ function App({children}: PropsWithChildren<any>) {
   })
 
   useEffect(() => {
-    // 检查登录状态
-    const token = Taro.getStorageSync('token')
+    // 1. 初始化检查
+    const token = Taro.getStorageSync('access_token')
+    // 【新增】读取本地存储的过期时间
+    const expire = Taro.getStorageSync('access_expire')
+
     if (token) {
       // 如果已登录，启动 IM 连接
       IMService.getInstance().connect()
+
+      // 【新增】如果有过期时间，应用启动时恢复自动刷新定时器
+      // 否则用户杀掉小程序再进来，定时器就没了
+      if (expire) {
+        scheduleAutoRefresh(expire)
+      }
     }
     
-    // 监听全局登录成功事件（如果你在登录页登录成功后触发了这个事件）
-    // 或者在登录页直接调用 IMService.getInstance().connect()
-    Taro.eventCenter.on('LOGIN_SUCCESS', () => {
-       IMService.getInstance().connect()
-    })
+    // 定义连接和关闭处理函数
+    const handleConnect = () => {
+      console.log('[App] 监听到登录/刷新事件，启动IM')
+      // Token 刷新后，建议重置连接以使用新 Token
+      IMService.getInstance().reset()
+      setTimeout(() => {
+          IMService.getInstance().connect()
+      }, 500)
+    }
+
+    const handleClose = () => {
+      console.log('[App] 监听到登出事件，关闭IM')
+      IMService.getInstance().close()
+    }
+
+    // 2. 监听事件 (适配 UserPage 和 request.ts 中的广播)
     
-    // 监听退出登录
-    Taro.eventCenter.on('LOGOUT', () => {
-       IMService.getInstance().close()
-    })
+    // 登录成功 (UserPage 触发)
+    Taro.eventCenter.on('USER_INFO_UPDATED', handleConnect)
+    
+    // Token 自动刷新成功 (request.ts 触发)
+    Taro.eventCenter.on('TOKEN_REFRESHED', handleConnect)
+    
+    // 强制登出 (request.ts 触发 401 刷新失败)
+    Taro.eventCenter.on('FORCE_LOGOUT', handleClose)
+    
+    // 清理监听
+    return () => {
+      Taro.eventCenter.off('USER_INFO_UPDATED', handleConnect)
+      Taro.eventCenter.off('TOKEN_REFRESHED', handleConnect)
+      Taro.eventCenter.off('FORCE_LOGOUT', handleClose)
+    }
     
   }, [])
 

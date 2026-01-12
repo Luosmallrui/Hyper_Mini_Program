@@ -1,8 +1,9 @@
 import Taro from '@tarojs/taro'
+import { request } from './request'
 
 const WS_URL = 'wss://www.hypercn.cn/im/wss'
-const HEARTBEAT_INTERVAL = 30000
-const RECONNECT_DELAY = 5000
+const HEARTBEAT_INTERVAL = 30000 
+const RECONNECT_DELAY = 5000 
 
 export default class IMService {
   private static instance: IMService
@@ -20,27 +21,24 @@ export default class IMService {
   }
 
   constructor() {
-    // 【新增】监听 Token 刷新成功事件
+    // 监听 Token 刷新，立即重连，不要等待
     Taro.eventCenter.on('TOKEN_REFRESHED', () => {
-      console.log('[IM] 监听到 Token 刷新，准备重连...')
-      // 如果当前连接是断开的，或者连接是用旧 Token 建立的，尝试重连
-      // 为了保险，先关闭旧连接（如果有）
-      this.close() 
-      // 稍等一下再连，避免冲突
+      console.log('[IM] Token 刷新，立即重置并重连...')
+      this.reset() 
+      // 这里的 reset 不会阻止重连，立即发起
       setTimeout(() => {
-          this.manualClose = false // 重置手动关闭标志
+          this.manualClose = false
           this.connect()
-      }, 500)
+      }, 200)
     })
 
-    // 监听强制登出
     Taro.eventCenter.on('FORCE_LOGOUT', () => {
         this.close()
     })
   }
 
   async connect() {
-    const token = Taro.getStorageSync('access_token') // 注意这里用 access_token
+    const token = Taro.getStorageSync('access_token')
     if (!token) {
       console.warn('[IM] 无 AccessToken，暂不连接')
       return
@@ -64,9 +62,10 @@ export default class IMService {
       console.error('[IM] 创建连接失败', e)
       this.isConnected = false
       
-      // 如果是 401 错误，通常不需要立即重连，而是等待 Token 刷新逻辑触发
-      if (e.errMsg && e.errMsg.includes('Invalid HTTP status')) {
-           console.log('[IM] 握手失败(401/403)，等待 Token 刷新...')
+      const errMsg = e.errMsg || e.message || ''
+      if (errMsg.includes('Invalid HTTP status') || errMsg.includes('401') || errMsg.includes('403')) {
+           console.log('[IM] 握手鉴权失败，尝试触发 HTTP Token 刷新...')
+           this.triggerTokenRefresh()
            return 
       }
       
@@ -74,23 +73,29 @@ export default class IMService {
     }
   }
 
-  // 2. 初始化监听
+  async triggerTokenRefresh() {
+      try {
+          await request({ url: '/api/v1/user/info', method: 'GET' })
+      } catch(e) {}
+  }
+
   private initListeners() {
     if (!this.socketTask) return
 
     this.socketTask.onOpen(() => {
-      console.log('[IM] 连接成功！')
+      console.log('[IM] 连接成功!')
       this.isConnected = true
       this.startHeartbeat()
-      // 连接成功，清除重连定时器
       if (this.reconnectTimer) {
         clearTimeout(this.reconnectTimer)
         this.reconnectTimer = null
       }
+      
+      // 【核心新增】连接成功，广播事件，通知聊天页面进行补洞
+      Taro.eventCenter.trigger('IM_CONNECTED')
     })
 
     this.socketTask.onMessage((res) => {
-      console.log(JSON.stringify(res))
       this.handleMessage(res.data)
     })
 
@@ -98,9 +103,8 @@ export default class IMService {
       console.log('[IM] 连接关闭', res)
       this.isConnected = false
       this.stopHeartbeat()
-      this.socketTask = null // 清理引用
+      this.socketTask = null
 
-      // 非手动关闭（异常断开），触发重连
       if (!this.manualClose) {
         this.reconnect()
       }
@@ -109,45 +113,36 @@ export default class IMService {
     this.socketTask.onError((err) => {
       console.error('[IM] 连接错误', err)
       this.isConnected = false
-      // 错误通常也会触发 onClose，这里不需要重复逻辑，打印日志即可
     })
   }
 
-  // 3. 处理消息
   private handleMessage(dataStr: any) {
     try {
-      // 兼容处理：有些环境返回的是对象，有些是字符串
       const msg = typeof dataStr === 'string' ? JSON.parse(dataStr) : dataStr
-      console.log('[IM] 收到消息:', msg)
+      // 心跳响应不打印日志，避免刷屏
+      if (msg.type !== 'pong' && msg.event !== 'pong') {
+          console.log('[IM] 收到消息:', msg)
+      }
+      if (msg.type === 'pong' || msg.event === 'pong') return
 
-      // 心跳响应（根据后端协议调整，这里假设 type 为 pong）
-      if (msg.type === 'pong') return
-
-      // --- 核心：通过事件总线分发消息 ---
-      // 页面可以通过 Taro.eventCenter.on('IM_NEW_MESSAGE', callback) 监听
       Taro.eventCenter.trigger('IM_NEW_MESSAGE', msg)
-
     } catch (e) {
       console.error('[IM] 消息解析失败', e)
     }
   }
 
-  // 4. 发送消息
   send(data: object) {
     if (this.isConnected && this.socketTask) {
       this.socketTask.send({
-        data: JSON.stringify(data),
-        fail: (res) => console.error('[IM] 发送失败', res)
+        data: JSON.stringify(data)
       })
     }
   }
 
-  // 5. 心跳保活
   private startHeartbeat() {
     this.stopHeartbeat()
     this.heartbeatTimer = setInterval(() => {
-      // 发送心跳包，具体格式需根据后端协议调整
-      this.send({ event: 'pong' }) 
+      this.send({ type: 'ping' }) 
     }, HEARTBEAT_INTERVAL)
   }
 
@@ -158,7 +153,6 @@ export default class IMService {
     }
   }
 
-  // 6. 断线重连
   private reconnect() {
     if (this.manualClose) return 
     if (this.reconnectTimer) return 
@@ -178,12 +172,23 @@ export default class IMService {
       this.reconnectTimer = null
     }
     if (this.socketTask) {
-      // 必须用 try catch 包裹，防止未连接时关闭报错
-      try {
-          this.socketTask.close({})
-      } catch(e) {}
+      try { this.socketTask.close({}) } catch(e) {}
       this.socketTask = null
     }
     this.isConnected = false
+  }
+
+  reset() {
+      console.log('[IM] Resetting connection...')
+      this.stopHeartbeat()
+      if (this.reconnectTimer) {
+          clearTimeout(this.reconnectTimer)
+          this.reconnectTimer = null
+      }
+      if (this.socketTask) {
+          try { this.socketTask.close({}) } catch(e) {}
+          this.socketTask = null
+      }
+      this.isConnected = false
   }
 }

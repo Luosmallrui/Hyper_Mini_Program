@@ -1,11 +1,11 @@
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/index.scss'
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { View, Text, Button, Image, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { setTabBarIndex } from '../../store/tabbar'
 // 引入封装好的请求工具
-import { request } from '../../utils/request'
+import { request, saveTokens } from '../../utils/request'
 import './index.scss'
 
 const BASE_URL = 'https://www.hypercn.cn'
@@ -167,10 +167,12 @@ export default function UserPage() {
       }
 
       if (responseData && responseData.code === 200 && responseData.data) {
-        const { access_token, refresh_token } = responseData.data
+        const { access_token, refresh_token, access_expire } = responseData.data
         
         Taro.setStorageSync('access_token', access_token)
         Taro.setStorageSync('refresh_token', refresh_token)
+
+        saveTokens(access_token, refresh_token, access_expire)
         
         // 登录成功后，立即调用 /user/info 获取用户信息
         await fetchLatestUserInfo()
