@@ -142,7 +142,7 @@ export default class IMService {
   private startHeartbeat() {
     this.stopHeartbeat()
     this.heartbeatTimer = setInterval(() => {
-      this.send({ type: 'ping' }) 
+      this.send({ event: 'ping' }) 
     }, HEARTBEAT_INTERVAL)
   }
 

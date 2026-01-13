@@ -1,4 +1,4 @@
-import { View, Text, Image, ScrollView } from '@tarojs/components'
+import { View, Text, Image, ScrollView, Swiper, SwiperItem } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { AtIcon } from 'taro-ui'
@@ -6,10 +6,11 @@ import 'taro-ui/dist/style/components/icon.scss'
 import { setTabBarIndex } from '../../store/tabbar'
 import './index.scss'
 
-// ... (DEFAULT_CHANNELS, RECOMMEND_CHANNELS, POSTS 数据保持不变，省略) ...
+// 模拟频道数据
 const DEFAULT_CHANNELS = ['关注', '推荐', '同城', '滑板', '骑行', '派对', '纹身', '改装车', '露营', '篮球', '足球', '飞盘']
 const RECOMMEND_CHANNELS = ['潮鞋', '电子竞技', '健身', '艺术', '场地', '乐队', '音乐节', '化妆']
 
+// 模拟帖子数据
 const POSTS = [
   { id: 1, type: 'video', cover: 'https://cdn.pixabay.com/photo/2023/08/25/07/37/woman-8212392_1280.jpg', title: 'INS风格落地 | 小小的心去旅行', user: 'ORANGE', avatar: '', likes: 16, time: '7小时前', desc: '终于，他变得温柔，在生命面前，任何工作都是值得被尊敬的。' },
   { id: 2, type: 'image', cover: 'https://cdn.pixabay.com/photo/2023/05/29/18/35/girl-8026779_1280.jpg', title: '这颜值还是可以的吧！', user: '小蝴蝶不谈恋爱', avatar: '', likes: 4207, time: '昨天', desc: '今天天气真好，出来炸街啦！' },
@@ -18,7 +19,7 @@ const POSTS = [
 ]
 
 export default function SquarePage() {
-  const [activeTab, setActiveTab] = useState('推荐')
+  const [activeIdx, setActiveIdx] = useState(1) // 默认选中"推荐"
   const [myChannels, setMyChannels] = useState(DEFAULT_CHANNELS)
   const [isChannelEditOpen, setIsChannelEditOpen] = useState(false)
   
@@ -34,21 +35,19 @@ export default function SquarePage() {
   useEffect(() => {
     setTabBarIndex(1)
     
-    // 1. 布局适配计算
     const sysInfo = Taro.getWindowInfo()
     const menuInfo = Taro.getMenuButtonBoundingClientRect()
     
     const sbHeight = sysInfo.statusBarHeight || 20
     setStatusBarHeight(sbHeight)
     
-    // 计算导航栏高度
     const nbHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
     
     const rightPadding = sysInfo.screenWidth - menuInfo.left
     setMenuButtonWidth(rightPadding)
 
-    // 2. 初始化瀑布流
+    // 初始化瀑布流
     const left: typeof POSTS = []
     const right: typeof POSTS = []
     POSTS.forEach((item, i) => {
@@ -61,16 +60,29 @@ export default function SquarePage() {
 
   Taro.useDidShow(() => { setTabBarIndex(1) })
 
-  const handleTabClick = (tab: string) => {
-    setActiveTab(tab)
+  const handleTabClick = (index: number) => {
+    setActiveIdx(index)
     setIsChannelEditOpen(false)
+  }
+
+  const handleSwiperChange = (e: any) => {
+    if (e.detail.source === 'touch') {
+      setActiveIdx(e.detail.current)
+    }
   }
 
   const goDetail = (id: number) => {
     Taro.navigateTo({ url: `/pages/square/post-detail/index?id=${id}` })
   }
 
-  // ... (renderSingleFlow, renderWaterfallFlow, WaterfallCard 保持不变，省略以节省空间) ...
+  // --- 辅助函数：计算 Tab 滚动位置 ---
+  // 策略：如果选中前2个(0,1)，滚到最左边；否则滚到当前的前一个，保持居中感
+  const getTabScrollId = () => {
+    if (activeIdx <= 1) return 'tab-0'
+    return `tab-${activeIdx - 1}`
+  }
+
+  // --- 渲染组件 ---
   const renderSingleFlow = () => (
       <View className='single-flow-list'>
         {POSTS.map(item => (
@@ -99,6 +111,7 @@ export default function SquarePage() {
             </View>
           </View>
         ))}
+         <View style={{height: '120px'}} />
       </View>
   )
 
@@ -110,6 +123,8 @@ export default function SquarePage() {
         <View className='col'>
            {rightCol.map(item => <WaterfallCard key={item.id} item={item} onClick={() => goDetail(item.id)} />)}
         </View>
+        {/* 底部留白，防止被 TabBar 遮挡 */}
+        <View style={{height: '120px', width: '100%', position: 'absolute', bottom: 0}} />
       </View>
   )
 
@@ -145,10 +160,9 @@ export default function SquarePage() {
             </View>
          </View>
          <View className='channel-grid'>
-            {myChannels.map(ch => (
-               <View key={ch} className='channel-chip active'>
+            {myChannels.map((ch, idx) => (
+               <View key={ch} className={`channel-chip ${activeIdx === idx ? 'active' : ''}`} onClick={() => { handleTabClick(idx) }}>
                   <Text>{ch}</Text>
-                  <View className='del-icon'>×</View>
                </View>
             ))}
          </View>
@@ -164,20 +178,15 @@ export default function SquarePage() {
     )
   }
 
-  const totalHeaderHeight = statusBarHeight + navBarHeight + TAB_HEIGHT
+  const headerTotalHeight = statusBarHeight + navBarHeight + TAB_HEIGHT
 
   return (
     <View className='square-page'>
       
-      {/* --- 固定头部区域 (Navbar + Tabs) --- */}
+      {/* 固定头部 */}
       <View className='fixed-header-wrapper'>
-        {/* 1. 顶部导航 (Flex Column 布局) */}
         <View className='top-nav' style={{ height: `${statusBarHeight + navBarHeight}px` }}>
-           
-           {/* 状态栏占位 (必须有高度) */}
            <View className='status-bar-placeholder' style={{ height: `${statusBarHeight}px` }} />
-
-           {/* 导航内容区 */}
            <View className='nav-content' style={{ height: `${navBarHeight}px`, paddingRight: `${menuButtonWidth}px` }}>
               <View className='left-area'>
                   <View className='location'>
@@ -188,33 +197,30 @@ export default function SquarePage() {
                      <AtIcon value='search' size='20' color='#fff' />
                   </View>
               </View>
-              
-              {/* Logo 绝对居中于 nav-content */}
               <View className='logo-container'>
                  <Image src={require('../../assets/images/hyper-icon.png')} mode='heightFix' className='logo' />
               </View>
            </View>
         </View>
 
-        {/* 2. 频道 Tab 栏 */}
         <View className='channel-tabs-row' style={{ height: `${TAB_HEIGHT}px` }}>
           <ScrollView 
             scrollX 
             className='channel-scroll-view' 
-            scrollIntoView={`tab-${activeTab}`}
+            scrollIntoView={getTabScrollId()} // 动态计算滚动位置
             showScrollbar={false}
             enableFlex 
           >
              <View className='tab-container'>
-                {myChannels.map(tab => (
+                {myChannels.map((tab, idx) => (
                     <View 
                       key={tab} 
-                      id={`tab-${tab}`}
-                      className={`tab-item ${activeTab === tab ? 'active' : ''}`}
-                      onClick={() => handleTabClick(tab)}
+                      id={`tab-${idx}`}
+                      className={`tab-item ${activeIdx === idx ? 'active' : ''}`}
+                      onClick={() => handleTabClick(idx)}
                     >
                        <Text className='tab-text'>{tab}</Text>
-                       {activeTab === tab && <View className='indicator' />}
+                       {activeIdx === idx && <View className='indicator' />}
                     </View>
                 ))}
                 <View style={{ width: '20px' }}></View>
@@ -230,18 +236,25 @@ export default function SquarePage() {
         </View>
       </View>
 
-      {/* --- 频道编辑浮层 --- */}
+      {/* 内容区域 Swiper */}
+      <Swiper 
+        className='content-swiper'
+        style={{ height: `calc(100vh - ${headerTotalHeight}px)`, marginTop: `${headerTotalHeight}px` }}
+        current={activeIdx}
+        onChange={handleSwiperChange}
+        duration={300}
+      >
+        {myChannels.map((channel) => (
+          <SwiperItem key={channel}>
+            <ScrollView scrollY className='tab-scroll-view'>
+               {channel === '关注' ? renderSingleFlow() : renderWaterfallFlow()}
+            </ScrollView>
+          </SwiperItem>
+        ))}
+      </Swiper>
+
       {renderChannelEdit()}
 
-      {/* --- 内容区域 --- */}
-      <ScrollView 
-        scrollY 
-        className='content-scroll' 
-        style={{ paddingTop: `${totalHeaderHeight}px` }}
-      >
-         {activeTab === '关注' ? renderSingleFlow() : renderWaterfallFlow()}
-         <View style={{height: '120px'}} />
-      </ScrollView>
     </View>
   )
 }
