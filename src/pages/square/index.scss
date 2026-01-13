@@ -3,10 +3,10 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* 防止页面级滚动 */
+  overflow: hidden; /* 防止页面级滚动，完全依赖 ScrollView */
 }
 
-/* 固定头部容器 */
+/* --- 固定头部容器 --- */
 .fixed-header-wrapper {
   position: fixed;
   top: 0;
@@ -16,7 +16,7 @@
   background-color: #000;
 }
 
-/* 顶部导航栏 */
+/* 1. 顶部导航栏 */
 .top-nav {
   display: flex;
   flex-direction: column;
@@ -27,23 +27,56 @@
     align-items: center;
     padding-left: 16px;
     position: relative;
+    box-sizing: border-box;
 
+    /* 左侧区域：位置 + 搜索 */
     .left-area {
-        display: flex; align-items: center; z-index: 102;
-        .location { display: flex; align-items: center; color: #fff; font-size: 30px; font-weight: bold; gap: 4px; margin-right: 24px; flex-shrink: 0; }
-        .search-icon { flex-shrink: 0; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+        display: flex; 
+        align-items: center; 
+        z-index: 102;
+        
+        .location { 
+          display: flex; 
+          align-items: center; 
+          color: #fff; 
+          font-size: 30px; 
+          font-weight: bold; 
+          gap: 4px; 
+          margin-right: 24px; 
+          flex-shrink: 0; 
+        }
+        
+        .search-icon { 
+          flex-shrink: 0; 
+          width: 40px; 
+          height: 40px; 
+          display: flex; 
+          align-items: center; 
+          justify-content: center; 
+        }
     }
 
+    /* 中间 Logo：绝对定位居中 */
     .logo-container {
-      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-      display: flex; align-items: center; justify-content: center;
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      right: 0; 
+      bottom: 0;
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
       pointer-events: none;
-      .logo { height: 30px; }
+      z-index: 101;
+      
+      .logo { 
+        height: 30px; 
+      }
     }
   }
 }
 
-/* 频道 Tab 栏 */
+/* 2. 频道 Tab 栏 */
 .channel-tabs-row {
   display: flex;
   align-items: center;
@@ -51,24 +84,87 @@
   background-color: #000;
   
   .channel-scroll-view {
-    flex: 1; height: 100%; margin-right: 4px;
-    .tab-container { display: flex; align-items: center; height: 100%; padding-left: 10px; }
+    flex: 1; 
+    height: 100%; 
+    margin-right: 4px;
+    
+    .tab-container { 
+      display: flex; 
+      align-items: center; 
+      height: 100%; 
+      padding-left: 10px; 
+    }
+
     .tab-item {
-      padding: 0 16px; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; flex-shrink: 0;
-      .tab-text { color: #999; font-size: 28rpx; transition: all 0.2s; }
+      padding: 0 16px; 
+      height: 100%; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      position: relative; 
+      flex-shrink: 0;
+      
+      .tab-text { 
+        color: #999; 
+        font-size: 28rpx; 
+        transition: all 0.2s; 
+      }
+      
       &.active {
-        .tab-text { color: #fff; font-weight: bold; font-size: 32rpx; }
-        .indicator { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 20px; height: 3px; background: #FF2E4D; border-radius: 2px; }
+        .tab-text { 
+          color: #fff; 
+          font-weight: bold; 
+          font-size: 32rpx; 
+        }
+        
+        .indicator { 
+          position: absolute; 
+          bottom: 6px; 
+          left: 50%; 
+          transform: translateX(-50%); 
+          width: 20px; 
+          height: 3px; 
+          background: #FF2E4D; 
+          border-radius: 2px; 
+        }
       }
     }
   }
 
+  /* 右侧固定展开按钮 */
   .expand-btn-side {
-    position: relative; height: 100%; display: flex; align-items: center; padding-left: 10px; padding-right: 16px; background-color: #000; z-index: 2;
-    .gradient-mask { position: absolute; left: -20px; top: 0; bottom: 0; width: 20px; background: linear-gradient(to right, rgba(0,0,0,0), #000); pointer-events: none; }
+    position: relative; 
+    height: 100%; 
+    display: flex; 
+    align-items: center; 
+    padding-left: 10px; 
+    padding-right: 16px; 
+    background-color: #000; 
+    z-index: 2;
+
+    /* 渐变遮罩 */
+    .gradient-mask { 
+      position: absolute; 
+      left: -20px; 
+      top: 0; 
+      bottom: 0; 
+      width: 20px; 
+      background: linear-gradient(to right, rgba(0,0,0,0), #000); 
+      pointer-events: none; 
+    }
+    
     .btn-content {
-      height: 100%; background: #000; display: flex; align-items: center; justify-content: center;
-      .expand-text { font-size: 28rpx; color: #999; font-weight: normal; }
+      height: 100%; 
+      background: #000; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      
+      .expand-text { 
+        font-size: 28rpx; 
+        color: #999; 
+        font-weight: normal; 
+      }
     }
   }
 }
@@ -76,7 +172,6 @@
 /* --- 内容 Swiper 样式 --- */
 .content-swiper {
   width: 100%;
-  /* 高度在 TSX 中动态计算 */
   background-color: #000;
 
   .tab-scroll-view {
@@ -85,72 +180,201 @@
   }
 }
 
-/* 列表样式 (Instagram 风格) */
+/* --- 列表样式 A: Instagram 单列流 --- */
 .single-flow-list {
   padding-top: 10px;
+
   .insta-card {
-    margin-bottom: 40px; background: #000;
+    margin-bottom: 40px; 
+    background: #000;
+    
     .card-header {
-      display: flex; justify-content: space-between; align-items: center; padding: 16px 20px;
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      padding: 16px 20px;
+      
       .user-info {
-        display: flex; align-items: center;
-        .avatar { width: 48px; height: 48px; border-radius: 50%; background: #333; margin-right: 12px;}
-        .name { color: #fff; font-size: 26px; font-weight: bold; margin-right: 12px;}
-        .time { color: #666; font-size: 22px;}
+        display: flex; 
+        align-items: center;
+        flex: 1; /* 让用户信息占据剩余空间 */
+        overflow: hidden;
+
+        .avatar { 
+          width: 48px; 
+          height: 48px; 
+          border-radius: 50%; 
+          background: #333; 
+          margin-right: 12px; 
+          border: 1px solid #333; 
+
+          /* 【核心修复】防止被压缩，强制圆形裁剪 */
+          flex-shrink: 0; 
+          overflow: hidden;
+
+          /* 确保内部图片填充 */
+          .avatar-img {
+            width: 100%;
+            height: 100%;
+            display: block;
+          }
+        }
+
+        .name { 
+          color: #fff; 
+          font-size: 26px; 
+          font-weight: bold; 
+          margin-right: 12px;
+          
+          /* 防止名字过长把时间挤出去 */
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 200px;
+        }
+
+        .time { 
+          color: #666; 
+          font-size: 22px;
+          flex-shrink: 0; /* 时间不许被压缩 */
+        }
       }
     }
-    .media-wrap { width: 100%; height: 500px; position: relative; .media-img { width: 100%; height: 100%; background: #222;} }
-    .action-bar { padding: 16px 20px; .left-actions { display: flex; align-items: center; } .ml-3 { margin-left: 30px;} }
-    .text-content { padding: 0 20px; .title { color: #fff; font-size: 28px; font-weight: bold; margin-bottom: 6px; display: block;} .desc { color: #ccc; font-size: 26px; line-height: 1.4; display: block; margin-bottom: 8px;} }
+
+    .media-wrap { 
+      width: 100%; 
+      height: 600px; 
+      position: relative; 
+      background: #1C1C1E;
+
+      .media-img { width: 100%; height: 100%; }
+      .media-placeholder { width: 100%; height: 100%; background: #222; }
+
+      /* 图片数量角标 */
+      .count-badge {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(0,0,0,0.6);
+        color: #fff;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 22px;
+        font-weight: bold;
+      }
+    }
+
+    .action-bar {
+       padding: 16px 20px;
+       .left-actions { display: flex; align-items: center; }
+       .ml-3 { margin-left: 30px;}
+    }
+
+    .text-content {
+       padding: 0 20px;
+       .title { color: #fff; font-size: 28px; font-weight: bold; margin-bottom: 6px; display: block;}
+       .desc { color: #ccc; font-size: 26px; line-height: 1.4; display: block; margin-bottom: 8px;}
+    }
   }
 }
 
-/* 列表样式 (小红书瀑布流风格) */
+/* --- 列表样式 B: 瀑布流 (双列) --- */
 .waterfall-flow {
-  display: flex;
-  width: 100%; /* 确保撑满宽度 */
-  box-sizing: border-box; /* 边框计算 */
-  padding: 10px; /* 外围 10px 边距 */
-  gap: 10px; /* 中间 10px 间隙 */
-  position: relative;
+  display: flex; 
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px; 
+  gap: 10px;
+  flex-wrap: wrap; /* 关键：允许换行，这样 footer 才能独占一行 */
   
   .col {
-     flex: 1; /* 均分宽度 */
-     display: flex;
-     flex-direction: column;
-     gap: 10px; /* 卡片上下间隙 */
+     flex: 1; 
+     display: flex; 
+     flex-direction: column; 
+     gap: 10px; 
      min-width: 0; /* 防止内容撑开 flex item */
   }
 
+  /* 底部加载更多容器，占据 100% 宽度 */
+  .footer-loader-wrap {
+      width: 100%;
+      padding: 10px 0;
+  }
+
   .waterfall-card {
-     background: #1C1C1E;
-     border-radius: 8px;
+     background: #1C1C1E; 
+     border-radius: 12px; 
      overflow: hidden;
-     width: 100%; /* 卡片撑满列宽 */
+     width: 100%;
      
      .cover { 
          width: 100%; 
-         display: block;
-         /* 解决图片可能有默认 inline-block 间隙问题 */
+         display: block; 
          vertical-align: bottom; 
+         background-color: #2C2C2E;
+     }
+     .cover-placeholder {
+         width: 100%;
+         background-color: #2C2C2E;
      }
      
      .info {
         padding: 12px;
+        
         .title { 
            color: #fff; font-size: 26px; line-height: 1.4;
            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
            margin-bottom: 10px;
         }
+
         .bottom {
-           display: flex; justify-content: space-between; align-items: center;
+           display: flex; 
+           justify-content: space-between; 
+           align-items: center;
+           
            .user {
-              display: flex; align-items: center;
-              .avatar-mini { width: 32px; height: 32px; border-radius: 50%; background: #555; margin-right: 6px;}
-              .name { color: #666; font-size: 22px; max-width: 100px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;}
+              display: flex; 
+              align-items: center;
+              flex: 1; /* 让用户区域占据剩余空间 */
+              overflow: hidden; /* 防止文字过长溢出容器 */
+
+              .avatar-mini { 
+                width: 32px; 
+                height: 32px; 
+                border-radius: 50%; 
+                background: #555; 
+                margin-right: 8px; /* 稍微增加间距 */
+                
+                /* 【核心修复】防止头像被挤压，并裁剪图片为圆形 */
+                flex-shrink: 0; 
+                overflow: hidden;
+                
+                /* 确保内部图片充满容器 */
+                .avatar-img {
+                  width: 100%;
+                  height: 100%;
+                  display: block;
+                }
+              }
+              
+              .name { 
+                color: #666; 
+                font-size: 22px; 
+                /* 确保名字不溢出 */
+                flex: 1; 
+                overflow: hidden; 
+                white-space: nowrap; 
+                text-overflow: ellipsis;
+              }
            }
+           
            .likes {
-              display: flex; align-items: center; gap: 4px;
+              display: flex; 
+              align-items: center; 
+              gap: 4px;
+              flex-shrink: 0; /* 防止点赞数被挤压 */
+              margin-left: 8px; /* 与名字保持距离 */
+              
               .num { color: #666; font-size: 22px;}
            }
         }
@@ -158,20 +382,54 @@
   }
 }
 
-/* 频道编辑浮层 */
+/* --- 加载更多提示 --- */
+.load-more {
+    padding: 30px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    .no-more {
+        color: #444;
+        font-size: 24px;
+    }
+}
+
+/* --- 频道编辑浮层 --- */
 .channel-edit-overlay {
-   position: fixed; left: 0; right: 0; bottom: 0;
-   background: rgba(18, 18, 18, 0.98); z-index: 99; padding: 20px;
+   position: fixed; 
+   left: 0; right: 0; bottom: 0;
+   background: rgba(18, 18, 18, 0.98); 
+   z-index: 99; 
+   padding: 20px;
    animation: fadeIn 0.2s ease-out;
-   .channel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; .title { color: #fff; font-size: 30px; font-weight: bold;} .actions { display: flex; gap: 24px; font-size: 26px; color: #999;} }
+   
+   .channel-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;
+      .title { color: #fff; font-size: 30px; font-weight: bold;}
+      .actions { display: flex; gap: 24px; font-size: 26px; color: #999;}
+   }
+   
    .sub-title { color: #fff; font-size: 28px; margin: 40px 0 20px; display: block;}
+   
    .channel-grid {
       display: flex; flex-wrap: wrap; gap: 20px;
+      
       .channel-chip {
-         padding: 12px 24px; background: #2C2C2E; border-radius: 30px;
-         display: flex; justify-content: center; align-items: center; color: #ccc; font-size: 26px; position: relative;
+         padding: 12px 24px; 
+         background: #2C2C2E; 
+         border-radius: 30px;
+         display: flex; justify-content: center; align-items: center; 
+         color: #ccc; font-size: 26px; 
+         position: relative;
+         
          &.active { color: #fff; background: #333; font-weight: bold;}
-         .del-icon { position: absolute; top: -6px; right: -6px; width: 24px; height: 24px; background: #666; color: #fff; border-radius: 50%; text-align: center; line-height: 22px; font-size: 18px; }
+         
+         .del-icon {
+            position: absolute; top: -6px; right: -6px;
+            width: 24px; height: 24px; background: #666; color: #fff;
+            border-radius: 50%; text-align: center; line-height: 22px; font-size: 18px;
+         }
       }
    }
 }

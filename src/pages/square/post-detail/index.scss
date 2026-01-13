@@ -1,8 +1,20 @@
+/* 强制页面黑底 */
+page {
+  background-color: #000000;
+}
+
 .post-detail-page {
-  background-color: #000;
   min-height: 100vh;
   position: relative;
   color: #fff;
+  background-color: #000;
+  display: flex;
+  flex-direction: column;
+  
+  &.loading-center {
+      align-items: center;
+      justify-content: center;
+  }
 }
 
 /* 顶部导航 */
@@ -13,113 +25,142 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 20px;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+  padding-left: 16px; 
+  /* padding-right 由 TSX 动态控制 */
+  
+  /* 增加背景渐变，让白色文字在浅色图片上也能看清 */
+  background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%);
+  
+  /* 使用 content-box 确保 height 属性只控制内容区 */
+  box-sizing: content-box;
 
-  .left {
-     display: flex; align-items: center; gap: 10px;
+  .left-area {
+     display: flex; align-items: center; gap: 12px;
+     /* 限制宽度，防止挤压右侧 */
+     flex: 1; 
+     padding-right: 10px;
+
      .user-mini {
         display: flex; align-items: center; gap: 8px;
-        .avatar { width: 32px; height: 32px; border-radius: 50%; background: #555; border: 1px solid #fff;}
-        .name { font-size: 26px; font-weight: bold;}
+        overflow: hidden; 
+
+        .avatar { width: 32px; height: 32px; border-radius: 50%; background: #333; border: 1px solid rgba(255,255,255,0.8); flex-shrink: 0;}
+        .name { 
+            font-size: 28rpx; font-weight: bold; color: #fff;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
      }
   }
 
-  .right {
-     display: flex; align-items: center; gap: 16px;
+  .right-area {
+     display: flex; align-items: center;
+     /* 不设置 flex，让其根据内容自动撑开，靠右显示 */
+     flex-shrink: 0;
+
      .follow-btn {
-        padding: 4px 16px;
-        border: 1px solid #666;
+        padding: 4px 12px;
+        border: 1px solid #FF2E4D;
         border-radius: 20px;
-        font-size: 22px;
-        color: #ccc;
+        font-size: 24rpx;
+        color: #FF2E4D;
+        font-weight: bold;
+        background: rgba(0,0,0,0.3); /* 半透明黑底，增加对比度 */
+        
+        &.followed {
+            border: 1px solid rgba(255,255,255,0.4);
+            color: #ccc;
+            font-weight: normal;
+        }
      }
   }
 }
 
 .detail-scroll {
-  height: 100vh;
+  flex: 1;
 }
 
 /* 媒体轮播 */
 .media-swiper {
   width: 100%;
-  height: 500px; /* 约 4:5 比例 */
+  height: 500px; 
   background: #111;
-  .media-img { width: 100%; height: 100%; }
+  
+  .media-img { 
+      width: 100%; 
+      height: 100%; 
+      display: block; 
+  }
 }
 
 /* 文本内容 */
 .content-body {
   padding: 20px;
-  .post-title { font-size: 32px; font-weight: bold; margin-bottom: 12px; display: block;}
-  .post-desc { font-size: 28px; line-height: 1.6; color: #ddd; margin-bottom: 12px; display: block;}
-  .tags { 
-     color: #409EFF; font-size: 28px; margin-bottom: 12px;
-     text { margin-right: 10px;}
+  
+  .post-title { 
+      font-size: 36rpx; 
+      font-weight: bold; 
+      margin-bottom: 16px; 
+      display: block;
+      color: #fff;
   }
-  .post-time { font-size: 24px; color: #666; }
+  
+  .post-desc { 
+      font-size: 30rpx; 
+      line-height: 1.6; 
+      color: #ddd; 
+      margin-bottom: 16px; 
+      display: block;
+      white-space: pre-wrap; /* 保留换行 */
+  }
+  
+  .tags { 
+     display: flex; gap: 10px; margin-bottom: 16px;
+     .tag { color: #1E80FF; font-size: 30rpx; }
+  }
+  
+  .post-meta {
+      display: flex;
+      font-size: 24rpx; 
+      color: #666;
+      gap: 10px;
+  }
 }
 
-.divider { height: 1px; background: #222; margin: 10px 0;}
+.divider { height: 1px; background: #222; margin: 10px 20px;}
 
 /* 评论区 */
 .comment-section {
-   padding: 0 20px;
-   
-   .comment-count { font-size: 24px; color: #666; margin-bottom: 20px; display: block;}
-
-   .comment-input-fake {
-      display: flex; align-items: center; gap: 12px; margin-bottom: 30px;
-      .avatar-mini { width: 40px; height: 40px; border-radius: 50%; background: #333;}
-      .placeholder { color: #666; font-size: 26px; }
-   }
-
-   .comment-item {
-      display: flex; gap: 12px; margin-bottom: 30px;
-      .c-avatar { width: 40px; height: 40px; border-radius: 50%; background: #444; flex-shrink: 0;}
-      .c-content {
-         flex: 1;
-         .c-header { 
-            display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
-            .c-user { color: #888; font-size: 24px;}
-            .author-tag { background: #333; color: #ccc; font-size: 18px; padding: 2px 6px; border-radius: 4px;}
-         }
-         .c-text { font-size: 28px; line-height: 1.4; margin-bottom: 8px; display: block;}
-         .c-footer { font-size: 22px; color: #666;}
-      }
-      .c-like {
-         display: flex; flex-direction: column; align-items: center; gap: 4px;
-         font-size: 20px; color: #666;
-      }
-   }
+   padding: 10px 20px;
+   .comment-count { font-size: 26rpx; color: #666; margin-bottom: 30px; display: block;}
 }
 
 /* 底部互动栏 */
 .bottom-bar {
    position: fixed; bottom: 0; left: 0; right: 0;
    background: #000;
-   border-top: 1px solid #222;
-   padding: 10px 20px;
-   padding-bottom: calc(10px + env(safe-area-inset-bottom));
+   border-top: 1px solid #1C1C1E;
+   padding: 12px 20px;
+   padding-bottom: calc(12px + env(safe-area-inset-bottom));
    display: flex; align-items: center; justify-content: space-between;
    z-index: 99;
 
    .input-box {
       flex: 1;
-      height: 70px;
-      background: #1C1C1E;
-      border-radius: 35px;
+      height: 72rpx;
+      background: #1C1C1E; 
+      border-radius: 36rpx;
       display: flex; align-items: center; padding-left: 20px;
-      color: #666; font-size: 26px;
       margin-right: 20px;
+      .placeholder { color: #666; font-size: 28rpx; }
    }
 
    .icons {
-      display: flex; gap: 30px;
+      display: flex; gap: 24px;
       .icon-item {
-         display: flex; flex-direction: column; align-items: center;
-         text { font-size: 20px; margin-top: 2px;}
+         display: flex; align-items: center; gap: 4px;
+         .num { font-size: 24rpx; color: #fff; }
+         /* 点击态 */
+         &:active { opacity: 0.7; }
       }
    }
 }

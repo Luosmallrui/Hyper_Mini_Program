@@ -10,9 +10,11 @@ const BASE_URL = 'https://www.hypercn.cn'
 
 // 媒体接口
 interface MediaItem {
-  tempPath: string // 本地临时路径 (用于展示)
+  tempPath: string // 本地临时路径
   serverUrl?: string // 上传成功后的线上路径
   isUploading: boolean // 上传状态
+  width: number  
+  height: number 
 }
 
 export default function PostCreatePage() {
@@ -20,28 +22,20 @@ export default function PostCreatePage() {
   const [content, setContent] = useState('')
   const [mediaList, setMediaList] = useState<MediaItem[]>([])
   
-  // 标签选择
-  const TAGS = ['派对', '音乐', '骑行', '滑板', '纹身', '汽车', '展']
-  const [selectedTag, setSelectedTag] = useState('派对')
-
-  // 布局适配
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
-  const [menuButtonWidth, setMenuButtonWidth] = useState(0)
 
   useEffect(() => {
-    // 布局适配
     const sysInfo = Taro.getWindowInfo()
     const menuInfo = Taro.getMenuButtonBoundingClientRect()
     const sbHeight = sysInfo.statusBarHeight || 20
     setStatusBarHeight(sbHeight)
+    
     const nbHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
-    const rightMargin = sysInfo.screenWidth - menuInfo.right
-    setMenuButtonWidth(menuInfo.width + rightMargin * 2)
   }, [])
 
-  // 选择图片
+  // 1. 选择图片
   const handleChooseImage = async () => {
     try {
       const res = await Taro.chooseMedia({
@@ -50,15 +44,16 @@ export default function PostCreatePage() {
         sourceType: ['album', 'camera'],
       })
       
-      const newFiles = res.tempFiles.map(file => ({
+      const newFiles: MediaItem[] = res.tempFiles.map(file => ({
         tempPath: file.tempFilePath,
-        isUploading: true
+        isUploading: true,
+        // 尝试获取本地宽高，如果获取不到暂设为0，后续靠上传接口修正
+        width: file.width || 0, 
+        height: file.height || 0
       }))
 
-      // 先展示Loading状态
       setMediaList(prev => [...prev, ...newFiles])
 
-      // 逐个上传
       newFiles.forEach((file, index) => {
         uploadFile(file.tempPath, mediaList.length + index)
       })
@@ -67,14 +62,23 @@ export default function PostCreatePage() {
     }
   }
 
-  // 上传单个文件
+  // 2. 预览图片
+  const handlePreviewImage = (currentPath: string) => {
+    const urls = mediaList.map(item => item.tempPath)
+    Taro.previewImage({
+      current: currentPath, 
+      urls: urls 
+    })
+  }
+
+  // 3. 上传单个文件 (核心修改：回填 width/height)
   const uploadFile = async (filePath: string, index: number) => {
-    const token = Taro.getStorageSync('access_token') // 使用 access_token
+    const token = Taro.getStorageSync('access_token') 
     try {
       const uploadRes = await Taro.uploadFile({
         url: `${BASE_URL}/api/v1/note/upload`,
         filePath: filePath,
-        name: 'image', // 接口要求参数名为 image
+        name: 'image', 
         header: { 'Authorization': `Bearer ${token}` }
       })
 
@@ -84,73 +88,75 @@ export default function PostCreatePage() {
       }
 
       if (data.code === 200 && data.data && data.data.url) {
-         // 更新对应的 media item
-         setMediaList(prev => prev.map((item, idx) => {
+         // 【修改点】上传成功后，使用后端返回的 width 和 height 更新状态
+         const { url, width, height } = data.data
+         
+         setMediaList(prev => prev.map((item) => {
             if (item.tempPath === filePath) {
-                return { ...item, serverUrl: data.data.url, isUploading: false }
+                return { 
+                    ...item, 
+                    serverUrl: url, 
+                    isUploading: false,
+                    // 如果后端返回了宽高，使用后端的；否则保留本地的
+                    width: width || item.width,
+                    height: height || item.height
+                }
             }
             return item
          }))
       } else {
          Taro.showToast({ title: '图片上传失败', icon: 'none' })
-         // 可以在这里标记为上传失败，或者移除
+         // 上传失败移除该项
+         setMediaList(prev => prev.filter(item => item.tempPath !== filePath))
       }
     } catch (err) {
       console.error('上传异常', err)
       Taro.showToast({ title: '网络错误', icon: 'none' })
+      setMediaList(prev => prev.filter(item => item.tempPath !== filePath))
     }
   }
 
-  // 删除图片
+  // 4. 删除图片
   const handleDeleteImage = (index: number) => {
     const newList = [...mediaList]
     newList.splice(index, 1)
     setMediaList(newList)
   }
 
-  // 发布笔记
+  // 5. 发布笔记
   const handlePublish = async () => {
     if (!title.trim()) {
       Taro.showToast({ title: '请输入标题', icon: 'none' })
       return
     }
     
-    // 检查是否有图片正在上传
     if (mediaList.some(m => m.isUploading)) {
       Taro.showToast({ title: '图片上传中，请稍候...', icon: 'none' })
       return
     }
 
-    // 检查是否至少有一张图片 (假设图文笔记必须有图)
     if (mediaList.length === 0) {
-      Taro.showToast({ title: '请添加图片', icon: 'none' })
+      Taro.showToast({ title: '请至少添加一张图片', icon: 'none' })
       return
     }
 
     Taro.showLoading({ title: '发布中...' })
 
     try {
-      // 构造请求参数
       const payload = {
         title: title,
         content: content,
-        // 这里只是简单的 demo，实际话题 ID 需要从后端获取列表或创建
-        // topic_ids: [1001], 
-        location: {
-           // 模拟数据，实际可用 Taro.getLocation 获取
-           lat: 30.657,
-           lng: 104.066,
-           name: "吉林省长春市南关区形式口路12号" // 截图中的地址
-        },
+        topic_ids: [], 
+        location: null, 
+        // 构造 media_data，此时 width/height 应已被 updateFile 更新
         media_data: mediaList.map(m => ({
             url: m.serverUrl,
-            // 简单处理，实际可从 upload 接口获取宽高
             thumbnail_url: m.serverUrl, 
-            width: 1080, 
-            height: 1920
+            width: m.width, 
+            height: m.height
         })),
-        type: 1, // 图文
-        visible_conf: 1
+        type: 1, 
+        visible_conf: 1 
       }
 
       const res = await request({
@@ -178,94 +184,100 @@ export default function PostCreatePage() {
     }
   }
 
+  const wordCount = content.length
+
   return (
     <View className='post-create-page'>
-      {/* 顶部导航 */}
       <View 
         className='custom-nav' 
-        style={{ paddingTop: `${statusBarHeight}px`, height: `${navBarHeight}px`, paddingRight: `${menuButtonWidth}px` }}
+        style={{ 
+            paddingTop: `${statusBarHeight}px`, 
+            height: `${navBarHeight}px` 
+        }}
       >
-         <View className='left' onClick={() => Taro.navigateBack()}>
+         <View 
+           className='nav-left' 
+           style={{ height: `${navBarHeight}px` }}
+           onClick={() => Taro.navigateBack()}
+         >
             <AtIcon value='chevron-left' size='24' color='#fff' />
+         </View>
+
+         <View 
+           className='nav-title-container' 
+           style={{ height: `${navBarHeight}px` }}
+         >
+            <Text className='nav-title'>发布笔记</Text>
          </View>
       </View>
 
       <ScrollView scrollY className='content-scroll' style={{ paddingTop: `${statusBarHeight + navBarHeight}px` }}>
-         {/* 图片选择网格 */}
+         
          <ScrollView scrollX className='image-scroll' enableFlex>
             {mediaList.map((item, idx) => (
                <View key={idx} className='image-item'>
-                  <Image src={item.tempPath} mode='aspectFill' className='img' />
-                  <View className='del-btn' onClick={() => handleDeleteImage(idx)}>
-                     <AtIcon value='trash' size='14' color='#fff' />
+                  <Image 
+                    src={item.tempPath} 
+                    mode='aspectFill' 
+                    className='img' 
+                    onClick={() => handlePreviewImage(item.tempPath)} 
+                  />
+                  <View 
+                    className='del-btn' 
+                    onClick={(e) => {
+                        e.stopPropagation() 
+                        handleDeleteImage(idx)
+                    }}
+                  >
+                     <AtIcon value='close' size='12' color='#fff' />
                   </View>
                   {item.isUploading && (
-                     <View className='upload-mask'><Text>上传中</Text></View>
+                     <View className='upload-mask'>
+                       <AtIcon value='loading-3' size='20' color='#fff' className='spin-icon' />
+                     </View>
                   )}
                </View>
             ))}
-            {/* 添加按钮 */}
             {mediaList.length < 9 && (
                <View className='add-btn' onClick={handleChooseImage}>
-                  <Text>添加</Text>
+                  <AtIcon value='add' size='36' color='#666' />
                </View>
             )}
+            <View style={{width: '20px'}}></View>
          </ScrollView>
 
-         {/* 输入区域 */}
          <View className='form-area'>
             <Input 
               className='title-input' 
-              placeholder='添加标题' 
-              placeholderClass='ph-style'
+              placeholder='填写标题会让更多人看到～' 
+              placeholderClass='ph-title'
               value={title}
               onInput={e => setTitle(e.detail.value)}
             />
+            
             <View className='divider' />
-            <Textarea 
-              className='content-input' 
-              placeholder='添加正文' 
-              placeholderClass='ph-style'
-              maxlength={1000}
-              value={content}
-              onInput={e => setContent(e.detail.value)}
-            />
-         </View>
-
-         {/* 底部功能区 */}
-         <View className='options-area'>
-            <View className='tag-section'>
-               <Text className='label'>#话题</Text>
-               <ScrollView scrollX className='tag-scroll' enableFlex>
-                  <View className='tag-pill active'><Text>{selectedTag}</Text></View>
-                  {TAGS.map(t => t !== selectedTag && (
-                     <View key={t} className='tag-text' onClick={() => setSelectedTag(t)}>{t}</View>
-                  ))}
-               </ScrollView>
-            </View>
-
-            <View className='link-group'>
-               <Text className='group-label'>关联</Text>
-               
-               <View className='link-item'>
-                  <Text className='txt'>吉林省长春市南关区形式口路12号</Text>
-                  <AtIcon value='close' size='14' color='#999' />
-               </View>
-
-               <View className='link-item'>
-                  <Text className='txt'>PURELOOP POWERFLOW</Text>
-                  <AtIcon value='close' size='14' color='#999' />
-               </View>
+            
+            <View className='content-box'>
+              <Textarea 
+                className='content-input' 
+                placeholder='添加正文（记录此时此地的美好生活...）' 
+                placeholderClass='ph-content'
+                maxlength={1000}
+                value={content}
+                onInput={e => setContent(e.detail.value)}
+              />
+              <View className='word-count'>
+                <Text>{wordCount}/1000</Text>
+              </View>
             </View>
          </View>
          
          <View style={{height: '150px'}} />
       </ScrollView>
 
-      {/* 底部发布按钮 */}
       <View className='bottom-bar'>
-         <View className='publish-btn' onClick={handlePublish}>
-            <Text>发布</Text>
+         <View className={`publish-btn ${title && mediaList.length > 0 ? 'ready' : ''}`} onClick={handlePublish}>
+            <Text className='btn-text'>发布笔记</Text>
          </View>
       </View>
     </View>
