@@ -1,6 +1,6 @@
 import { View, Text, Image, ScrollView, Swiper, SwiperItem } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, memo } from 'react'
 import { AtIcon, AtActivityIndicator } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import 'taro-ui/dist/style/components/activity-indicator.scss'
@@ -43,23 +43,111 @@ interface NoteItem {
   user_avatar?: string
   likes?: number
   is_liked?: boolean
-  // 【关键】预计算的最终展示高度 (px)
   finalHeight?: number 
 }
 
+// --- 提取子组件并使用 memo 优化性能 (防闪烁关键) ---
+
+const WaterfallCard = memo(({ item, onClick }: { item: NoteItem, onClick: () => void }) => {
+  return (
+      <View className='waterfall-card' onClick={onClick}>
+          {item.media_data && item.media_data.length > 0 ? (
+              <Image 
+                src={item.media_data[0].thumbnail_url || item.media_data[0].url} 
+                mode='aspectFill' 
+                className='cover'
+                  // 这里的 finalHeight 已经在 fetchNotes 中计算好了
+                style={{ width: '100%', height: `${item.finalHeight}px` }} 
+                lazyLoad
+              />
+          ) : (
+              <View className='cover-placeholder' style={{height: '200px'}} />
+          )}
+          
+          <View className='info'>
+              <Text className='title'>{item.title}</Text>
+              <View className='bottom'>
+              <View className='user'>
+                  <View className='avatar-mini'>
+                      {item.user_avatar && <Image src={item.user_avatar} className='avatar-img' mode='aspectFill' lazyLoad/>}
+                  </View>
+                  <Text className='name'>{item.user_name}</Text>
+              </View>
+              <View className='likes'>
+                  <AtIcon value={item.is_liked ? 'heart-2' : 'heart'} size='12' color={item.is_liked ? '#FF2E4D' : '#999'} />
+                  <Text className='num' style={{color: item.is_liked ? '#FF2E4D' : '#999'}}>{item.likes}</Text>
+              </View>
+              </View>
+          </View>
+      </View>
+  )
+}, (prev, next) => prev.item.id === next.item.id) // 自定义对比逻辑，ID 不变则不重绘
+
+const formatTime = (timeStr: string) => {
+    if (!timeStr) return ''
+    const date = new Date(timeStr)
+    const now = new Date()
+    if (date.getDate() === now.getDate()) {
+        return `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`
+    }
+    return `${date.getMonth() + 1}-${date.getDate()}`
+ }
+
+const InstaCard = memo(({ item, onClick }: { item: NoteItem, onClick: () => void }) => (
+    <View className='insta-card' onClick={onClick}>
+        <View className='card-header'>
+            <View className='user-info'>
+            <View className='avatar'>
+                {item.user_avatar && <Image src={item.user_avatar} className='avatar-img' mode='aspectFill' lazyLoad/>}
+            </View>
+            <Text className='name'>{item.user_name}</Text>
+            <Text className='time'>{formatTime(item.created_at)}</Text>
+            </View>
+            <AtIcon value='menu' size='20' color='#fff' />
+        </View>
+        
+        <View className='media-wrap'>
+            {item.media_data && item.media_data.length > 0 ? (
+                <Image 
+                  src={item.media_data[0].url} 
+                  mode={item.type === 2 ? 'aspectFit' : 'aspectFill'}
+                  className='media-img' 
+                  lazyLoad
+                />
+            ) : (
+                <View className='media-placeholder' />
+            )}
+            {item.media_data.length > 1 && (
+                <View className='count-badge'>1/{item.media_data.length}</View>
+            )}
+        </View>
+        <View className='action-bar'>
+            <View className='left-actions'>
+                <AtIcon value={item.is_liked ? 'heart-2' : 'heart'} size='24' color={item.is_liked ? '#FF2E4D' : '#fff'} />
+                <AtIcon value='message' size='24' color='#fff' className='ml-3' />
+                <AtIcon value='share' size='24' color='#fff' className='ml-3' />
+            </View>
+        </View>
+        <View className='text-content'>
+            <Text className='title'>{item.title}</Text>
+            <Text className='desc'>{item.content}</Text>
+        </View>
+    </View>
+), (prev, next) => prev.item.id === next.item.id)
+
+
 export default function SquarePage() {
   const [activeIdx, setActiveIdx] = useState(1) 
-  const [myChannels] = useState(DEFAULT_CHANNELS)
+  const [myChannels, setMyChannels] = useState(DEFAULT_CHANNELS)
   const [isChannelEditOpen, setIsChannelEditOpen] = useState(false)
 
   // --- 数据状态 ---
   const [noteList, setNoteList] = useState<NoteItem[]>([]) 
   const [leftCol, setLeftCol] = useState<NoteItem[]>([])   
   const [rightCol, setRightCol] = useState<NoteItem[]>([])  
-  
-  // 记录左右列当前高度，用于智能分发
   const columnHeights = useRef({ left: 0, right: 0 })
   
+  // --- 分页状态 ---
   const [cursor, setCursor] = useState<string | number>(0)
   const [hasMore, setHasMore] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
@@ -71,7 +159,6 @@ export default function SquarePage() {
   const [menuButtonWidth, setMenuButtonWidth] = useState(0) 
   const TAB_HEIGHT = 44 
   
-  // 【关键修复】使用 Ref 存储列宽，防止闭包导致 fetchNotes 读到 0
   const itemWidthRef = useRef(0)
 
   useEffect(() => {
@@ -86,12 +173,8 @@ export default function SquarePage() {
     const rightPadding = sysInfo.screenWidth - menuInfo.left
     setMenuButtonWidth(rightPadding)
 
-    // 【关键】计算瀑布流单列宽度
-    // 屏幕宽 - 左右Padding(10*2) - 中间Gap(10) = 内容总宽
     const screenWidth = sysInfo.screenWidth
     const _itemWidth = (screenWidth - 20 - 10) / 2
-    
-    // 更新 Ref
     itemWidthRef.current = _itemWidth
 
     if (_itemWidth > 0) {
@@ -135,10 +218,8 @@ export default function SquarePage() {
         const { notes, next_cursor, has_more } = resBody.data
         const rawNotes: any[] = notes || []
         
-        // 获取当前的列宽
         const currentItemWidth = itemWidthRef.current
 
-        // 1. 数据预处理 & 高度计算
         const processedNotes: NoteItem[] = rawNotes.map(item => {
             let mediaList: NoteMedia[] = []
             if (item.media_data) {
@@ -149,17 +230,11 @@ export default function SquarePage() {
                 }
             }
             
-            // --- 计算高度核心逻辑 ---
-            let h = currentItemWidth * 1.33 // 默认兜底高度 (3:4)
-            
+            let h = currentItemWidth * 1.33 
             if (mediaList.length > 0) {
-              console.log(`mediaList: ${JSON.stringify(mediaList)}`)
                 const { width, height } = mediaList[0]
-                // 只有宽高都有效才计算
                 if (width && height && width > 0 && height > 0 && currentItemWidth > 0) {
                     const ratio = height / width
-                    // 限制比例范围：0.7(横图) ~ 1.6(长图)
-                    // 超过这个范围的会被 aspectFill 裁剪
                     const clampedRatio = Math.min(Math.max(ratio, 0.7), 1.6)
                     h = currentItemWidth * clampedRatio
                 }
@@ -173,20 +248,18 @@ export default function SquarePage() {
                 user_avatar: item.avatar || '',
                 likes: item.like_count !== undefined ? item.like_count : 0,
                 is_liked: item.is_liked || false,
-                finalHeight: Math.floor(h) // 取整
+                finalHeight: Math.floor(h)
             }
         })
 
         if (isRefresh) {
           setNoteList(processedNotes)
-          // 刷新重置高度
           columnHeights.current = { left: 0, right: 0 }
           
           const left: NoteItem[] = []
           const right: NoteItem[] = []
           
           processedNotes.forEach(item => {
-             // 估算卡片总高度 (图片高 + 底部文字区约85px)
              const cardTotalHeight = (item.finalHeight || 200) + 85
              if (columnHeights.current.left <= columnHeights.current.right) {
                  left.push(item)
@@ -199,6 +272,8 @@ export default function SquarePage() {
           setLeftCol(left)
           setRightCol(right)
         } else {
+          // 追加数据：使用函数式更新，确保拿到最新的列表
+          // 因为有了 Memo 组件，这里 state 更新不会导致旧卡片重绘
           setNoteList(prev => [...prev, ...processedNotes])
           
           const newLeft = [...leftCol]
@@ -241,59 +316,13 @@ export default function SquarePage() {
   const goDetail = (id: string) => {
     Taro.navigateTo({ url: `/pages/square/post-detail/index?id=${id}` })
   }
-  const formatTime = (timeStr: string) => {
-     if (!timeStr) return ''
-     const date = new Date(timeStr)
-     const now = new Date()
-     if (date.getDate() === now.getDate()) {
-         return `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`
-     }
-     return `${date.getMonth() + 1}-${date.getDate()}`
-  }
 
   // --- 组件渲染 ---
 
   const renderSingleFlow = () => (
       <View className='single-flow-list'>
         {noteList.map(item => (
-          <View key={item.id} className='insta-card' onClick={() => goDetail(item.id)}>
-            <View className='card-header'>
-              <View className='user-info'>
-                <View className='avatar'>
-                   {item.user_avatar && <Image src={item.user_avatar} className='avatar-img' mode='aspectFill'/>}
-                </View>
-                <Text className='name'>{item.user_name}</Text>
-                <Text className='time'>{formatTime(item.created_at)}</Text>
-              </View>
-              <AtIcon value='menu' size='20' color='#fff' />
-            </View>
-            
-            <View className='media-wrap'>
-               {item.media_data && item.media_data.length > 0 ? (
-                  <Image 
-                    src={item.media_data[0].url} 
-                    mode={item.type === 2 ? 'aspectFit' : 'aspectFill'}
-                    className='media-img' 
-                  />
-               ) : (
-                  <View className='media-placeholder' />
-               )}
-               {item.media_data.length > 1 && (
-                 <View className='count-badge'>1/{item.media_data.length}</View>
-               )}
-            </View>
-            <View className='action-bar'>
-               <View className='left-actions'>
-                  <AtIcon value={item.is_liked ? 'heart-2' : 'heart'} size='24' color={item.is_liked ? '#FF2E4D' : '#fff'} />
-                  <AtIcon value='message' size='24' color='#fff' className='ml-3' />
-                  <AtIcon value='share' size='24' color='#fff' className='ml-3' />
-               </View>
-            </View>
-            <View className='text-content'>
-               <Text className='title'>{item.title}</Text>
-               <Text className='desc'>{item.content}</Text>
-            </View>
-          </View>
+           <InstaCard key={item.id} item={item} onClick={() => goDetail(item.id)} />
         ))}
         {renderLoadMore()}
       </View>
@@ -313,43 +342,6 @@ export default function SquarePage() {
       </View>
   )
 
-  // 【无逻辑组件】WaterfallCard
-  // 只负责渲染，不负责计算
-  const WaterfallCard = ({ item, onClick }: { item: NoteItem, onClick: () => void }) => {
-    return (
-        <View className='waterfall-card' onClick={onClick}>
-            {item.media_data && item.media_data.length > 0 ? (
-                <Image 
-                  src={item.media_data[0].thumbnail_url || item.media_data[0].url} 
-                  mode='aspectFill' 
-                  className='cover'
-                    // 核心：直接使用预计算好的 finalHeight
-                  style={{ width: '100%', height: `${item.finalHeight}px` }} 
-                  lazyLoad
-                />
-            ) : (
-                <View className='cover-placeholder' style={{height: '200px'}} />
-            )}
-            
-            <View className='info'>
-                <Text className='title'>{item.title}</Text>
-                <View className='bottom'>
-                <View className='user'>
-                    <View className='avatar-mini'>
-                        {item.user_avatar && <Image src={item.user_avatar} className='avatar-img' mode='aspectFill'/>}
-                    </View>
-                    <Text className='name'>{item.user_name}</Text>
-                </View>
-                <View className='likes'>
-                    <AtIcon value={item.is_liked ? 'heart-2' : 'heart'} size='12' color={item.is_liked ? '#FF2E4D' : '#999'} />
-                    <Text className='num' style={{color: item.is_liked ? '#FF2E4D' : '#999'}}>{item.likes}</Text>
-                </View>
-                </View>
-            </View>
-        </View>
-    )
-  }
-
   const renderLoadMore = () => (
       <View className='load-more'>
           {isLoading ? (
@@ -365,6 +357,7 @@ export default function SquarePage() {
     const topPos = statusBarHeight + navBarHeight + TAB_HEIGHT
     return (
       <View className='channel-edit-overlay' style={{ top: `${topPos}px` }}>
+         {/* ... 频道编辑内容保持不变 ... */}
          <View className='channel-header'>
             <Text className='title'>我的频道</Text>
             <View className='actions'>
@@ -395,6 +388,7 @@ export default function SquarePage() {
 
   return (
     <View className='square-page'>
+      {/* 固定头部 */}
       <View className='fixed-header-wrapper'>
         <View className='top-nav' style={{ height: `${statusBarHeight + navBarHeight}px` }}>
            <View className='status-bar-placeholder' style={{ height: `${statusBarHeight}px` }} />
@@ -438,6 +432,10 @@ export default function SquarePage() {
              </View>
           </ScrollView>
           
+          {/* 
+             修复点：【展开】按钮样式调整
+             确保它在最右侧，且有背景遮罩防止文字穿透 
+          */}
           <View className='expand-btn-side' onClick={() => setIsChannelEditOpen(!isChannelEditOpen)}>
              <View className='gradient-mask' />
              <View className='btn-content'>

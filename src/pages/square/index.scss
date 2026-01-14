@@ -82,11 +82,15 @@
   align-items: center;
   position: relative;
   background-color: #000;
+  width: 100%;
   
   .channel-scroll-view {
     flex: 1; 
     height: 100%; 
-    margin-right: 4px;
+    /* 【优化 1】大幅增加右侧内边距 (大于按钮宽度)，防止最后一个Tab被遮挡 */
+    padding-right: 100px; 
+    box-sizing: border-box; 
+    white-space: nowrap;
     
     .tab-container { 
       display: flex; 
@@ -96,25 +100,25 @@
     }
 
     .tab-item {
-      padding: 0 16px; 
+      padding: 0 20px; /* 稍微增加 Tab 间距 */
       height: 100%; 
-      display: flex; 
+      display: inline-flex; /* 改为 inline-flex 保证不换行 */
       align-items: center; 
       justify-content: center; 
       position: relative; 
       flex-shrink: 0;
       
       .tab-text { 
-        color: #999; 
-        font-size: 28rpx; 
+        color: #888; 
+        font-size: 30rpx; /* 稍微加大一点字号提升可读性 */
         transition: all 0.2s; 
       }
       
       &.active {
         .tab-text { 
           color: #fff; 
-          font-weight: bold; 
-          font-size: 32rpx; 
+          font-weight: 900; 
+          font-size: 34rpx; 
         }
         
         .indicator { 
@@ -122,8 +126,8 @@
           bottom: 6px; 
           left: 50%; 
           transform: translateX(-50%); 
-          width: 20px; 
-          height: 3px; 
+          width: 24px; 
+          height: 4px; 
           background: #FF2E4D; 
           border-radius: 2px; 
         }
@@ -133,37 +137,46 @@
 
   /* 右侧固定展开按钮 */
   .expand-btn-side {
-    position: relative; 
-    height: 100%; 
+    position: absolute; 
+    right: 0;
+    top: 0;
+    bottom: 0;
+    /* 【优化 2】定宽，给足空间 */
+    width: 80px; 
+    z-index: 102; /* 确保最高层级 */
     display: flex; 
     align-items: center; 
-    padding-left: 10px; 
-    padding-right: 16px; 
-    background-color: #000; 
-    z-index: 2;
+    justify-content: flex-end; 
+    pointer-events: auto;
 
-    /* 渐变遮罩 */
+    /* 【优化 3】更宽更柔和的渐变遮罩 */
     .gradient-mask { 
       position: absolute; 
-      left: -20px; 
+      left: -40px; /* 向左延伸更多 */
       top: 0; 
       bottom: 0; 
-      width: 20px; 
-      background: linear-gradient(to right, rgba(0,0,0,0), #000); 
+      width: 40px; 
+      /* 从透明过渡到纯黑 */
+      background: linear-gradient(to right, rgba(0,0,0,0), #000 90%); 
       pointer-events: none; 
     }
     
     .btn-content {
       height: 100%; 
-      background: #000; 
+      width: 100%;
+      background: #000; /* 纯黑底色，遮住背后的 Tab */
       display: flex; 
       align-items: center; 
       justify-content: center;
       
+      /* 给文字一点左边距，防止贴着渐变区太近 */
+      padding-left: 5px;
+      
       .expand-text { 
         font-size: 28rpx; 
         color: #999; 
-        font-weight: normal; 
+        font-weight: 500; 
+        white-space: nowrap; 
       }
     }
   }
