@@ -1,11 +1,11 @@
 /* src/pages/square/post-detail/index.scss */
 
-/* 强制页面黑底 */
+/* 1. 全局设置 */
 page {
   background-color: #000000;
 }
 
-/* 隐藏滚动条 (针对整个页面的 ScrollView) */
+/* 隐藏所有 ScrollView 的滚动条 */
 ::-webkit-scrollbar {
   width: 0;
   height: 0;
@@ -27,7 +27,7 @@ page {
   }
 }
 
-/* 顶部导航 */
+/* 2. 顶部导航栏 */
 .custom-nav {
   position: fixed;
   top: 0; left: 0; right: 0;
@@ -36,24 +36,36 @@ page {
   justify-content: space-between;
   align-items: center;
   padding: 0 16px;
-  /* 顶部渐变遮罩，防止图片太亮导致文字看不清 */
+  /* 顶部渐变遮罩，防止图片过亮导致白色文字看不清 */
   background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
   box-sizing: content-box;
 
   .left-area {
      display: flex; align-items: center; gap: 12px;
+     flex: 1; /* 占据剩余空间 */
+     padding-right: 20px;
+
      .user-mini {
         display: flex; align-items: center; gap: 8px;
-        .avatar { width: 32px; height: 32px; border-radius: 50%; background: #333; border: 1px solid rgba(255,255,255,0.8); flex-shrink: 0;}
+        overflow: hidden;
+
+        .avatar { 
+            width: 32px; height: 32px; 
+            border-radius: 50%; background: #333; 
+            border: 1px solid rgba(255,255,255,0.8); 
+            flex-shrink: 0;
+        }
         .name { 
             font-size: 28rpx; font-weight: bold; color: #fff;
-            max-width: 200px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
      }
   }
 
   .right-area {
      display: flex; align-items: center;
+     flex-shrink: 0;
+
      .follow-btn {
         padding: 4px 12px;
         border: 1px solid #FF2E4D;
@@ -76,7 +88,7 @@ page {
   flex: 1;
 }
 
-/* 媒体轮播 */
+/* 3. 媒体轮播 */
 .media-swiper {
   width: 100%;
   height: 500px; 
@@ -89,7 +101,7 @@ page {
   }
 }
 
-/* 文本内容 */
+/* 4. 文本内容区 */
 .content-body {
   padding: 20px;
   
@@ -99,6 +111,7 @@ page {
       margin-bottom: 16px; 
       display: block;
       color: #fff;
+      line-height: 1.4;
   }
   
   .post-desc { 
@@ -111,7 +124,7 @@ page {
   }
   
   .tags { 
-     display: flex; gap: 10px; margin-bottom: 16px;
+     display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;
      .tag { color: #1E80FF; font-size: 30rpx; }
   }
   
@@ -123,29 +136,81 @@ page {
   }
 }
 
-.divider { height: 1px; background: #222; margin: 10px 20px;}
+.divider { 
+    height: 1px; 
+    background: #222; 
+    margin: 10px 20px;
+}
 
-/* 评论区 */
+/* 5. 评论区 (核心样式) */
 .comment-section {
    padding: 10px 20px;
    background-color: #000;
    
-   .comment-count { font-size: 26rpx; color: #666; margin-bottom: 30px; display: block;}
+   .comment-count { 
+       font-size: 26rpx; 
+       color: #666; 
+       margin-bottom: 30px; 
+       display: block;
+   }
 
    /* 一级评论项 */
    .comment-item {
       display: flex; gap: 12px; margin-bottom: 30px;
       
-      .c-avatar { width: 64rpx; height: 64rpx; border-radius: 50%; background: #444; flex-shrink: 0;}
+      .c-avatar { 
+          width: 64rpx; height: 64rpx; 
+          border-radius: 50%; background: #444; 
+          flex-shrink: 0;
+      }
       
       .c-content {
          flex: 1;
-         .c-header { 
-            display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
-            .c-user { color: #888; font-size: 26rpx; font-weight: bold;}
-            .author-tag { background: #FF2E4D; color: #fff; font-size: 18rpx; padding: 0 6px; border-radius: 4px;}
+         
+         /* 一级评论头部：修改布局方式 */
+         .c-header-row { 
+            display: flex; 
+            align-items: center; 
+            /* 【修改点 1】移除 space-between，默认靠左排列 */
+            /* justify-content: space-between; */ 
+            margin-bottom: 4px;
+            
+            /* 用户名 */
+            .c-user { 
+                color: #888; 
+                font-size: 24rpx; 
+                font-weight: bold; 
+                /* 【修改点 2】给右侧留点间距，防止紧贴作者标签 */
+                margin-right: 12rpx; 
+            }
+
+            /* 作者标签 */
+            .author-tag { 
+                background: #FF2E4D; 
+                color: #fff; 
+                font-size: 18rpx; 
+                padding: 0 6px; 
+                border-radius: 4px;
+                /* 防止标签被压缩 */
+                flex-shrink: 0; 
+            }
+
+            /* 右侧点赞组件 */
+            .c-like-wrap {
+                display: flex; 
+                align-items: center; 
+                gap: 4px;
+                padding: 4px 0 4px 10px;
+                
+                /* 【修改点 3】关键：自动占据左侧剩余空间，从而把自己推到最右边 */
+                margin-left: auto; 
+                
+                .num { font-size: 20rpx; color: #666; }
+            }
          }
+         
          .c-text { font-size: 28rpx; line-height: 1.5; margin-bottom: 8px; display: block; color: #eee; }
+         
          .c-footer { 
              display: flex; align-items: center; gap: 16px;
              .c-time { font-size: 22rpx; color: #666;}
@@ -162,18 +227,35 @@ page {
                  margin-bottom: 16rpx;
                  
                  .sub-avatar {
-                     width: 40rpx; height: 40rpx; border-radius: 50%; background: #555; flex-shrink: 0;
+                     width: 40rpx; height: 40rpx; 
+                     border-radius: 50%; background: #555; 
+                     flex-shrink: 0;
                  }
                  
                  .sub-right {
                      flex: 1;
                      
+                     /* 二级评论头部：Flex 布局，两端对齐 */
                      .sub-header-row {
-                         display: flex; align-items: center; gap: 8px; margin-bottom: 2px;
-                         .sub-user { font-size: 24rpx; color: #888; font-weight: bold; }
-                         .author-tag.mini { font-size: 16rpx; padding: 0 4px; }
-                         .reply-arrow-icon { margin: 0 2px; }
-                         .sub-target-user { font-size: 24rpx; color: #888; }
+                         display: flex; 
+                         align-items: center; 
+                         justify-content: space-between; /* 关键 */
+                         margin-bottom: 2px;
+                         
+                         .sub-user-info {
+                             display: flex; align-items: center; gap: 8px;
+                             .sub-user { font-size: 24rpx; color: #888; font-weight: bold; }
+                             .author-tag.mini { font-size: 16rpx; padding: 0 4px; background: #FF2E4D; color: #fff; border-radius: 4px;}
+                             .reply-arrow-icon { margin: 0 2px; }
+                             .sub-target-user { font-size: 24rpx; color: #888; }
+                         }
+
+                         /* 二级点赞组件 */
+                         .sub-like-wrap {
+                             display: flex; align-items: center; gap: 4px;
+                             padding: 4px 0 4px 10px;
+                             .num { font-size: 18rpx; color: #666; }
+                         }
                      }
                      
                      .sub-text {
@@ -184,13 +266,6 @@ page {
                          display: flex; align-items: center; gap: 12px;
                          .sub-time { font-size: 20rpx; color: #666; }
                          .sub-reply-btn { font-size: 20rpx; color: #fff; font-weight: 500; }
-                         
-                         /* 二级回复点赞 */
-                         .sub-like-wrap {
-                             display: flex; align-items: center; gap: 4px; margin-left: auto;
-                             padding: 4px; /* 增加点击热区 */
-                             .num { font-size: 18rpx; color: #666; }
-                         }
                      }
                  }
              }
@@ -204,25 +279,19 @@ page {
              }
          }
       }
-      
-      /* 一级评论点赞 */
-      .c-like {
-         display: flex; flex-direction: column; align-items: center; gap: 4px;
-         .num { font-size: 20rpx; color: #666; }
-      }
    }
    
    .load-more-btn {
        text-align: center; color: #409EFF; font-size: 26rpx; padding: 20rpx 0;
    }
    
-   /* 底部提示文字优化 */
+   /* 底部无更多提示：居中、轻盈 */
    .no-more { 
        text-align: center; 
        color: #444; 
        font-size: 22rpx; 
-       padding: 30rpx 0;
-       opacity: 0.8;
+       padding: 40rpx 0;
+       opacity: 0.6;
        display: flex;
        align-items: center;
        justify-content: center;
@@ -230,15 +299,15 @@ page {
        &::before, &::after {
            content: '';
            display: inline-block;
-           width: 20rpx;
+           width: 30rpx;
            height: 1px;
            background: #333;
-           margin: 0 10rpx;
+           margin: 0 16rpx;
        }
    }
 }
 
-/* 底部互动栏 */
+/* 6. 底部互动栏 */
 .bottom-bar {
    position: fixed; bottom: 0; left: 0; right: 0;
    background: #000;
@@ -268,7 +337,7 @@ page {
    }
 }
 
-/* 真实输入框遮罩 */
+/* 7. 真实输入框遮罩 */
 .comment-input-mask {
     position: fixed; top:0; left:0; right:0; bottom:0;
     z-index: 900; background: rgba(0,0,0,0.5);
@@ -293,14 +362,14 @@ page {
     }
 }
 
-/* 点赞动画关键帧 */
+/* 8. 点赞动画关键帧 */
 @keyframes likeBounce {
   0% { transform: scale(1); }
-  50% { transform: scale(1.3); }
+  40% { transform: scale(1.4); }
   100% { transform: scale(1); }
 }
 
 /* 应用动画的类 */
 .liked-anim {
-  animation: likeBounce 0.3s ease-in-out;
+  animation: likeBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
