@@ -1,4 +1,4 @@
-import { View, Text, Input, Textarea, Image, ScrollView } from '@tarojs/components'
+﻿import { View, Text, Input, Textarea, Image, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { AtIcon } from 'taro-ui'
@@ -8,20 +8,23 @@ import './index.scss'
 
 const BASE_URL = 'https://www.hypercn.cn'
 
-// 媒体接口
 interface MediaItem {
-  tempPath: string // 本地临时路径
-  serverUrl?: string // 上传成功后的线上路径
-  isUploading: boolean // 上传状态
-  width: number  
-  height: number 
+  tempPath: string
+  serverUrl?: string
+  isUploading: boolean
+  width: number
+  height: number
 }
 
+type StepKey = 'photo' | 'text'
+
 export default function PostCreatePage() {
+  const [step, setStep] = useState<StepKey>('photo')
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [mediaList, setMediaList] = useState<MediaItem[]>([])
-  
+  const [activeIndex, setActiveIndex] = useState(0)
+
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
 
@@ -30,56 +33,79 @@ export default function PostCreatePage() {
     const menuInfo = Taro.getMenuButtonBoundingClientRect()
     const sbHeight = sysInfo.statusBarHeight || 20
     setStatusBarHeight(sbHeight)
-    
+
     const nbHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
   }, [])
 
-  // 1. 选择图片
+  useEffect(() => {
+    const stored = Taro.getStorageSync('post_create_media')
+    if (Array.isArray(stored) && stored.length > 0) {
+      const initialFiles: MediaItem[] = stored.map((path) => ({
+        tempPath: path,
+        isUploading: true,
+        width: 0,
+        height: 0,
+      }))
+      Taro.removeStorageSync('post_create_media')
+      setMediaList(initialFiles)
+      initialFiles.forEach((file) => {
+        uploadFile(file.tempPath)
+      })
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeIndex >= mediaList.length) {
+      setActiveIndex(Math.max(mediaList.length - 1, 0))
+    }
+  }, [mediaList, activeIndex])
+
   const handleChooseImage = async () => {
+    const remaining = 9 - mediaList.length
+    if (remaining <= 0) return
+
     try {
       const res = await Taro.chooseMedia({
-        count: 9 - mediaList.length,
+        count: remaining,
         mediaType: ['image'],
         sourceType: ['album', 'camera'],
       })
-      
+
       const newFiles: MediaItem[] = res.tempFiles.map(file => ({
         tempPath: file.tempFilePath,
         isUploading: true,
-        // 尝试获取本地宽高，如果获取不到暂设为0，后续靠上传接口修正
-        width: file.width || 0, 
-        height: file.height || 0
+        width: file.width || 0,
+        height: file.height || 0,
       }))
 
-      setMediaList(prev => [...prev, ...newFiles])
+      if (newFiles.length === 0) return
 
-      newFiles.forEach((file, index) => {
-        uploadFile(file.tempPath, mediaList.length + index)
+      setMediaList(prev => [...prev, ...newFiles])
+      newFiles.forEach((file) => {
+        uploadFile(file.tempPath)
       })
     } catch (e) {
-      console.log('取消选择')
+      console.log('cancel choose image')
     }
   }
 
-  // 2. 预览图片
   const handlePreviewImage = (currentPath: string) => {
     const urls = mediaList.map(item => item.tempPath)
     Taro.previewImage({
-      current: currentPath, 
-      urls: urls 
+      current: currentPath,
+      urls: urls,
     })
   }
 
-  // 3. 上传单个文件 (核心修改：回填 width/height)
-  const uploadFile = async (filePath: string, index: number) => {
-    const token = Taro.getStorageSync('access_token') 
+  const uploadFile = async (filePath: string) => {
+    const token = Taro.getStorageSync('access_token')
     try {
       const uploadRes = await Taro.uploadFile({
         url: `${BASE_URL}/api/v1/note/upload`,
         filePath: filePath,
-        name: 'image', 
-        header: { 'Authorization': `Bearer ${token}` }
+        name: 'image',
+        header: { 'Authorization': `Bearer ${token}` },
       })
 
       let data: any = uploadRes.data
@@ -88,48 +114,62 @@ export default function PostCreatePage() {
       }
 
       if (data.code === 200 && data.data && data.data.url) {
-         // 【修改点】上传成功后，使用后端返回的 width 和 height 更新状态
-         const { url, width, height } = data.data
-         
-         setMediaList(prev => prev.map((item) => {
-            if (item.tempPath === filePath) {
-                return { 
-                    ...item, 
-                    serverUrl: url, 
-                    isUploading: false,
-                    // 如果后端返回了宽高，使用后端的；否则保留本地的
-                    width: width || item.width,
-                    height: height || item.height
-                }
+        const { url, width, height } = data.data
+        setMediaList(prev => prev.map((item) => {
+          if (item.tempPath === filePath) {
+            return {
+              ...item,
+              serverUrl: url,
+              isUploading: false,
+              width: width || item.width,
+              height: height || item.height,
             }
-            return item
-         }))
+          }
+          return item
+        }))
       } else {
-         Taro.showToast({ title: '图片上传失败', icon: 'none' })
-         // 上传失败移除该项
-         setMediaList(prev => prev.filter(item => item.tempPath !== filePath))
+        Taro.showToast({ title: '图片上传失败', icon: 'none' })
+        setMediaList(prev => prev.filter(item => item.tempPath !== filePath))
       }
     } catch (err) {
-      console.error('上传异常', err)
+      console.error('upload error', err)
       Taro.showToast({ title: '网络错误', icon: 'none' })
       setMediaList(prev => prev.filter(item => item.tempPath !== filePath))
     }
   }
 
-  // 4. 删除图片
   const handleDeleteImage = (index: number) => {
     const newList = [...mediaList]
     newList.splice(index, 1)
     setMediaList(newList)
   }
 
-  // 5. 发布笔记
+  const handleBack = () => {
+    if (step === 'text') {
+      setStep('photo')
+      return
+    }
+    Taro.navigateBack()
+  }
+
+  const handleNextStep = () => {
+    if (mediaList.length === 0) {
+      Taro.showToast({ title: '请先选择照片', icon: 'none' })
+      return
+    }
+    if (mediaList.some(m => m.isUploading)) {
+      Taro.showToast({ title: '图片上传中，请稍候...', icon: 'none' })
+      return
+    }
+    setStep('text')
+  }
+
   const handlePublish = async () => {
     if (!title.trim()) {
       Taro.showToast({ title: '请输入标题', icon: 'none' })
       return
     }
-    
+
     if (mediaList.some(m => m.isUploading)) {
       Taro.showToast({ title: '图片上传中，请稍候...', icon: 'none' })
       return
@@ -146,37 +186,35 @@ export default function PostCreatePage() {
       const payload = {
         title: title,
         content: content,
-        topic_ids: [], 
-        location: null, 
-        // 构造 media_data，此时 width/height 应已被 updateFile 更新
+        topic_ids: [],
+        location: null,
         media_data: mediaList.map(m => ({
-            url: m.serverUrl,
-            thumbnail_url: m.serverUrl, 
-            width: m.width, 
-            height: m.height
+          url: m.serverUrl,
+          thumbnail_url: m.serverUrl,
+          width: m.width,
+          height: m.height,
         })),
-        type: 1, 
-        visible_conf: 1 
+        type: 1,
+        visible_conf: 1,
       }
 
       const res = await request({
         url: '/api/v1/note/create',
         method: 'POST',
-        data: payload
+        data: payload,
       })
-      
+
       Taro.hideLoading()
-      
+
       const resData: any = res.data
       if (resData && resData.code === 200) {
-         Taro.showToast({ title: '发布成功', icon: 'success' })
-         setTimeout(() => {
-             Taro.navigateBack()
-         }, 1500)
+        Taro.showToast({ title: '发布成功', icon: 'success' })
+        setTimeout(() => {
+          Taro.navigateBack()
+        }, 1500)
       } else {
-         Taro.showToast({ title: resData?.message || '发布失败', icon: 'none' })
+        Taro.showToast({ title: resData?.message || '发布失败', icon: 'none' })
       }
-
     } catch (err) {
       Taro.hideLoading()
       console.error(err)
@@ -185,100 +223,181 @@ export default function PostCreatePage() {
   }
 
   const wordCount = content.length
+  const activeMedia = mediaList[activeIndex]
+  const canProceed = mediaList.length > 0 && !mediaList.some(m => m.isUploading)
+  const canPublish = canProceed && title.trim().length > 0
 
   return (
     <View className='post-create-page'>
-      <View 
-        className='custom-nav' 
-        style={{ 
-            paddingTop: `${statusBarHeight}px`, 
-            height: `${navBarHeight}px` 
+      <View
+        className='custom-nav'
+        style={{
+          paddingTop: `${statusBarHeight}px`,
+          height: `${navBarHeight}px`,
         }}
       >
-         <View 
-           className='nav-left' 
-           style={{ height: `${navBarHeight}px` }}
-           onClick={() => Taro.navigateBack()}
-         >
-            <AtIcon value='chevron-left' size='24' color='#fff' />
-         </View>
-
-         <View 
-           className='nav-title-container' 
-           style={{ height: `${navBarHeight}px` }}
-         >
-            <Text className='nav-title'>发布笔记</Text>
-         </View>
+        <View
+          className='nav-left'
+          style={{ height: `${navBarHeight}px` }}
+          onClick={handleBack}
+        >
+          <AtIcon value='chevron-left' size='24' color='#fff' />
+        </View>
       </View>
 
       <ScrollView scrollY className='content-scroll' style={{ paddingTop: `${statusBarHeight + navBarHeight}px` }}>
-         
-         <ScrollView scrollX className='image-scroll' enableFlex>
-            {mediaList.map((item, idx) => (
-               <View key={idx} className='image-item'>
-                  <Image 
-                    src={item.tempPath} 
-                    mode='aspectFill' 
-                    className='img' 
-                    onClick={() => handlePreviewImage(item.tempPath)} 
-                  />
-                  <View 
-                    className='del-btn' 
+        {step === 'photo' ? (
+          <View className='photo-step'>
+            <View className='preview-area'>
+              {activeMedia ? (
+                <Image
+                  src={activeMedia.tempPath}
+                  mode='aspectFit'
+                  className='preview-image'
+                  onClick={() => handlePreviewImage(activeMedia.tempPath)}
+                />
+              ) : (
+                <View className='preview-empty'>
+                  <Text className='preview-empty-text'>点击下方 + 添加照片</Text>
+                </View>
+              )}
+            </View>
+
+            <ScrollView scrollX className='thumb-scroll' enableFlex>
+              {mediaList.map((item, idx) => (
+                <View
+                  key={item.tempPath}
+                  className={`thumb-item ${activeIndex === idx ? 'active' : ''}`}
+                  onClick={() => setActiveIndex(idx)}
+                >
+                  <Image src={item.tempPath} mode='aspectFill' className='thumb-image' />
+                  <View
+                    className='thumb-close'
                     onClick={(e) => {
-                        e.stopPropagation() 
-                        handleDeleteImage(idx)
+                      e.stopPropagation()
+                      handleDeleteImage(idx)
                     }}
                   >
-                     <AtIcon value='close' size='12' color='#fff' />
+                    <AtIcon value='close' size='12' color='#fff' />
                   </View>
                   {item.isUploading && (
-                     <View className='upload-mask'>
-                       <AtIcon value='loading-3' size='20' color='#fff' className='spin-icon' />
-                     </View>
+                    <View className='thumb-mask'>
+                      <AtIcon value='loading-3' size='18' color='#fff' className='spin-icon' />
+                    </View>
                   )}
-               </View>
-            ))}
-            {mediaList.length < 9 && (
-               <View className='add-btn' onClick={handleChooseImage}>
-                  <AtIcon value='add' size='36' color='#666' />
-               </View>
-            )}
-            <View style={{width: '20px'}}></View>
-         </ScrollView>
+                </View>
+              ))}
+              {mediaList.length < 9 && (
+                <View className='thumb-add' onClick={handleChooseImage}>
+                  <AtIcon value='add' size='28' color='#666' />
+                </View>
+              )}
+              <View style={{ width: '16px' }} />
+            </ScrollView>
+          </View>
+        ) : (
+          <View className='text-step'>
+            <ScrollView scrollX className='mini-thumb-scroll' enableFlex>
+              {mediaList.map((item, idx) => (
+                <View key={item.tempPath} className='mini-thumb-item'>
+                  <Image src={item.tempPath} mode='aspectFill' className='mini-thumb-image' />
+                  <View
+                    className='mini-thumb-close'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteImage(idx)
+                    }}
+                  >
+                    <AtIcon value='close' size='12' color='#fff' />
+                  </View>
+                </View>
+              ))}
+              {mediaList.length < 9 && (
+                <View className='mini-thumb-add' onClick={handleChooseImage}>
+                  <AtIcon value='add' size='28' color='#666' />
+                </View>
+              )}
+              <View style={{ width: '16px' }} />
+            </ScrollView>
 
-         <View className='form-area'>
-            <Input 
-              className='title-input' 
-              placeholder='填写标题会让更多人看到～' 
-              placeholderClass='ph-title'
-              value={title}
-              onInput={e => setTitle(e.detail.value)}
-            />
-            
-            <View className='divider' />
-            
-            <View className='content-box'>
-              <Textarea 
-                className='content-input' 
-                placeholder='添加正文（记录此时此地的美好生活...）' 
-                placeholderClass='ph-content'
-                maxlength={1000}
-                value={content}
-                onInput={e => setContent(e.detail.value)}
+            <View className='form-area'>
+              <Input
+                className='title-input'
+                placeholder='写下标题，让更多人看到'
+                placeholderClass='ph-title'
+                value={title}
+                onInput={e => setTitle(e.detail.value)}
               />
-              <View className='word-count'>
-                <Text>{wordCount}/1000</Text>
+
+              <View className='divider' />
+
+              <View className='content-box'>
+                <Textarea
+                  className='content-input'
+                  placeholder='添加正文（记录此时此地的美好）'
+                  placeholderClass='ph-content'
+                  maxlength={1000}
+                  value={content}
+                  onInput={e => setContent(e.detail.value)}
+                />
+                <View className='word-count'>
+                  <Text>{wordCount}/1000</Text>
+                </View>
               </View>
             </View>
-         </View>
-         
-         <View style={{height: '150px'}} />
+
+            <View className='meta-section'>
+              <View className='section-header'>
+                <Text className='section-title'>#话题</Text>
+                <Text className='section-sub'>可多选</Text>
+                <Text className='section-action'>添加</Text>
+              </View>
+              <View className='tag-list'>
+                <View className='tag-item active'>骑行</View>
+                <View className='tag-item'>周末去哪玩</View>
+              </View>
+            </View>
+
+            <View className='meta-section'>
+              <View className='section-header'>
+                <Text className='section-title'>位置</Text>
+                <Text className='section-sub'>添加位置让更多人看到你</Text>
+                <Text className='section-action'>添加</Text>
+              </View>
+              <View className='tag-list'>
+                <View className='tag-item'>南溪湿地公园</View>
+                <View className='tag-item'>生态广场</View>
+                <View className='tag-item'>乌鸡米线</View>
+              </View>
+            </View>
+
+            <View className='meta-section'>
+              <View className='section-header'>
+                <Text className='section-title'>活动</Text>
+                <Text className='section-sub'>关联已订阅活动</Text>
+              </View>
+              <View className='tag-list'>
+                <View className='tag-item ghost'>PURE LOOP</View>
+                <View className='tag-item ghost'>嘻哈盛典</View>
+                <View className='tag-item ghost'>HYPER新年典礼</View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        <View style={{ height: '160px' }} />
       </ScrollView>
 
       <View className='bottom-bar'>
-         <View className={`publish-btn ${title && mediaList.length > 0 ? 'ready' : ''}`} onClick={handlePublish}>
-            <Text className='btn-text'>发布笔记</Text>
-         </View>
+        {step === 'photo' ? (
+          <View className={`primary-btn ${canProceed ? 'ready' : ''}`} onClick={handleNextStep}>
+            <Text className='btn-text'>下一步</Text>
+          </View>
+        ) : (
+          <View className={`primary-btn ${canPublish ? 'ready' : ''}`} onClick={handlePublish}>
+            <Text className='btn-text'>发布</Text>
+          </View>
+        )}
       </View>
     </View>
   )

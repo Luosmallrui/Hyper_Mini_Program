@@ -4,7 +4,6 @@ export default defineAppConfig({
     'pages/search/index',            // 搜索页
     'pages/activity-list/index',     // 活动列表（信息流模式）
     'pages/my-tickets/index',        // 我的票夹
-    'pages/activity-detail/index',   // 活动详情
     // 'pages/order/index',          // 订单列表页面
     // 'pages/pending-payment/index', // 待付款页面
     // 'pages/pending-shipment/index', //待发货界面
@@ -33,7 +32,9 @@ export default defineAppConfig({
     'pages/square/post-create/index', // 发布页
     'pages/square/post-detail/index', // 详情页
     'pages/message/index', // 消息界面
-    'pages/chat/index', // 聊天详情页
+    'pages/chat/index', // chat detail
+    'pages/activity/index', // activity detail (new)
+    'pages/activity-attendee/index', // activity attendee (new)
     'pages/user/index', // 用户界面
   ],
   window: {

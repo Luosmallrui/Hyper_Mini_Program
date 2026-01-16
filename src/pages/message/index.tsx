@@ -28,7 +28,6 @@ export default function MessagePage() {
   // 布局适配状态
   const [navBarPaddingTop, setNavBarPaddingTop] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
-  const [navBarPaddingRight, setNavBarPaddingRight] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   Taro.useDidShow(() => {
@@ -46,7 +45,6 @@ export default function MessagePage() {
 
     setNavBarPaddingTop(sbHeight)
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
-    setNavBarPaddingRight(rightPadding)
   }, [])
 
   // 2. 监听 sessionList 变化，自动计算未读数和红点
@@ -168,7 +166,12 @@ export default function MessagePage() {
   }
 
   const handleChat = (item: SessionItem) => {
-    // 本地先清零未读数，提升体验
+    if (!item.peer_id) {
+      Taro.showToast({ title: '会话信息缺失', icon: 'none' })
+      return
+    }
+
+    // Clear unread locally for better UX.
     setSessionList(prev => prev.map(s => {
       if (s.peer_id === item.peer_id) {
         return { ...s, unread: 0 }
@@ -177,7 +180,10 @@ export default function MessagePage() {
     }))
 
     Taro.navigateTo({
-      url: `/pages/chat/index?peer_id=${item.peer_id}&title=${encodeURIComponent(item.peer_name)}&type=${item.session_type}`
+      url: `/pages/chat/index?peer_id=${item.peer_id}&title=${encodeURIComponent(item.peer_name || '')}&type=${item.session_type}`,
+      fail: (err) => {
+        console.error('[MessagePage] 进入聊天失败:', err)
+      }
     })
   }
 
@@ -202,10 +208,12 @@ export default function MessagePage() {
   }
 
   const systemNotices = [
-    { id: 'sys_1', title: '互动消息', desc: '暂无新互动', time: '', iconColor: '#FF6B6B', icon: 'heart', unread: 0 },
-    { id: 'sys_2', title: '订单动态', desc: '暂无新订单', time: '', iconColor: '#4ECDC4', icon: 'file-text', unread: 0 },
-    { id: 'sys_3', title: '支付消息', desc: '暂无支付信息', time: '', iconColor: '#FFE66D', icon: 'credit-card', unread: 0 },
-    { id: 'sys_4', title: '积分账户', desc: '当前积分 0', time: '', iconColor: '#1A535C', icon: 'star', unread: 0 },
+    { id: 'sys_1', title: '系统消息', desc: '你的身份认证审核已通过', time: '14:32', iconColor: '#8B7CFF', icon: 'bell', unread: 1 },
+    { id: 'sys_2', title: '互动通知', desc: '刚刚有人关注了你，快去看看吧！', time: '13:22', iconColor: '#FF6B6B', icon: 'heart', unread: 0 },
+    { id: 'sys_3', title: 'HYPER小助手', desc: '今日三倍积分返利快来参加心仪的活动吧！', time: '昨天', iconColor: '#FFB74D', icon: 'star', unread: 0 },
+    { id: 'sys_4', title: '积分账户', desc: '已支付 300 积分', time: '昨天', iconColor: '#4ECDC4', icon: 'file-text', unread: 0 },
+    { id: 'sys_5', title: '支付消息', desc: '成功支付¥300元', time: '06-17', iconColor: '#34C759', icon: 'credit-card', unread: 0 },
+    { id: 'sys_6', title: '客服消息', desc: '客服月月：亲让您久等了，问题已经帮您反…', time: '06-17', iconColor: '#5AC8FA', icon: 'message', unread: 0 },
   ]
 
   return (
@@ -214,15 +222,12 @@ export default function MessagePage() {
         className='page-header'
         style={{
           paddingTop: `${navBarPaddingTop}px`,
-          height: `${navBarHeight}px`,
-          paddingRight: `${navBarPaddingRight}px`
+          height: `${navBarHeight}px`
         }}
       >
-        <Text className='header-title'>消息</Text>
-        {totalUnread > 0 && <Text className='header-count'>({totalUnread})</Text>}
-        
-        <View className='header-right'>
-           <Text className='clear-read'>全部已读</Text>
+        <View className='header-center'>
+          <Text className='header-title'>消息</Text>
+          {totalUnread > 0 && <Text className='header-count'>({totalUnread})</Text>}
         </View>
       </View>
 
@@ -239,18 +244,20 @@ export default function MessagePage() {
         <View className='system-list'>
           {systemNotices.map(item => (
             <View key={item.id} className='msg-item system-item'>
-              <View className='avatar-box' style={{ backgroundColor: '#2C2C2E' }}>
-                 <AtIcon value={item.icon} size='24' color={item.iconColor} />
+              <View className='avatar-box' style={{ backgroundColor: item.iconColor }}>
+                <AtIcon value={item.icon} size='24' color='#fff' />
               </View>
               <View className='content-box'>
                 <View className='top-row'>
                   <Text className='title'>{item.title}</Text>
-                  <Text className='time'>{item.time}</Text>
                 </View>
                 <View className='bottom-row'>
                   <Text className='desc'>{item.desc}</Text>
-                  {item.unread > 0 && <View className='badge' />}
                 </View>
+              </View>
+              <View className='right-meta'>
+                <Text className='time'>{item.time}</Text>
+                {item.unread > 0 && <View className='badge-dot' />}
               </View>
             </View>
           ))}

@@ -88,6 +88,10 @@ export default function ActivityListPage() {
     setFilterOpen(filterOpen === type ? 'none' : type)
   }
 
+  const handleGoDetail = (id: number) => {
+    Taro.navigateTo({ url: `/pages/activity/index?id=${id}` })
+  }
+
   return (
     <View className='activity-list-page'>
       {/* 1. 顶部 Header (复用首页逻辑) */}
@@ -162,7 +166,7 @@ export default function ActivityListPage() {
         style={{ paddingTop: `${statusBarHeight + navBarHeight + 50}px` }}
       >
         {list.map(item => (
-          <View key={item.id} className='activity-card'>
+          <View key={item.id} className='activity-card' onClick={() => handleGoDetail(item.id)}>
             {/* 海报区域 */}
             <View className='poster-area'>
               {item.cover ? (
@@ -212,7 +216,7 @@ export default function ActivityListPage() {
                   {/* 关注按钮 */}
                   <View 
                     className={`btn outline ${item.isFollowed ? 'disabled' : ''}`}
-                    onClick={() => toggleFollow(item.id)}
+                    onClick={(e) => { e.stopPropagation(); toggleFollow(item.id) }}
                   >
                     {item.isFollowed ? '已关注' : '关注'}
                   </View>
@@ -220,7 +224,7 @@ export default function ActivityListPage() {
                   {/* 订阅按钮 */}
                   <View 
                     className={`btn outline ${item.isSubscribed ? 'disabled' : ''}`}
-                    onClick={() => toggleSubscribe(item.id)}
+                    onClick={(e) => { e.stopPropagation(); toggleSubscribe(item.id) }}
                   >
                     {item.isSubscribed ? '已订阅' : '订阅活动'}
                   </View>

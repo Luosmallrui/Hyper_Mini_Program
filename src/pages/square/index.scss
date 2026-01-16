@@ -25,7 +25,7 @@
   .nav-content {
     display: flex;
     align-items: center;
-    padding-left: 16px;
+    padding-left: 10px;
     position: relative;
     box-sizing: border-box;
 
@@ -39,17 +39,19 @@
           display: flex; 
           align-items: center; 
           color: #fff; 
-          font-size: 30px; 
-          font-weight: bold; 
+          font-size: 28px; 
+          font-weight: 500; 
+          letter-spacing: 1.2px;
+          line-height: 40px;
           gap: 4px; 
-          margin-right: 24px; 
+          margin-right: 20px; 
           flex-shrink: 0; 
         }
         
         .search-icon { 
           flex-shrink: 0; 
-          width: 40px; 
-          height: 40px; 
+          width: 30px; 
+          height: 30px; 
           display: flex; 
           align-items: center; 
           justify-content: center; 
@@ -70,7 +72,7 @@
       z-index: 101;
       
       .logo { 
-        height: 30px; 
+        height: 37px; 
       }
     }
   }
@@ -100,7 +102,7 @@
     }
 
     .tab-item {
-      padding: 0 20px; /* 稍微增加 Tab 间距 */
+      padding: 0 15px; /* 稍微增加 Tab 间距 */
       height: 100%; 
       display: inline-flex; /* 改为 inline-flex 保证不换行 */
       align-items: center; 
@@ -108,17 +110,18 @@
       position: relative; 
       flex-shrink: 0;
       
-      .tab-text { 
-        color: #888; 
-        font-size: 30rpx; /* 稍微加大一点字号提升可读性 */
-        transition: all 0.2s; 
+      .tab-text {
+        color: #b7b7b7;
+        font-size: 22px;
+        line-height: 30px;
+        letter-spacing: 0.94px;
+        transition: all 0.2s;
       }
       
       &.active {
         .tab-text { 
           color: #fff; 
-          font-weight: 900; 
-          font-size: 34rpx; 
+          font-weight: 500; 
         }
         
         .indicator { 
@@ -126,10 +129,10 @@
           bottom: 6px; 
           left: 50%; 
           transform: translateX(-50%); 
-          width: 24px; 
-          height: 4px; 
-          background: #FF2E4D; 
-          border-radius: 2px; 
+          width: 46px; 
+          height: 6px; 
+          background: #fff; 
+          border-radius: 3px; 
         }
       }
     }
@@ -142,40 +145,40 @@
     top: 0;
     bottom: 0;
     /* 【优化 2】定宽，给足空间 */
-    width: 80px; 
+    width: 70px; 
     z-index: 102; /* 确保最高层级 */
     display: flex; 
     align-items: center; 
     justify-content: flex-end; 
     pointer-events: auto;
+    overflow: visible;
 
     /* 【优化 3】更宽更柔和的渐变遮罩 */
-    .gradient-mask { 
-      position: absolute; 
-      left: -40px; /* 向左延伸更多 */
-      top: 0; 
-      bottom: 0; 
-      width: 40px; 
-      /* 从透明过渡到纯黑 */
-      background: linear-gradient(to right, rgba(0,0,0,0), #000 90%); 
-      pointer-events: none; 
+    .gradient-mask {
+      position: absolute;
+      left: -80px;
+      top: 0;
+      bottom: 0;
+      width: 80px;
+      z-index: 1;
+      background: linear-gradient(90deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.85) 60%, #000 100%);
+      pointer-events: none;
     }
     
     .btn-content {
+      position: relative;
+      z-index: 2;
       height: 100%; 
       width: 100%;
-      background: #000; /* 纯黑底色，遮住背后的 Tab */
+      background: transparent; /* 纯黑底色，遮住背后的 Tab */
       display: flex; 
       align-items: center; 
-      justify-content: center;
-      
-      /* 给文字一点左边距，防止贴着渐变区太近 */
-      padding-left: 5px;
-      
+
       .expand-text { 
-        font-size: 28rpx; 
-        color: #999; 
-        font-weight: 500; 
+        font-size: 22px; 
+        color: #fff; 
+        font-weight: 400; 
+        letter-spacing: 0.94px; 
         white-space: nowrap; 
       }
     }
@@ -236,7 +239,7 @@
         .name { 
           color: #fff; 
           font-size: 26px; 
-          font-weight: bold; 
+          font-weight: 500; 
           margin-right: 12px;
           
           /* 防止名字过长把时间挤出去 */
@@ -273,7 +276,7 @@
         padding: 4px 12px;
         border-radius: 20px;
         font-size: 22px;
-        font-weight: bold;
+        font-weight: 500;
       }
     }
 
@@ -285,7 +288,7 @@
 
     .text-content {
        padding: 0 20px;
-       .title { color: #fff; font-size: 28px; font-weight: bold; margin-bottom: 6px; display: block;}
+       .title { color: #fff; font-size: 28px; font-weight: 500; margin-bottom: 6px; display: block;}
        .desc { color: #ccc; font-size: 26px; line-height: 1.4; display: block; margin-bottom: 8px;}
     }
   }
@@ -296,8 +299,9 @@
   display: flex; 
   width: 100%;
   box-sizing: border-box;
-  padding: 10px; 
+  padding: 0 10px; 
   gap: 10px;
+  margin-top: 40px;
   flex-wrap: wrap; /* 关键：允许换行，这样 footer 才能独占一行 */
   
   .col {
@@ -315,8 +319,8 @@
   }
 
   .waterfall-card {
-     background: #1C1C1E; 
-     border-radius: 12px; 
+     background: #161616; 
+     border-radius: 8px; 
      overflow: hidden;
      width: 100%;
      
@@ -325,6 +329,7 @@
          display: block; 
          vertical-align: bottom; 
          background-color: #2C2C2E;
+         border-radius: 8px 8px 0 0;
      }
      .cover-placeholder {
          width: 100%;
@@ -332,10 +337,10 @@
      }
      
      .info {
-        padding: 12px;
+        padding: 20px;
         
         .title { 
-           color: #fff; font-size: 26px; line-height: 1.4;
+           color: #b7b7b7; font-size: 26px; line-height: 40px;
            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
            margin-bottom: 10px;
         }
@@ -352,8 +357,8 @@
               overflow: hidden; /* 防止文字过长溢出容器 */
 
               .avatar-mini { 
-                width: 32px; 
-                height: 32px; 
+                width: 36px; 
+                height: 36px; 
                 border-radius: 50%; 
                 background: #555; 
                 margin-right: 8px; /* 稍微增加间距 */
@@ -371,8 +376,9 @@
               }
               
               .name { 
-                color: #666; 
+                color: #656565; 
                 font-size: 22px; 
+                line-height: 30px; 
                 /* 确保名字不溢出 */
                 flex: 1; 
                 overflow: hidden; 
@@ -388,7 +394,7 @@
               flex-shrink: 0; /* 防止点赞数被挤压 */
               margin-left: 8px; /* 与名字保持距离 */
               
-              .num { color: #666; font-size: 22px;}
+              .num { color: #656565; font-size: 24px; line-height: 33px;}
            }
         }
      }
@@ -419,7 +425,7 @@
    
    .channel-header {
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;
-      .title { color: #fff; font-size: 30px; font-weight: bold;}
+      .title { color: #fff; font-size: 28px; font-weight: 500;}
       .actions { display: flex; gap: 24px; font-size: 26px; color: #999;}
    }
    
@@ -436,7 +442,7 @@
          color: #ccc; font-size: 26px; 
          position: relative;
          
-         &.active { color: #fff; background: #333; font-weight: bold;}
+         &.active { color: #fff; background: #333; font-weight: 500;}
          
          .del-icon {
             position: absolute; top: -6px; right: -6px;

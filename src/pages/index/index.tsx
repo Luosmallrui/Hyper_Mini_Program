@@ -375,7 +375,7 @@ export default function IndexPage() {
             <SwiperItem key={item.id} className='card-item-wrapper'>
               <View 
                 className='party-card-pro'
-                onClick={() => navigateTo(`/pages/activity-detail/index?id=${item.id}`)}
+                onClick={() => navigateTo(`/pages/activity/index?id=${item.id}`)}
               >
                 <View className='card-header-bg'>
                    {item.rank && (

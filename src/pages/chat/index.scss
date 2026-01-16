@@ -1,256 +1,290 @@
-.chat-page {
+﻿.chat-page {
   background-color: #000000;
   height: 100vh;
   width: 100vw;
   position: relative;
-  overflow: hidden; 
+  overflow: hidden;
 }
 
-/* 1. 顶部导航 */
 .custom-navbar {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 200; 
-  background-color: #1C1C1E;
+  z-index: 200;
+  background-color: #202322;
   display: flex;
   align-items: center;
   padding-left: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   box-sizing: content-box;
-
-  .nav-left {
-    width: 40px;
-    height: 100%;
-    display: flex;
-    align-items: center;
-  }
-
-  .nav-center {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 0 10px;
-    
-    .nav-title {
-      color: #fff;
-      font-size: 32px;
-      font-weight: bold;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 300px;
-    }
-  }
 }
 
-/* 2. 聊天滚动区 */
+.nav-left-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-left {
+  width: 40px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.nav-badge {
+  background-color: #ededed;
+  border-radius: 18px;
+  padding: 2px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-badge-text {
+  color: #222222;
+  font-size: 24px;
+  line-height: 33px;
+}
+
+.nav-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  overflow: hidden;
+}
+
+.nav-title {
+  color: #ffffff;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 45px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+}
+
+.follow-btn {
+  background-color: #7c7ca7;
+  border-radius: 22px;
+  padding: 6px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.follow-btn.followed {
+  background-color: #3b3b3d;
+}
+
+.follow-text {
+  color: #ffffff;
+  font-size: 24px;
+  line-height: 33px;
+}
+
 .chat-scroll {
   position: absolute;
   left: 0;
   right: 0;
-  /* top 和 bottom 由行内样式动态控制 */
-  background-color: #000;
-  
-  /* 增加 opacity 过渡，让页面加载和键盘弹起更顺滑 */
+  background-color: #000000;
   transition: opacity 0.3s ease-in-out, bottom 0.1s ease-out;
-  
-  .msg-container {
-    padding: 0 24px;
-    padding-bottom: 20px;
-    display: flex;
-    flex-direction: column;
-    min-height: 100%; 
-  }
-
-  /* 顶部加载状态样式 */
-  .history-loader {
-    /* 使用 transition 实现高度平滑变化，避免突然跳动 */
-    transition: min-height 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    overflow: hidden; /* 隐藏高度为0时的内容 */
-    
-    .no-more-text {
-      color: #444;
-      font-size: 22px;
-      padding: 20px 0;
-    }
-    
-    /* 自定义加载容器 */
-    .custom-loading {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px; /* 图标和文字的间距 */
-      padding: 20px 0;
-
-      .loading-text {
-        color: #888;
-        font-size: 24px;
-      }
-
-      /* 旋转动画 */
-      .spin-icon {
-        animation: rotate 1s linear infinite;
-        display: block; /* 确保 transform 生效 */
-      }
-    }
-  }
-
-  .time-stamp {
-    align-self: center;
-    background-color: rgba(255,255,255,0.1);
-    padding: 4px 12px;
-    border-radius: 8px;
-    color: #999;
-    font-size: 20px;
-    margin: 20px 0;
-  }
-
-  .msg-row {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 30px;
-    width: 100%;
-
-    .msg-body {
-      display: flex;
-      align-items: flex-start;
-      max-width: 100%;
-    }
-
-    .avatar {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      background-color: #333; 
-      flex-shrink: 0;
-      overflow: hidden; 
-
-      .avatar-img {
-        width: 100%;
-        height: 100%;
-      }
-
-      .avatar-placeholder {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        font-size: 32px;
-        font-weight: bold;
-      }
-    }
-    
-    .my-avatar {
-      background-color: #555;
-    }
-
-    .bubble {
-      padding: 20px 24px;
-      border-radius: 24px;
-      max-width: 65%;
-      position: relative;
-      font-size: 30px;
-      line-height: 1.5;
-      word-break: break-all;
-    }
-  }
-
-  /* 对方消息 */
-  .msg-left {
-    .msg-body {
-      flex-direction: row;
-    }
-    .bubble {
-      background-color: #2C2C2E;
-      color: #fff;
-      margin-left: 16px;
-      border-top-left-radius: 4px;
-    }
-  }
-
-  /* 我发的消息 */
-  .msg-right {
-    .msg-body {
-      flex-direction: row;
-      justify-content: flex-end;
-    }
-    .bubble {
-      background-color: #FF2E4D;
-      color: #fff;
-      margin-right: 16px;
-      border-top-right-radius: 4px;
-    }
-  }
 }
 
-/* --- 新增：旋转动画关键帧 --- */
+.msg-container {
+  padding: 0 30px;
+  padding-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.system-tip {
+  margin: 24px auto 0;
+  max-width: 520px;
+  text-align: center;
+}
+
+.system-tip.secondary {
+  margin: 32px auto 0;
+}
+
+.tip-text {
+  color: #c0c0c0;
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.tip-link {
+  color: #5691ff;
+}
+
+.history-loader {
+  transition: min-height 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  overflow: hidden;
+}
+
+.history-loader .no-more-text {
+  color: #444444;
+  font-size: 22px;
+  padding: 20px 0;
+}
+
+.history-loader .custom-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px 0;
+}
+
+.history-loader .custom-loading .loading-text {
+  color: #888888;
+  font-size: 24px;
+}
+
+.history-loader .custom-loading .spin-icon {
+  animation: rotate 1s linear infinite;
+  display: block;
+}
+
+.time-stamp {
+  align-self: center;
+  color: #c0c0c0;
+  font-size: 20px;
+  line-height: 28px;
+  margin: 20px 0;
+}
+
+.msg-row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 30px;
+  width: 100%;
+}
+
+.msg-body {
+  display: flex;
+  align-items: flex-start;
+  max-width: 100%;
+  gap: 16px;
+}
+
+.avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background-color: #333333;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 32px;
+  font-weight: 600;
+}
+
+.my-avatar {
+  background-color: #555555;
+}
+
+.bubble {
+  padding: 16px 20px;
+  border-radius: 12px;
+  max-width: 65%;
+  position: relative;
+  font-size: 32px;
+  line-height: 45px;
+  word-break: break-all;
+}
+
+.msg-left .msg-body {
+  flex-direction: row;
+}
+
+.msg-left .bubble {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.msg-right .msg-body {
+  flex-direction: row;
+  justify-content: flex-end;
+}
+
+.msg-right .bubble {
+  background-color: #5691ff;
+  color: #ffffff;
+}
+
 @keyframes rotate {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-/* 3. 底部输入框 */
 .input-bar {
   position: fixed;
   left: 0;
   right: 0;
-  min-height: 100px; 
-  background-color: #1C1C1E; 
-  
-  padding-left: 24px;
-  padding-right: 24px;
-  padding-top: 16px;
-  
+  min-height: 100px;
+  background-color: #000000;
+  padding-left: 30px;
+  padding-right: 30px;
+  padding-top: 20px;
   display: flex;
   align-items: flex-start;
   z-index: 200;
   border-top: 1px solid rgba(255,255,255,0.05);
-  
   transition: bottom 0.1s ease-out;
+}
 
-  .input-wrapper {
-    flex: 1;
-    background-color: #2C2C2E;
-    min-height: 72px;
-    border-radius: 36px;
-    display: flex;
-    align-items: center;
-    padding: 0 24px;
-    margin-right: 20px;
+.input-wrapper {
+  flex: 1;
+  background-color: #ffffff;
+  min-height: 72px;
+  border-radius: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  margin-right: 20px;
+}
 
-    .chat-input {
-      width: 100%;
-      height: 72px;
-      color: #fff;
-      font-size: 30px;
-    }
-  }
+.chat-input {
+  width: 100%;
+  height: 72px;
+  color: #111111;
+  font-size: 30px;
+}
 
-  .send-btn {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    background-color: #333;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
+.send-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background-color: #2c2c2e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
 
-    &.active {
-      background-color: #FF2E4D;
-    }
-  }
+.send-btn.active {
+  background-color: #5691ff;
 }

@@ -67,9 +67,27 @@ export default class CustomTabBar extends Component<{}, State> {
     }
   }
 
+  handleSpecialClick = async (item: TabItem) => {
+    try {
+      const res = await Taro.chooseMedia({
+        count: 9,
+        mediaType: ['image'],
+        sourceType: ['album', 'camera'],
+      })
+
+      const tempPaths = res.tempFiles.map(file => file.tempFilePath)
+      if (tempPaths.length === 0) return
+
+      Taro.setStorageSync('post_create_media', tempPaths)
+      Taro.navigateTo({ url: item.pagePath })
+    } catch (e) {
+      console.log('cancel choose image')
+    }
+  }
+
   handleTabClick = (index: number, item: TabItem) => {
     if (item.isSpecial) {
-      Taro.navigateTo({ url: item.pagePath })
+      this.handleSpecialClick(item)
       return
     }
 
