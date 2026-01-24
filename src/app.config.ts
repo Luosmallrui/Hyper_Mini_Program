@@ -4,12 +4,11 @@ export default defineAppConfig({
     'pages/search/index',            // 搜索页
     'pages/activity-list/index',     // 活动列表（信息流模式）
     'pages/my-tickets/index',        // 我的票夹
-    // 'pages/order/index',          // 订单列表页面
-
 
     'pages/square/index', // 广场界面
-    'pages/order-success/index', // 订单购买成功
+    'pages/order/order-pay-success/index', // 订单购买成功
     'pages/order/order-detail/index', // 订单详情界面
+    'pages/order/index', //订单列表界面
 
     'pages/square/post-create/index', // 广场发布页
     'pages/square/post-detail/index', // 广场详情页

@@ -12,10 +12,10 @@ const BASE_URL = 'https://www.hypercn.cn'
 
 export default function UserPage() {
   // --- 状态管理 ---
-  const [isLogin, setIsLogin] = useState(false) 
-  const [userInfo, setUserInfo] = useState<any>({}) 
-  const [userStats, setUserStats] = useState<any>({ following: 0, follower: 0, likes: 0 }) 
-  const [needPhoneAuth, setNeedPhoneAuth] = useState(false) 
+  const [isLogin, setIsLogin] = useState(false)
+  const [userInfo, setUserInfo] = useState<any>({})
+  const [userStats, setUserStats] = useState<any>({ following: 0, follower: 0, likes: 0 })
+  const [needPhoneAuth, setNeedPhoneAuth] = useState(false)
 
   // 弹窗状态
   const [showAuthModal, setShowAuthModal] = useState(false)
@@ -30,14 +30,14 @@ export default function UserPage() {
   // --- 生命周期 ---
   useEffect(() => {
     setTabBarIndex(4)
-    
+
     // 1. 布局适配计算
     const sysInfo = Taro.getWindowInfo()
     const menuInfo = Taro.getMenuButtonBoundingClientRect()
-    
+
     const sbHeight = sysInfo.statusBarHeight || 20
     setStatusBarHeight(sbHeight)
-    
+
     const nbHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
 
@@ -80,7 +80,7 @@ export default function UserPage() {
       // 有 Token 就尝试去拉取最新信息
       fetchLatestUserInfo()
     } else {
-      handleLogin(true) 
+      handleLogin(true)
     }
   }
 
@@ -91,7 +91,7 @@ export default function UserPage() {
           url: '/api/v1/user/info',
           method: 'GET'
       })
-      
+
       let resData: any = res.data
       if (typeof resData === 'string') {
         try { resData = JSON.parse(resData) } catch(e){}
@@ -99,15 +99,15 @@ export default function UserPage() {
 
       if (resData && resData.code === 200 && resData.data) {
           const { user, stats } = resData.data
-          
+
           setUserInfo(user)
           if (stats) {
               setUserStats(stats)
           }
-          
+
           Taro.setStorageSync('userInfo', user)
           Taro.eventCenter.trigger('USER_INFO_UPDATED', user)
-          
+
           setIsLogin(true)
           setNeedPhoneAuth(!user.phone_number)
       } else {
@@ -147,10 +147,10 @@ export default function UserPage() {
   // 登录 (支持静默)
   const handleLogin = async (isSilent = false) => {
     if (!isSilent) Taro.showLoading({ title: '登录中...' })
-    
+
     try {
       const loginRes = await Taro.login()
-      
+
       // 使用原生 request，避免死循环
       // 【修改】URL 增加 v1
       const res = await Taro.request({
@@ -160,7 +160,7 @@ export default function UserPage() {
       })
 
       if (!isSilent) Taro.hideLoading()
-      
+
       let responseData = res.data
       if (typeof responseData === 'string') {
           try { responseData = JSON.parse(responseData) } catch(e){}
@@ -168,15 +168,15 @@ export default function UserPage() {
 
       if (responseData && responseData.code === 200 && responseData.data) {
         const { access_token, refresh_token, access_expire } = responseData.data
-        
+
         Taro.setStorageSync('access_token', access_token)
         Taro.setStorageSync('refresh_token', refresh_token)
 
         saveTokens(access_token, refresh_token, access_expire)
-        
+
         // 登录成功后，立即调用 /user/info 获取用户信息
         await fetchLatestUserInfo()
-        
+
         if (!isSilent) {
           Taro.hideLoading()
           Taro.showToast({ title: '登录成功', icon: 'success' })
@@ -197,10 +197,10 @@ export default function UserPage() {
   }
 
   // 手机号绑定
-  const onGetPhoneNumber = async (e: any) => { 
+  const onGetPhoneNumber = async (e: any) => {
     if (!e.detail?.code) return
     Taro.showLoading({ title: '绑定中...' })
-    
+
     try {
         // 【修改】URL 增加 v1
         const res = await request({
@@ -208,7 +208,7 @@ export default function UserPage() {
             method: 'POST',
             data: { phone_code: e.detail.code }
         })
-        
+
         Taro.hideLoading()
         const rd: any = res.data
         if (rd && rd.code === 200) {
@@ -240,15 +240,15 @@ export default function UserPage() {
   }
 
   // 保存资料
-  const handleSubmitProfile = async () => { 
+  const handleSubmitProfile = async () => {
       if (!tempNickname) { Taro.showToast({ title: '请输入昵称', icon: 'none' }); return }
       Taro.showLoading({ title: '保存中...' })
       const token = Taro.getStorageSync('access_token')
 
       try {
-        let finalAvatarUrl = userInfo.avatar_url 
+        let finalAvatarUrl = userInfo.avatar_url
         const isNewImage = tempAvatar.startsWith('http') && !tempAvatar.includes('mmbiz.qpic.cn') || tempAvatar.startsWith('wxfile')
-        
+
         if (isNewImage) {
             const upRes = await Taro.uploadFile({
                 url: `${BASE_URL}/api/v1/user/avatar`,
@@ -258,7 +258,7 @@ export default function UserPage() {
             })
             let upData: any = {}
             try { upData = JSON.parse(upRes.data) } catch(e) { throw new Error('头像上传解析失败') }
-            
+
             if (upData.code === 200) {
                  finalAvatarUrl = (typeof upData.data === 'string') ? upData.data : upData.data?.url
             } else {
@@ -273,14 +273,14 @@ export default function UserPage() {
             method: 'POST',
             data: { nickname: tempNickname, avatar: finalAvatarUrl }
         })
-        
+
         Taro.hideLoading()
-        
+
         const rd: any = upInfoRes.data
         if (rd && rd.code === 200) {
             setShowAuthModal(false)
             Taro.showToast({ title: '保存成功', icon: 'success' })
-            fetchLatestUserInfo() 
+            fetchLatestUserInfo()
         } else {
             Taro.showToast({ title: rd?.msg || '保存失败', icon: 'none' })
         }
@@ -297,18 +297,26 @@ export default function UserPage() {
     { label: '粉丝', value: hasData ? userStats?.follower || 0 : '-' },
     { label: '赞/收藏', value: hasData ? userStats?.likes || 0 : '-' },
   ];
-  
+
   const mainNavItems = [
-    { icon: 'list', label: '订单', action: '全部订单' },
+    { icon: 'list', label: '订单', action: '全部订单' , route: '/pages/order/index'},
     { icon: 'sketch', label: '钱包', action: '充值' },
     { icon: 'tag', label: '票务', action: '优惠券' },
     { icon: 'star', label: '积分', action: '积分' },
     { icon: 'home', label: '主办中心', action: '站点' },
   ];
 
-  const handleItemClick = (label: string) => {
-    if (!isLogin && label !== '设置') { handleLogin(false); return }
-    Taro.showToast({ title: `点击了${label}`, icon: 'none' })
+  const handleItemClick = (item) => {
+    if (!isLogin) {
+      handleLogin(false)
+      return
+    }
+
+    if (item.route) {
+      Taro.navigateTo({
+        url: item.route,
+      })
+    }
   }
 
   return (
@@ -352,7 +360,7 @@ export default function UserPage() {
               </View>
             )}
           </View>
-          
+
           <View className='edit-btn-wrap'>
              <View className='edit-profile-btn' onClick={handleOpenEdit}>
                 {isLogin ? '编辑资料' : '去登录'}
@@ -372,12 +380,19 @@ export default function UserPage() {
 
       <View className='main-nav-card'>
         {mainNavItems.map((item, index) => (
-          <View key={index} className='nav-item' onClick={() => handleItemClick(item.action)}>
-             <View className='nav-icon-circle'><AtIcon value={item.icon} size='24' color='#fff' /></View>
-             <Text className='nav-text'>{item.label}</Text>
+          <View
+            key={index}
+            className='nav-item'
+            onClick={() => handleItemClick(item)}
+          >
+            <View className='nav-icon-circle'>
+              <AtIcon value={item.icon} size='24' color='#fff' />
+            </View>
+            <Text className='nav-text'>{item.label}</Text>
           </View>
         ))}
       </View>
+
 
       <View className='section-card'>
          <View className='section-header'>
@@ -422,7 +437,7 @@ export default function UserPage() {
             </View>
             <Text className='modal-title'>{isEditMode ? '编辑个人信息' : '完善个人信息'}</Text>
             <Text className='modal-subtitle'>获取您的头像和昵称以展示</Text>
-            
+
             <Button className='avatar-wrapper-btn' openType="chooseAvatar" onChooseAvatar={onChooseAvatar}>
               <Image className='chosen-avatar' src={tempAvatar} mode='aspectFill' />
               <View className='edit-badge'><AtIcon value='camera' size='12' color='#fff' /></View>

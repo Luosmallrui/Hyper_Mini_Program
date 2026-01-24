@@ -73,7 +73,7 @@ export default function ActivityPage() {
           Taro.showToast({title: '支付成功', icon: 'success'});
           // 支付成功后的跳转
           setTimeout(() => {
-            Taro.navigateTo({url: `/pages/order-success/index`});
+            Taro.navigateTo({url: `/pages/order/order-pay-success/index`});
           }, 1000);
         },
         fail: (err) => {
@@ -122,8 +122,8 @@ export default function ActivityPage() {
           <View className='location-row'>
             <Text className='location-text'>高新区盛园街道保利星荟5栋1楼</Text>
             <Image className='location-icon'
-              src='https://lanhu-oss-proxy.lanhuapp.com/SketchPng316000f2c1e243cb13f8f16f4b0e0f5612aad100fd961d8166c868613af34ece'
-              mode='aspectFit'
+                   src='https://lanhu-oss-proxy.lanhuapp.com/SketchPng316000f2c1e243cb13f8f16f4b0e0f5612aad100fd961d8166c868613af34ece'
+                   mode='aspectFit'
             />
           </View>
 
