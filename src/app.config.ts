@@ -29,6 +29,7 @@ export default defineAppConfig({
     'pages/president/index',//荟长
     'pages/redperson/index',//红人申请
     'pages/square/index', // 广场界面
+    'pages/order-success/index', // 广场界面
     'pages/square/post-create/index', // 发布页
     'pages/square/post-detail/index', // 详情页
     'pages/message/index', // 消息界面
