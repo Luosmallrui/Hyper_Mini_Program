@@ -9,8 +9,10 @@ export default defineAppConfig({
 
     'pages/square/index', // 广场界面
     'pages/order-success/index', // 订单购买成功
-    'pages/square/post-create/index', // 发布页
-    'pages/square/post-detail/index', // 详情页
+    'pages/order/order-detail/index', // 订单详情界面
+
+    'pages/square/post-create/index', // 广场发布页
+    'pages/square/post-detail/index', // 广场详情页
     'pages/message/index', // 消息界面
     'pages/chat/index', // chat detail
     'pages/activity/index', // activity detail (new)
