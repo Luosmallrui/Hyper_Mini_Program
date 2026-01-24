@@ -1,10 +1,4 @@
-/*
- * @Author: {zhengzhuang}
- * @Date: 2024-06-13 16:05:11
- * @LastEditors: {zhengzhuang}
- * @LastEditTime: 2024-06-13 16:05:11
- * @Description:
- */
+
 import {
   getStorageSync,
   setClipboardData,

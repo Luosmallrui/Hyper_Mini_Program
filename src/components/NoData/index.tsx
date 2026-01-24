@@ -1,10 +1,4 @@
-/*
- * @Author: {zhengzhuang}
- * @Date: 2022-06-13 17:15:59
- * @LastEditors: {zhengzhuang}
- * @LastEditTime: 2022-10-31 14:14:16
- * @Description: 无数据组件
- */
+
 import {Image, Text, View} from "@tarojs/components";
 import NoDataIcon from "../../assets/images/noData/no_data_icon.png";
 import "./index.less";

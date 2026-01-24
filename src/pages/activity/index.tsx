@@ -36,7 +36,7 @@ export default function ActivityPage() {
     const rightPadding = sysInfo.screenWidth - menuInfo.left
     setMenuButtonWidth(rightPadding)
   }, [])
-
+  const token = Taro.getStorageSync('access_token')
   const totalPrice = useMemo(() => selectedTicket.price * ticketCount, [selectedTicket, ticketCount])
   const handlePay = async () => {
     if (isPaying) return;
@@ -47,6 +47,7 @@ export default function ActivityPage() {
       const {data: res} = await Taro.request({
         url: `${BASE_URL}/api/v1/pay/prepay`,
         method: 'POST',
+        header: {'Authorization': `Bearer ${token}`},
         data: {
           openid: "o9Xlk14wugzLZOdwWQ5FwtQOjhxs",
           amount: 1,
@@ -63,17 +64,17 @@ export default function ActivityPage() {
 
       // 调用微信支付
       await Taro.requestPayment({
-        timeStamp: payParams.timestamp,
-        nonceStr: payParams.nonce_str,
+        timeStamp: payParams.timeStamp,
+        nonceStr: payParams.nonceStr,
         package: payParams.package,
-        signType: payParams.sign_type as any,
-        paySign: payParams.pay_sign,
+        signType: payParams.signType as any,
+        paySign: payParams.paySign,
         success: () => {
           Taro.showToast({title: '支付成功', icon: 'success'});
-          // 支付成功后的跳转，比如跳转到订单详情页
+          // 支付成功后的跳转
           setTimeout(() => {
             Taro.navigateTo({url: `/pages/order-success/index`});
-          }, 1500);
+          }, 500);
         },
         fail: (err) => {
           if (err.errMsg.includes('cancel')) {

@@ -1,10 +1,4 @@
-/*
- * @Author: {zhengzhuang}
- * @Date: 2024-06-13 16:04:42
- * @LastEditors: {zhengzhuang}
- * @LastEditTime: 2024-06-13 16:04:42
- * @Description:
- */
+
 import Taro from "@tarojs/taro";
 
 /**

@@ -1,10 +1,3 @@
-/*
- * @Author: {zhengzhuang}
- * @Date: 2022-05-26 17:30:51
- * @LastEditors: {zhengzhuang}
- * @LastEditTime: 2022-05-26 17:30:52
- * @Description: In User Settings Edit
- */
 export const HTTP_STATUS = {
   SUCCESS: 200,
   NOT_MODIFIED: 304,

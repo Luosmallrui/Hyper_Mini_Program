@@ -1,10 +1,3 @@
-/*
- * @Author: {zhengzhuang}
- * @Date: 2024-06-13 16:06:49
- * @LastEditors: {zhengzhuang}
- * @LastEditTime: 2024-06-13 18:05:46
- * @Description:
- */
 import type { HttpParams } from './HttpParams';
 import { Http } from './http';
 

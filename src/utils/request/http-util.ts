@@ -1,14 +1,7 @@
-/*
- * @Author: {zhengzhuang}
- * @Date: 2024-06-13 15:59:06
- * @LastEditors: {zhengzhuang}
- * @LastEditTime: 2024-06-13 15:59:06
- * @Description:
- */
+
 import { showToast, removeStorageSync, reLaunch } from '@tarojs/taro';
 
 /**
- * @author zhengzhuang
  * @description http核心工具类
  * 用于扩展各种需求 根据动态参数 插拔式扩展
  */

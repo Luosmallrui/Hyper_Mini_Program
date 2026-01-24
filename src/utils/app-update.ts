@@ -1,10 +1,4 @@
-/*
- * @Author: {zhengzhuang}
- * @Date: 2022-05-30 10:53:48
- * @LastEditors: {zhengzhuang}
- * @LastEditTime: 2024-06-21 11:06:35
- * @Description: In User Settings Edit
- */
+
 import { getUpdateManager, showModal } from '@tarojs/taro';
 
 /**
