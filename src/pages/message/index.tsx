@@ -6,7 +6,7 @@ import 'taro-ui/dist/style/components/icon.scss'
 import './index.scss'
 import { setTabBarIndex } from '../../store/tabbar'
 // 引入封装好的请求工具
-import { request } from '../../utils/request' 
+import { request } from '../../utils/request'
 
 // 1. 接口数据类型定义
 interface SessionItem {
@@ -31,7 +31,7 @@ export default function MessagePage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   Taro.useDidShow(() => {
-    setTabBarIndex(3) 
+    setTabBarIndex(3)
     fetchSessionList()
   })
 
@@ -41,7 +41,6 @@ export default function MessagePage() {
     const menuInfo = Taro.getMenuButtonBoundingClientRect()
     const sbHeight = sysInfo.statusBarHeight || 20
     const nbHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
-    const rightPadding = (sysInfo.screenWidth - menuInfo.left) + 8 
 
     setNavBarPaddingTop(sbHeight)
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
@@ -51,7 +50,7 @@ export default function MessagePage() {
   useEffect(() => {
     const total = sessionList.reduce((acc, curr) => acc + curr.unread, 0)
     setTotalUnread(total)
-    
+
     if (total > 0) {
       Taro.setTabBarBadge({ index: 2, text: total > 99 ? '99+' : String(total) }).catch(() => {})
     } else {
@@ -86,7 +85,7 @@ export default function MessagePage() {
           const newList = [...prevList]
           newList.splice(index, 1) // 删除旧位置
           newList.unshift(updatedItem) // 置顶
-          
+
           return newList
         } else {
           // --- 场景 B：新会话，重新拉取 ---
@@ -109,10 +108,10 @@ export default function MessagePage() {
     try {
       // 1. 检查 access_token (适配双token改动)
       const token = Taro.getStorageSync('access_token')
-      
+
       if (!token) {
         console.warn('[MessagePage] 未登录(无access_token)，跳过请求')
-        return 
+        return
       }
 
       console.log('[MessagePage] 开始请求会话列表...')
@@ -193,11 +192,11 @@ export default function MessagePage() {
     const timeMs = timestamp.toString().length === 10 ? timestamp * 1000 : timestamp
     const date = new Date(timeMs)
     const now = new Date()
-    
+
     const z = (n: number) => (n < 10 ? `0${n}` : n)
-    
-    const isToday = date.getDate() === now.getDate() && 
-                    date.getMonth() === now.getMonth() && 
+
+    const isToday = date.getDate() === now.getDate() &&
+                    date.getMonth() === now.getMonth() &&
                     date.getFullYear() === now.getFullYear()
 
     if (isToday) {
@@ -218,7 +217,7 @@ export default function MessagePage() {
 
   return (
     <View className='message-page'>
-      <View 
+      <View
         className='page-header'
         style={{
           paddingTop: `${navBarPaddingTop}px`,
@@ -231,8 +230,8 @@ export default function MessagePage() {
         </View>
       </View>
 
-      <ScrollView 
-        scrollY 
+      <ScrollView
+        scrollY
         className='message-scroll'
         style={{ paddingTop: `${navBarPaddingTop + navBarHeight}px` }}
         refresherEnabled
@@ -275,7 +274,7 @@ export default function MessagePage() {
                   </View>
                 )}
               </View>
-              
+
               <View className='content-box'>
                 <View className='top-row'>
                   <Text className='title'>{item.peer_name}</Text>
@@ -292,14 +291,14 @@ export default function MessagePage() {
               </View>
             </View>
           ))}
-          
+
           {sessionList.length === 0 && (
              <View className='empty-state'>
                 <Text>暂无聊天消息</Text>
              </View>
           )}
         </View>
-        
+
         <View style={{height: '120px'}} />
       </ScrollView>
     </View>

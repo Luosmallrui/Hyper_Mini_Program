@@ -5,13 +5,6 @@ export default defineAppConfig({
     'pages/activity-list/index',     // 活动列表（信息流模式）
     'pages/my-tickets/index',        // 我的票夹
     // 'pages/order/index',          // 订单列表页面
-    // 'pages/pending-payment/index', // 待付款页面
-    // 'pages/pending-shipment/index', //待发货界面
-    // 'pages/pending-receipt/index', //待收货界面
-
-
-
-    'pages/favorites/index',//收藏
 
 
     'pages/square/index', // 广场界面

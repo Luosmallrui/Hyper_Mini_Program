@@ -1,10 +1,4 @@
-/*
- * @Author: {zhengzhuang}
- * @Date: 2022-05-30 14:20:47
- * @LastEditors: {zhengzhuang}
- * @LastEditTime: 2024-06-13 17:32:21
- * @Description: In User Settings Edit
- */
+
 import { request } from "@/utils";
 
 /**

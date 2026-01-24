@@ -1,6 +1,6 @@
 import { View, Text, Image, ScrollView, Swiper, SwiperItem } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import React, { useState, useEffect, useRef, memo } from 'react'
+import { useState, useEffect, useRef, memo } from 'react'
 import { AtIcon, AtActivityIndicator } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import 'taro-ui/dist/style/components/activity-indicator.scss'
@@ -25,14 +25,14 @@ interface NoteLocation {
   name: string
 }
 interface NoteItem {
-  id: string 
+  id: string
   user_id: number
   title: string
   content: string
   topic_ids: number[]
   location: NoteLocation
-  media_data: NoteMedia[] 
-  type: number 
+  media_data: NoteMedia[]
+  type: number
   status: number
   visible_conf: number
   created_at: string
@@ -43,7 +43,7 @@ interface NoteItem {
   user_avatar?: string
   likes?: number
   is_liked?: boolean
-  finalHeight?: number 
+  finalHeight?: number
 }
 
 // --- 提取子组件并使用 memo 优化性能 (防闪烁关键) ---
@@ -52,18 +52,18 @@ const WaterfallCard = memo(({ item, onClick }: { item: NoteItem, onClick: () => 
   return (
       <View className='waterfall-card' onClick={onClick}>
           {item.media_data && item.media_data.length > 0 ? (
-              <Image 
-                src={item.media_data[0].thumbnail_url || item.media_data[0].url} 
-                mode='aspectFill' 
+              <Image
+                src={item.media_data[0].thumbnail_url || item.media_data[0].url}
+                mode='aspectFill'
                 className='cover'
                   // 这里的 finalHeight 已经在 fetchNotes 中计算好了
-                style={{ width: '100%', height: `${item.finalHeight}px` }} 
+                style={{ width: '100%', height: `${item.finalHeight}px` }}
                 lazyLoad
               />
           ) : (
               <View className='cover-placeholder' style={{height: '200px'}} />
           )}
-          
+
           <View className='info'>
               <Text className='title'>{item.title}</Text>
               <View className='bottom'>
@@ -105,13 +105,13 @@ const InstaCard = memo(({ item, onClick }: { item: NoteItem, onClick: () => void
             </View>
             <AtIcon value='menu' size='20' color='#fff' />
         </View>
-        
+
         <View className='media-wrap'>
             {item.media_data && item.media_data.length > 0 ? (
-                <Image 
-                  src={item.media_data[0].url} 
+                <Image
+                  src={item.media_data[0].url}
                   mode={item.type === 2 ? 'aspectFit' : 'aspectFill'}
-                  className='media-img' 
+                  className='media-img'
                   lazyLoad
                 />
             ) : (
@@ -137,16 +137,16 @@ const InstaCard = memo(({ item, onClick }: { item: NoteItem, onClick: () => void
 
 
 export default function SquarePage() {
-  const [activeIdx, setActiveIdx] = useState(1) 
-  const [myChannels, setMyChannels] = useState(DEFAULT_CHANNELS)
+  const [activeIdx, setActiveIdx] = useState(1)
+  const [myChannels, ] = useState(DEFAULT_CHANNELS)
   const [isChannelEditOpen, setIsChannelEditOpen] = useState(false)
 
   // --- 数据状态 ---
-  const [noteList, setNoteList] = useState<NoteItem[]>([]) 
-  const [leftCol, setLeftCol] = useState<NoteItem[]>([])   
-  const [rightCol, setRightCol] = useState<NoteItem[]>([])  
+  const [noteList, setNoteList] = useState<NoteItem[]>([])
+  const [leftCol, setLeftCol] = useState<NoteItem[]>([])
+  const [rightCol, setRightCol] = useState<NoteItem[]>([])
   const columnHeights = useRef({ left: 0, right: 0 })
-  
+
   // --- 分页状态 ---
   const [cursor, setCursor] = useState<string | number>(0)
   const [hasMore, setHasMore] = useState(true)
@@ -156,14 +156,14 @@ export default function SquarePage() {
   // 布局适配状态
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
-  const [menuButtonWidth, setMenuButtonWidth] = useState(0) 
-  const TAB_HEIGHT = 44 
-  
+  const [menuButtonWidth, setMenuButtonWidth] = useState(0)
+  const TAB_HEIGHT = 44
+
   const itemWidthRef = useRef(0)
 
   useEffect(() => {
     setTabBarIndex(1)
-    
+
     const sysInfo = Taro.getWindowInfo()
     const menuInfo = Taro.getMenuButtonBoundingClientRect()
     const sbHeight = sysInfo.statusBarHeight || 20
@@ -195,13 +195,13 @@ export default function SquarePage() {
     try {
       const currentCursor = isRefresh ? 0 : cursor
       const token = Taro.getStorageSync('access_token')
-      
+
       const res = await Taro.request({
-        url: `${BASE_URL}/api/v1/note/list`, 
+        url: `${BASE_URL}/api/v1/note/list`,
         method: 'GET',
         data: { pageSize: 10, cursor: currentCursor },
         header: { 'Authorization': `Bearer ${token}` },
-        dataType: 'string', 
+        dataType: 'string',
         responseType: 'text'
       })
 
@@ -217,7 +217,7 @@ export default function SquarePage() {
       if (resBody && resBody.code === 200 && resBody.data) {
         const { notes, next_cursor, has_more } = resBody.data
         const rawNotes: any[] = notes || []
-        
+
         const currentItemWidth = itemWidthRef.current
 
         const processedNotes: NoteItem[] = rawNotes.map(item => {
@@ -229,8 +229,8 @@ export default function SquarePage() {
                     mediaList = [item.media_data]
                 }
             }
-            
-            let h = currentItemWidth * 1.33 
+
+            let h = currentItemWidth * 1.33
             if (mediaList.length > 0) {
                 const { width, height } = mediaList[0]
                 if (width && height && width > 0 && height > 0 && currentItemWidth > 0) {
@@ -242,7 +242,7 @@ export default function SquarePage() {
 
             return {
                 ...item,
-                id: String(item.id), 
+                id: String(item.id),
                 media_data: mediaList,
                 user_name: item.nickname || `用户${item.user_id}`,
                 user_avatar: item.avatar || '',
@@ -255,10 +255,10 @@ export default function SquarePage() {
         if (isRefresh) {
           setNoteList(processedNotes)
           columnHeights.current = { left: 0, right: 0 }
-          
+
           const left: NoteItem[] = []
           const right: NoteItem[] = []
-          
+
           processedNotes.forEach(item => {
              const cardTotalHeight = (item.finalHeight || 200) + 85
              if (columnHeights.current.left <= columnHeights.current.right) {
@@ -275,10 +275,10 @@ export default function SquarePage() {
           // 追加数据：使用函数式更新，确保拿到最新的列表
           // 因为有了 Memo 组件，这里 state 更新不会导致旧卡片重绘
           setNoteList(prev => [...prev, ...processedNotes])
-          
+
           const newLeft = [...leftCol]
           const newRight = [...rightCol]
-          
+
           processedNotes.forEach(item => {
              const cardTotalHeight = (item.finalHeight || 200) + 85
              if (columnHeights.current.left <= columnHeights.current.right) {
@@ -409,17 +409,17 @@ export default function SquarePage() {
         </View>
 
         <View className='channel-tabs-row' style={{ height: `${TAB_HEIGHT}px` }}>
-          <ScrollView 
-            scrollX 
-            className='channel-scroll-view' 
+          <ScrollView
+            scrollX
+            className='channel-scroll-view'
             scrollIntoView={`tab-${activeIdx <= 1 ? 0 : activeIdx - 1}`}
             showScrollbar={false}
-            enableFlex 
+            enableFlex
           >
              <View className='tab-container'>
                 {myChannels.map((tab, idx) => (
-                    <View 
-                      key={tab} 
+                    <View
+                      key={tab}
                       id={`tab-${idx}`}
                       className={`tab-item ${activeIdx === idx ? 'active' : ''}`}
                       onClick={() => handleTabClick(idx)}
@@ -431,10 +431,10 @@ export default function SquarePage() {
                 <View style={{ width: '20px' }}></View>
              </View>
           </ScrollView>
-          
-          {/* 
+
+          {/*
              修复点：【展开】按钮样式调整
-             确保它在最右侧，且有背景遮罩防止文字穿透 
+             确保它在最右侧，且有背景遮罩防止文字穿透
           */}
           <View className='expand-btn-side' onClick={() => setIsChannelEditOpen(!isChannelEditOpen)}>
              <View className='gradient-mask' />
@@ -445,7 +445,7 @@ export default function SquarePage() {
         </View>
       </View>
 
-      <Swiper 
+      <Swiper
         className='content-swiper'
         style={{ height: `calc(100vh - ${headerTotalHeight}px)`, marginTop: `${headerTotalHeight}px` }}
         current={activeIdx}
@@ -454,8 +454,8 @@ export default function SquarePage() {
       >
         {myChannels.map((channel) => (
           <SwiperItem key={channel}>
-            <ScrollView 
-              scrollY 
+            <ScrollView
+              scrollY
               className='tab-scroll-view'
               refresherEnabled
               refresherTriggered={isRefreshing}

@@ -1,20 +1,8 @@
-/*
- * @Author: {zhengzhuang}
- * @Date: 2024-06-13 15:58:10
- * @LastEditors: {zhengzhuang}
- * @LastEditTime: 2024-06-14 08:08:36
- * @Description:
- */
+
 import { addInterceptor, getStorageSync, request } from '@tarojs/taro';
 import type { HttpParams } from './HttpParams';
 import { failHandle, httpErrorMsg, toLogin } from './http-util';
 
-/**
- * @author zhengzhuang
- * @description 核心通用http请求配置和拦截器
- * token授权、调试日志、输入输出数据处理、错误异常处理等
- * 基于Taro做跨端网络请求实现: https://taro-docs.jd.com/docs/apis/network/request/
- */
 export class Http {
   // 调式日志标签
   timeLabel = '接口响应总耗时统计';
@@ -23,7 +11,7 @@ export class Http {
   // 是否开启调试 是打印日志等
   isDebug = true;
   // headers参数
-  headers = {};
+  headers: Record<string, string> | undefined = {};
 
   /**
    * 初始化 请求和响应拦截器

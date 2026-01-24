@@ -4,6 +4,7 @@
     "module": "commonjs",
     "removeComments": false,
     "preserveConstEnums": true,
+    "skipLibCheck": true,
     "moduleResolution": "node",
     "experimentalDecorators": true,
     "noImplicitAny": false,

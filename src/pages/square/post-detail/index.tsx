@@ -1,7 +1,7 @@
 import { View, Text, Image, Swiper, SwiperItem, ScrollView, Input } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
-import { AtIcon, AtActivityIndicator, AtFloatLayout } from 'taro-ui'
+import { AtIcon, AtActivityIndicator } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import 'taro-ui/dist/style/components/activity-indicator.scss'
 import 'taro-ui/dist/style/components/float-layout.scss'
@@ -36,12 +36,12 @@ interface CommentItem {
   latest_replies: ReplyItem[];
   reply_cursor?: string;
   reply_has_more?: boolean;
-  reply_loading?: boolean; 
+  reply_loading?: boolean;
 }
 
 interface ReplyTarget {
-  type: 'note' | 'comment' | 'reply'; 
-  id: string; root_id: string; parent_id: string; user: UserInfo; 
+  type: 'note' | 'comment' | 'reply';
+  id: string; root_id: string; parent_id: string; user: UserInfo;
 }
 
 export default function PostDetailPage() {
@@ -51,8 +51,8 @@ export default function PostDetailPage() {
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
   const [navBarPaddingRight, setNavBarPaddingRight] = useState(0)
-  
-  const [currentMedia, setCurrentMedia] = useState(0)
+
+  const [, setCurrentMedia] = useState(0)
   const [note, setNote] = useState<NoteDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -60,17 +60,12 @@ export default function PostDetailPage() {
   const [commentCursor, setCommentCursor] = useState<string>('0')
   const [hasMoreComments, setHasMoreComments] = useState(true)
   const [isCommentLoading, setIsCommentLoading] = useState(false)
-  
+
   const [inputText, setInputText] = useState('')
   const [inputFocus, setInputFocus] = useState(false)
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null)
 
-  // 更多回复弹窗状态
-  const [isReplyModalOpen, setIsReplyModalOpen] = useState(false)
-  const [currentRootComment, setCurrentRootComment] = useState<CommentItem | null>(null)
-  const [modalReplies, setModalReplies] = useState<ReplyItem[]>([])
-  const [modalCursor, setModalCursor] = useState<string>('0')
-  const [modalHasMore, setModalHasMore] = useState(true)
+
 
   useEffect(() => {
     const sysInfo = Taro.getWindowInfo()
@@ -139,7 +134,7 @@ export default function PostDetailPage() {
           const newComments = (comments || []).map((item: CommentItem) => ({
               ...item,
               reply_has_more: item.reply_count > (item.latest_replies?.length || 0),
-              reply_cursor: '0', 
+              reply_cursor: '0',
               reply_loading: false
           }))
           if (isRefresh) setCommentList(newComments)
@@ -157,7 +152,7 @@ export default function PostDetailPage() {
     if (commentIndex === -1) return
     const comment = commentList[commentIndex]
     if (!isRefresh && !comment.reply_has_more) return
-    
+
     // Set local loading
     setCommentList(prev => {
         const newList = [...prev]
@@ -185,7 +180,7 @@ export default function PostDetailPage() {
               // 去重合并
               const existingIds = new Set(target.latest_replies.map(r => r.id))
               const uniqueNewReplies = newReplies.filter((r: ReplyItem) => !existingIds.has(r.id))
-              
+
               newList[commentIndex] = {
                   ...target,
                   latest_replies: isRefresh ? newReplies : [...target.latest_replies, ...uniqueNewReplies],
@@ -210,17 +205,6 @@ export default function PostDetailPage() {
         })
     }
   }
-
-  const openReplyModal = (comment: CommentItem) => {
-      // 这里的逻辑主要用于 FloatLayout，如果完全改用原地展开，这个函数可以保留给“更多”场景
-      setCurrentRootComment(comment)
-      setModalReplies([])
-      setModalCursor('0')
-      setModalHasMore(true)
-      setIsReplyModalOpen(true)
-      // fetchReplies for modal... 暂略，逻辑同上，只是 setModalReplies
-  }
-
   const onClickReply = (type: 'note'|'comment'|'reply', item: any, rootId: string = '0') => {
       setReplyTarget({
           type,
@@ -269,7 +253,7 @@ export default function PostDetailPage() {
     parentCommentId?: string
   ) => {
     const url = isLiked ? '/api/v1/comments/unlike' : '/api/v1/comments/like'
-  
+
     if (type === 'comment') {
       setCommentList(prev =>
         prev.map(c =>
@@ -294,7 +278,7 @@ export default function PostDetailPage() {
         )
       )
     }
-  
+
     try {
       await request({ url, method: 'POST', data: { comment_id: commentId } })
     } catch (e) {
@@ -325,9 +309,9 @@ export default function PostDetailPage() {
       const date = new Date(timeStr)
       return `${date.getMonth()+1}-${date.getDate()}`
   }
-  
-  const handlePreviewImage = (url) => { 
-      Taro.previewImage({ current: url, urls: note?.media_data.map(m=>m.url)||[] }) 
+
+  const handlePreviewImage = (url) => {
+      Taro.previewImage({ current: url, urls: note?.media_data.map(m=>m.url)||[] })
   }
 
   if (loading) return <View className='post-detail-page loading-center'><AtActivityIndicator content='加载中...' color='#999' mode='center'/></View>
@@ -350,13 +334,13 @@ export default function PostDetailPage() {
       </View>
 
       <ScrollView scrollY className='detail-scroll'>
-         <Swiper 
-           className='media-swiper' 
+         <Swiper
+           className='media-swiper'
             // 【核心修改】确保 Swiper 有高度，Image mode 改为 aspectFill 铺满
-           style={{ height: '500px' }} 
-           indicatorDots={note.media_data.length > 1} 
-           indicatorColor='rgba(255,255,255,0.3)' 
-           indicatorActiveColor='#FF2E4D' 
+           style={{ height: '500px' }}
+           indicatorDots={note.media_data.length > 1}
+           indicatorColor='rgba(255,255,255,0.3)'
+           indicatorActiveColor='#FF2E4D'
            onChange={(e) => setCurrentMedia(e.detail.current)}
          >
             {note.media_data.map((item, idx) => (
@@ -381,26 +365,26 @@ export default function PostDetailPage() {
          {/* 评论区 */}
          <View className='comment-section'>
             <Text className='comment-count'>共 {note.comment_count} 条评论</Text>
-            
+
             {commentList.map(comment => (
                 <View key={comment.id} className='comment-item'>
                     <Image src={comment.user.avatar} className='c-avatar' mode='aspectFill' />
                     <View className='c-content'>
-                        
+
                         {/* 一级评论头部：昵称 + 点赞 */}
                         <View className='c-header-row'>
                             <Text className='c-user'>{comment.user.nickname}</Text>
                             {String(comment.user_id) === String(note.user_id) && <Text className='author-tag'>作者</Text>}
-                            
+
                             {/* 【核心修改】一级评论点赞移到头部右侧 */}
-                            <View 
-                              className='c-like-wrap' 
+                            <View
+                              className='c-like-wrap'
                               onClick={(e) => { e.stopPropagation(); handleLikeItem('comment', comment.id, comment.is_liked); }}
                             >
-                                <AtIcon 
-                                  value={comment.is_liked ? 'heart-2' : 'heart'} 
-                                  size='12' 
-                                  color={comment.is_liked ? '#FF2E4D' : '#666'} 
+                                <AtIcon
+                                  value={comment.is_liked ? 'heart-2' : 'heart'}
+                                  size='12'
+                                  color={comment.is_liked ? '#FF2E4D' : '#666'}
                                   className={comment.is_liked ? 'liked-anim' : ''}
                                 />
                                 {comment.like_count > 0 && <Text className='num'>{comment.like_count}</Text>}
@@ -419,7 +403,7 @@ export default function PostDetailPage() {
                                 <View key={reply.id} className='sub-reply-item' onClick={(e) => { e.stopPropagation(); onClickReply('reply', reply, comment.id) }}>
                                     <Image src={reply.user.avatar} className='sub-avatar' mode='aspectFill' />
                                     <View className='sub-right'>
-                                        
+
                                         {/* 二级评论头部：昵称 + 点赞 */}
                                         <View className='sub-header-row'>
                                             <View className='sub-user-info'>
@@ -434,17 +418,17 @@ export default function PostDetailPage() {
                                             </View>
 
                                             {/* 【核心修改】二级评论点赞移到头部右侧 */}
-                                            <View 
+                                            <View
                                               className='sub-like-wrap'
-                                              onClick={(e) => { 
-                                                    e.stopPropagation(); 
+                                              onClick={(e) => {
+                                                    e.stopPropagation();
                                                     // 传入 parentCommentId 以便更新 state
-                                                    handleLikeItem('reply', reply.id, reply.is_liked, comment.id); 
+                                                    handleLikeItem('reply', reply.id, reply.is_liked, comment.id);
                                                 }}
                                             >
-                                                <AtIcon 
-                                                  value={reply.is_liked?'heart-2':'heart'} 
-                                                  size='10' 
+                                                <AtIcon
+                                                  value={reply.is_liked?'heart-2':'heart'}
+                                                  size='10'
                                                   color={reply.is_liked?'#FF2E4D':'#666'}
                                                   className={reply.is_liked ? 'liked-anim' : ''}
                                                 />
@@ -484,7 +468,7 @@ export default function PostDetailPage() {
             {isCommentLoading && <AtActivityIndicator content='加载中...' color='#666' />}
             {!hasMoreComments && commentList.length > 0 && <View className='no-more'>- 没有更多评论了 -</View>}
          </View>
-         
+
          <View style={{height: '120px'}} />
       </ScrollView>
 
@@ -510,7 +494,7 @@ export default function PostDetailPage() {
       {inputFocus && (
           <View className='comment-input-mask' onClick={() => setInputFocus(false)}>
               <View className='real-input-bar' onClick={e => e.stopPropagation()}>
-                  <Input 
+                  <Input
                     className='real-input'
                     placeholder={replyTarget ? `回复 ${replyTarget.user.nickname}` : '说点什么...'}
                     focus={inputFocus}
