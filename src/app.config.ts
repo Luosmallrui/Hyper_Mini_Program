@@ -8,28 +8,14 @@ export default defineAppConfig({
     // 'pages/pending-payment/index', // 待付款页面
     // 'pages/pending-shipment/index', //待发货界面
     // 'pages/pending-receipt/index', //待收货界面
-    'pages/discount/index',    // 优惠
-    'pages/group-buy/index',
-    'pages/bargain/index',
-    'pages/promotion/index',
-    'pages/flash-sale/index',
-    'pages/hotpot-party/index',// 火锅局
-    'pages/cart/index',        // 购物车
-    'pages/coupon/index',  // 添加优惠券页面路由
-    // 'pages/address-edit/index',// 添加收货地址编辑页面路由
-    'pages/recharge/index',//充值
+
+
+
     'pages/favorites/index',//收藏
-    // 'pages/InvoiceRecord/index',//开具发票
-    'pages/survey/index',//问卷调查
-    'pages/cooperation/index',//商务合作
-    'pages/feedback/index',//用户反馈
-    'pages/SiteApplyModal/index',//站点申请
-    'pages/errand/index',//跑腿
-    'pages/agency/index',//代理
-    'pages/president/index',//荟长
-    'pages/redperson/index',//红人申请
+
+
     'pages/square/index', // 广场界面
-    'pages/order-success/index', // 广场界面
+    'pages/order-success/index', // 订单购买成功
     'pages/square/post-create/index', // 发布页
     'pages/square/post-detail/index', // 详情页
     'pages/message/index', // 消息界面

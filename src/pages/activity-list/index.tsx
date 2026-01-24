@@ -19,7 +19,7 @@ const ACTIVITIES = [
     user: 'Pure Loop',
     fans: 5245,
     isVerified: true,
-    cover: 'https://lanhu-oss-proxy.lanhuapp.com/SketchPng16fd5984e6d7ea9ae39d6d392f067361c9d5a637e100b0ec825df6fa8b765a9e',
+    cover: 'https://cdn.hypercn.cn/avatars/02/2/f3f49889.jpeg',
     isFollowed: false,
     isSubscribed: false
   },
@@ -47,7 +47,7 @@ const FILTER_SORTS = ['智能推荐', '距离优先', '人气优先', '高分优
 
 export default function ActivityListPage() {
   const [list, setList] = useState(ACTIVITIES)
-  
+
   // 筛选状态
   const [filterOpen, setFilterOpen] = useState<'none' | 'cat' | 'sort'>('none')
   const [selectedCat, setSelectedCat] = useState('全部')
@@ -65,21 +65,16 @@ export default function ActivityListPage() {
     const contentHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
     setNavBarHeight(contentHeight > 0 ? contentHeight : 44)
   }, [])
-
-  const handleBack = () => {
-    Taro.navigateBack()
-  }
-
-  // 切换关注状态
+// 切换关注状态
   const toggleFollow = (id: number) => {
-    setList(prev => prev.map(item => 
+    setList(prev => prev.map(item =>
       item.id === id ? { ...item, isFollowed: !item.isFollowed } : item
     ))
   }
 
   // 切换订阅状态
   const toggleSubscribe = (id: number) => {
-    setList(prev => prev.map(item => 
+    setList(prev => prev.map(item =>
       item.id === id ? { ...item, isSubscribed: !item.isSubscribed } : item
     ))
   }
@@ -95,8 +90,8 @@ export default function ActivityListPage() {
   return (
     <View className='activity-list-page'>
       {/* 1. 顶部 Header (复用首页逻辑) */}
-      <View 
-        className='custom-header' 
+      <View
+        className='custom-header'
         style={{ top: `${statusBarHeight}px`, height: `${navBarHeight}px` }}
       >
         <View className='left-area'>
@@ -112,18 +107,18 @@ export default function ActivityListPage() {
       </View>
 
       {/* 2. 筛选栏 (Header 下方) */}
-      <View 
-        className='filter-bar' 
+      <View
+        className='filter-bar'
         style={{ top: `${statusBarHeight + navBarHeight}px` }}
       >
-        <View 
-          className={`filter-item ${filterOpen === 'cat' ? 'active' : ''}`} 
+        <View
+          className={`filter-item ${filterOpen === 'cat' ? 'active' : ''}`}
           onClick={() => handleFilterClick('cat')}
         >
           <Text className='txt'>{selectedCat === '全部' ? '全部' : selectedCat}</Text>
           <AtIcon value={filterOpen === 'cat' ? 'chevron-up' : 'chevron-down'} size='10' color={filterOpen === 'cat' ? '#FF2E4D' : '#999'} />
         </View>
-        <View 
+        <View
           className={`filter-item ${filterOpen === 'sort' ? 'active' : ''}`}
           onClick={() => handleFilterClick('sort')}
         >
@@ -138,8 +133,8 @@ export default function ActivityListPage() {
           <View className='mask' onClick={() => setFilterOpen('none')} />
           <View className='dropdown-content'>
             {filterOpen === 'cat' && FILTER_CATS.map(cat => (
-              <View 
-                key={cat} 
+              <View
+                key={cat}
                 className={`dd-item ${selectedCat === cat ? 'selected' : ''}`}
                 onClick={() => { setSelectedCat(cat); setFilterOpen('none'); }}
               >
@@ -147,8 +142,8 @@ export default function ActivityListPage() {
               </View>
             ))}
             {filterOpen === 'sort' && FILTER_SORTS.map(sort => (
-              <View 
-                key={sort} 
+              <View
+                key={sort}
                 className={`dd-item ${selectedSort === sort ? 'selected' : ''}`}
                 onClick={() => { setSelectedSort(sort); setFilterOpen('none'); }}
               >
@@ -160,8 +155,8 @@ export default function ActivityListPage() {
       )}
 
       {/* 4. 列表滚动区 */}
-      <ScrollView 
-        scrollY 
+      <ScrollView
+        scrollY
         className='list-scroll'
         style={{ paddingTop: `${statusBarHeight + navBarHeight + 50}px` }}
       >
@@ -190,7 +185,7 @@ export default function ActivityListPage() {
                 <Text className='title'>{item.title}</Text>
                 <Text className='tag'>{item.tag}</Text>
               </View>
-              
+
               <View className='meta-row'>
                 <AtIcon value='clock' size='12' color='#666' />
                 <Text className='txt'>{item.time}</Text>
@@ -214,15 +209,15 @@ export default function ActivityListPage() {
 
                 <View className='btn-group'>
                   {/* 关注按钮 */}
-                  <View 
+                  <View
                     className={`btn outline ${item.isFollowed ? 'disabled' : ''}`}
                     onClick={(e) => { e.stopPropagation(); toggleFollow(item.id) }}
                   >
                     {item.isFollowed ? '已关注' : '关注'}
                   </View>
-                  
+
                   {/* 订阅按钮 */}
-                  <View 
+                  <View
                     className={`btn outline ${item.isSubscribed ? 'disabled' : ''}`}
                     onClick={(e) => { e.stopPropagation(); toggleSubscribe(item.id) }}
                   >
