@@ -19,6 +19,7 @@ export default defineAppConfig({
 
     'pages/user/index', // 用户界面
     'pages/user/follow-list/index', // 用户关注列表界面
+    'pages/user/profile/index', // 用户关注列表界面
   ],
   window: {
     backgroundTextStyle: 'light',

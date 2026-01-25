@@ -9,7 +9,7 @@ const BASE_URL = 'https://www.hypercn.cn';
 interface UserProfile {
   user_id: string;
   nickname: string;
-  avatar: string;
+  avatar_url: string;
   signature: string;
   gender?: number; // 0-未知 1-男 2-女
   location?: string;
@@ -58,7 +58,7 @@ const UserProfile: React.FC = () => {
     setLoading(true);
     try {
       const res = await Taro.request({
-        url: `${BASE_URL}/api/v1/user/profile`,
+        url: `${BASE_URL}/api/v1/user/info`,
         method: 'GET',
         data: { user_id: userId },
         header: { 'Authorization': `Bearer ${token}` },
@@ -94,7 +94,7 @@ const UserProfile: React.FC = () => {
   const loadUserNotes = async () => {
     try {
       const res = await Taro.request({
-        url: `${BASE_URL}/api/v1/notes/user`,
+        url: `${BASE_URL}/api/v1/user/note`,
         method: 'GET',
         data: { user_id: userId, page: 1, pageSize: 9 },
         header: { 'Authorization': `Bearer ${token}` },
@@ -225,7 +225,7 @@ const UserProfile: React.FC = () => {
           <View className="user-info">
             <Image
               className="avatar"
-              src={userProfile.avatar}
+              src={userProfile.avatar_url}
               mode="aspectFill"
             />
 
