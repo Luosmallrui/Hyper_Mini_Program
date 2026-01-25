@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Image, ScrollView } from '@tarojs/components';
-import Taro, { useRouter } from '@tarojs/taro';
-import { AtIcon } from 'taro-ui';
+import React, {useState, useEffect} from 'react';
+import {View, Text, Image, ScrollView} from '@tarojs/components';
+import Taro, {useRouter} from '@tarojs/taro';
+import {AtIcon} from 'taro-ui';
 import './index.scss';
 
 const BASE_URL = 'https://www.hypercn.cn';
@@ -32,7 +32,7 @@ interface Note {
 
 const UserProfile: React.FC = () => {
   const router = useRouter();
-  const { userId } = router.params;
+  const {userId} = router.params;
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userStats, setUserStats] = useState<UserStats>({
@@ -49,6 +49,9 @@ const UserProfile: React.FC = () => {
   const myUserId = Taro.getStorageSync('userInfo')?.user_id;
 
   useEffect(() => {
+    Taro.setNavigationBarTitle({
+      title: userProfile?.nickname || '个人主页'
+    })
     loadUserProfile();
     loadUserNotes();
   }, [userId]);
@@ -60,8 +63,8 @@ const UserProfile: React.FC = () => {
       const res = await Taro.request({
         url: `${BASE_URL}/api/v1/user/info`,
         method: 'GET',
-        data: { user_id: userId },
-        header: { 'Authorization': `Bearer ${token}` },
+        data: {user_id: userId},
+        header: {'Authorization': `Bearer ${token}`},
         dataType: 'string',
         responseType: 'text'
       });
@@ -70,7 +73,8 @@ const UserProfile: React.FC = () => {
       if (typeof resBody === 'string') {
         try {
           resBody = JSON.parse(resBody);
-        } catch (e) {}
+        } catch (e) {
+        }
       }
 
       if (resBody.code === 200 && resBody.data) {
@@ -96,8 +100,8 @@ const UserProfile: React.FC = () => {
       const res = await Taro.request({
         url: `${BASE_URL}/api/v1/user/note`,
         method: 'GET',
-        data: { user_id: userId, page: 1, pageSize: 9 },
-        header: { 'Authorization': `Bearer ${token}` },
+        data: {user_id: userId, page: 1, pageSize: 9},
+        header: {'Authorization': `Bearer ${token}`},
         dataType: 'string',
         responseType: 'text'
       });
@@ -106,7 +110,8 @@ const UserProfile: React.FC = () => {
       if (typeof resBody === 'string') {
         try {
           resBody = JSON.parse(resBody);
-        } catch (e) {}
+        } catch (e) {
+        }
       }
 
       if (resBody.code === 200 && resBody.data) {
@@ -125,8 +130,8 @@ const UserProfile: React.FC = () => {
       const res = await Taro.request({
         url: `${BASE_URL}/api/v1/follow/${action}`,
         method: 'POST',
-        data: { user_id: userId },
-        header: { 'Authorization': `Bearer ${token}` },
+        data: {user_id: userId},
+        header: {'Authorization': `Bearer ${token}`},
         dataType: 'string',
         responseType: 'text'
       });
@@ -135,7 +140,8 @@ const UserProfile: React.FC = () => {
       if (typeof resBody === 'string') {
         try {
           resBody = JSON.parse(resBody);
-        } catch (e) {}
+        } catch (e) {
+        }
       }
 
       if (resBody.code === 200) {
@@ -209,12 +215,12 @@ const UserProfile: React.FC = () => {
       {/* 自定义导航栏 */}
       <View className="custom-navbar">
         <View className="navbar-content">
-          <View className="back-button" onClick={() => Taro.navigateBack()}>
-            <AtIcon value="chevron-left" size="24" color="#333" />
-          </View>
-          <Text className="navbar-title">{userProfile.nickname}</Text>
+          {/*<View className="back-button" onClick={() => Taro.navigateBack()}>*/}
+          {/*  <AtIcon value="chevron-left" size="24" color="#333"/>*/}
+          {/*</View>*/}
+          {/*<Text className="navbar-title">{userProfile.nickname}</Text>*/}
           <View className="navbar-right">
-            <AtIcon value="ellipsis" size="24" color="#333" />
+            <AtIcon value="ellipsis" size="1" color="#333"/>
           </View>
         </View>
       </View>
@@ -234,12 +240,12 @@ const UserProfile: React.FC = () => {
                 <Text className="nickname">{userProfile.nickname}</Text>
                 {userProfile.gender === 1 && (
                   <View className="gender-badge male">
-                    <AtIcon value="user" size="12" color="#4A90E2" />
+                    <AtIcon value="user" size="12" color="#4A90E2"/>
                   </View>
                 )}
                 {userProfile.gender === 2 && (
                   <View className="gender-badge female">
-                    <AtIcon value="user" size="12" color="#FF6B9D" />
+                    <AtIcon value="user" size="12" color="#FF6B9D"/>
                   </View>
                 )}
               </View>
@@ -252,7 +258,7 @@ const UserProfile: React.FC = () => {
 
               {userProfile.ip_location && (
                 <View className="location">
-                  <AtIcon value="map-pin" size="14" color="#999" />
+                  <AtIcon value="map-pin" size="14" color="#999"/>
                   <Text className="location-text">IP属地: {userProfile.ip_location}</Text>
                 </View>
               )}
@@ -287,7 +293,7 @@ const UserProfile: React.FC = () => {
                 </Text>
               </View>
               <View className="message-btn">
-                <AtIcon value="message" size="20" color="#333" />
+                <AtIcon value="message" size="20" color="#333"/>
               </View>
             </View>
           )}
@@ -297,7 +303,7 @@ const UserProfile: React.FC = () => {
         <View className="tabs-nav">
           <View className="tab-item active">
             <Text className="tab-text">笔记 {userStats.notes || 0}</Text>
-            <View className="tab-indicator" />
+            <View className="tab-indicator"/>
           </View>
           <View className="tab-item">
             <Text className="tab-text">收藏</Text>
@@ -325,7 +331,7 @@ const UserProfile: React.FC = () => {
                   <Text className="note-title">{note.title}</Text>
                   <View className="note-footer">
                     <View className="like-count">
-                      <AtIcon value="heart" size="14" color="#999" />
+                      <AtIcon value="heart" size="14" color="#999"/>
                       <Text className="count-text">{formatNumber(note.like_count)}</Text>
                     </View>
                   </View>
