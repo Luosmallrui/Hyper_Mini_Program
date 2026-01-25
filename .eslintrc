@@ -6,6 +6,6 @@
     "react/jsx-uses-react": "off",
     "react/react-in-jsx-scope": "off",
     "react/jsx-tag-spacing": "off",
-    "jsx-quotes": ["warn", "prefer-single"]
+    "jsx-quotes": ["warn", "prefer-double"]
   }
 }

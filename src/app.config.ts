@@ -16,7 +16,9 @@ export default defineAppConfig({
     'pages/chat/index', // chat detail
     'pages/activity/index', // activity detail (new)
     'pages/activity-attendee/index', // activity attendee (new)
+
     'pages/user/index', // 用户界面
+    'pages/user/follow-list/index', // 用户关注列表界面
   ],
   window: {
     backgroundTextStyle: 'light',

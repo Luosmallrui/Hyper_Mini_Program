@@ -43,9 +43,9 @@ export default function UserPage() {
 
     // 2. 监听全局用户信息更新
     const onUserUpdate = (u: any) => {
-        setUserInfo(u)
-        setIsLogin(true)
-        setNeedPhoneAuth(!u.phone_number)
+      setUserInfo(u)
+      setIsLogin(true)
+      setNeedPhoneAuth(!u.phone_number)
     }
     Taro.eventCenter.on('USER_INFO_UPDATED', onUserUpdate)
 
@@ -53,14 +53,14 @@ export default function UserPage() {
     initLoginState()
 
     return () => {
-        Taro.eventCenter.off('USER_INFO_UPDATED', onUserUpdate)
+      Taro.eventCenter.off('USER_INFO_UPDATED', onUserUpdate)
     }
   }, [])
 
   Taro.useDidShow(() => {
     setTabBarIndex(4)
     if (Taro.getStorageSync('access_token')) {
-       fetchLatestUserInfo()
+      fetchLatestUserInfo()
     }
   })
 
@@ -88,8 +88,8 @@ export default function UserPage() {
   const fetchLatestUserInfo = async () => {
     try {
       const res = await request({
-          url: '/api/v1/user/info',
-          method: 'GET'
+        url: '/api/v1/user/info',
+        method: 'GET'
       })
 
       let resData: any = res.data
@@ -98,20 +98,20 @@ export default function UserPage() {
       }
 
       if (resData && resData.code === 200 && resData.data) {
-          const { user, stats } = resData.data
+        const { user, stats } = resData.data
 
-          setUserInfo(user)
-          if (stats) {
-              setUserStats(stats)
-          }
+        setUserInfo(user)
+        if (stats) {
+          setUserStats(stats)
+        }
 
-          Taro.setStorageSync('userInfo', user)
-          Taro.eventCenter.trigger('USER_INFO_UPDATED', user)
+        Taro.setStorageSync('userInfo', user)
+        Taro.eventCenter.trigger('USER_INFO_UPDATED', user)
 
-          setIsLogin(true)
-          setNeedPhoneAuth(!user.phone_number)
+        setIsLogin(true)
+        setNeedPhoneAuth(!user.phone_number)
       } else {
-          console.warn('获取用户信息失败', resData)
+        console.warn('获取用户信息失败', resData)
       }
     } catch (e) {
       console.error('获取用户信息网络异常', e)
@@ -131,16 +131,16 @@ export default function UserPage() {
   // 点击登出按钮
   const handleLogoutClick = () => {
     setTimeout(() => {
-        Taro.showModal({
+      Taro.showModal({
         title: '提示',
         content: '确定要退出登录吗？',
         confirmColor: '#FF2E4D',
         success: function (res) {
-            if (res.confirm) {
-               handleLogout()
-            }
+          if (res.confirm) {
+            handleLogout()
+          }
         }
-        })
+      })
     }, 50)
   }
 
@@ -163,7 +163,7 @@ export default function UserPage() {
 
       let responseData = res.data
       if (typeof responseData === 'string') {
-          try { responseData = JSON.parse(responseData) } catch(e){}
+        try { responseData = JSON.parse(responseData) } catch(e){}
       }
 
       if (responseData && responseData.code === 200 && responseData.data) {
@@ -183,15 +183,15 @@ export default function UserPage() {
         }
       } else {
         if (!isSilent) {
-            Taro.hideLoading()
-            const errorMsg = responseData?.msg || '登录失败'
-            Taro.showToast({ title: errorMsg, icon: 'none' })
+          Taro.hideLoading()
+          const errorMsg = responseData?.msg || '登录失败'
+          Taro.showToast({ title: errorMsg, icon: 'none' })
         }
       }
     } catch (err) {
       if (!isSilent) {
-          Taro.hideLoading()
-          Taro.showToast({ title: '请求失败', icon: 'none' })
+        Taro.hideLoading()
+        Taro.showToast({ title: '请求失败', icon: 'none' })
       }
     }
   }
@@ -202,24 +202,24 @@ export default function UserPage() {
     Taro.showLoading({ title: '绑定中...' })
 
     try {
-        // 【修改】URL 增加 v1
-        const res = await request({
-            url: '/api/v1/auth/bind-phone',
-            method: 'POST',
-            data: { phone_code: e.detail.code }
-        })
+      // 【修改】URL 增加 v1
+      const res = await request({
+        url: '/api/v1/auth/bind-phone',
+        method: 'POST',
+        data: { phone_code: e.detail.code }
+      })
 
-        Taro.hideLoading()
-        const rd: any = res.data
-        if (rd && rd.code === 200) {
-            Taro.showToast({ title: '绑定成功', icon: 'success' })
-            fetchLatestUserInfo()
-        } else {
-            Taro.showToast({ title: rd?.msg || '绑定失败', icon: 'none' })
-        }
+      Taro.hideLoading()
+      const rd: any = res.data
+      if (rd && rd.code === 200) {
+        Taro.showToast({ title: '绑定成功', icon: 'success' })
+        fetchLatestUserInfo()
+      } else {
+        Taro.showToast({ title: rd?.msg || '绑定失败', icon: 'none' })
+      }
     } catch (error) {
-        Taro.hideLoading()
-        Taro.showToast({ title: '网络请求失败', icon: 'none' })
+      Taro.hideLoading()
+      Taro.showToast({ title: '网络请求失败', icon: 'none' })
     }
   }
 
@@ -230,8 +230,8 @@ export default function UserPage() {
 
   const handleOpenEdit = () => {
     if (!isLogin) {
-        handleLogin(false)
-        return
+      handleLogin(false)
+      return
     }
     setTempAvatar(userInfo.avatar_url || '')
     setTempNickname(userInfo.nickname || '')
@@ -241,61 +241,98 @@ export default function UserPage() {
 
   // 保存资料
   const handleSubmitProfile = async () => {
-      if (!tempNickname) { Taro.showToast({ title: '请输入昵称', icon: 'none' }); return }
-      Taro.showLoading({ title: '保存中...' })
-      const token = Taro.getStorageSync('access_token')
+    if (!tempNickname) { Taro.showToast({ title: '请输入昵称', icon: 'none' }); return }
+    Taro.showLoading({ title: '保存中...' })
+    const token = Taro.getStorageSync('access_token')
 
-      try {
-        let finalAvatarUrl = userInfo.avatar_url
-        const isNewImage = tempAvatar.startsWith('http') && !tempAvatar.includes('mmbiz.qpic.cn') || tempAvatar.startsWith('wxfile')
+    try {
+      let finalAvatarUrl = userInfo.avatar_url
+      const isNewImage = tempAvatar.startsWith('http') && !tempAvatar.includes('mmbiz.qpic.cn') || tempAvatar.startsWith('wxfile')
 
-        if (isNewImage) {
-            const upRes = await Taro.uploadFile({
-                url: `${BASE_URL}/api/v1/user/avatar`,
-                filePath: tempAvatar,
-                name: 'image',
-                header: { 'Authorization': `Bearer ${token}` }
-            })
-            let upData: any = {}
-            try { upData = JSON.parse(upRes.data) } catch(e) { throw new Error('头像上传解析失败') }
-
-            if (upData.code === 200) {
-                 finalAvatarUrl = (typeof upData.data === 'string') ? upData.data : upData.data?.url
-            } else {
-                 throw new Error(upData.msg || '头像上传失败')
-            }
-        } else if (tempAvatar !== userInfo.avatar_url) {
-            finalAvatarUrl = tempAvatar
-        }
-
-        const upInfoRes = await request({
-            url: '/api/v1/user/info',
-            method: 'POST',
-            data: { nickname: tempNickname, avatar: finalAvatarUrl }
+      if (isNewImage) {
+        const upRes = await Taro.uploadFile({
+          url: `${BASE_URL}/api/v1/user/avatar`,
+          filePath: tempAvatar,
+          name: 'image',
+          header: { 'Authorization': `Bearer ${token}` }
         })
+        let upData: any = {}
+        try { upData = JSON.parse(upRes.data) } catch(e) { throw new Error('头像上传解析失败') }
 
-        Taro.hideLoading()
-
-        const rd: any = upInfoRes.data
-        if (rd && rd.code === 200) {
-            setShowAuthModal(false)
-            Taro.showToast({ title: '保存成功', icon: 'success' })
-            fetchLatestUserInfo()
+        if (upData.code === 200) {
+          finalAvatarUrl = (typeof upData.data === 'string') ? upData.data : upData.data?.url
         } else {
-            Taro.showToast({ title: rd?.msg || '保存失败', icon: 'none' })
+          throw new Error(upData.msg || '头像上传失败')
         }
-      } catch(err: any) {
-          Taro.hideLoading()
-          Taro.showToast({ title: err.message || '操作失败', icon: 'none' })
+      } else if (tempAvatar !== userInfo.avatar_url) {
+        finalAvatarUrl = tempAvatar
       }
+
+      const upInfoRes = await request({
+        url: '/api/v1/user/info',
+        method: 'POST',
+        data: { nickname: tempNickname, avatar: finalAvatarUrl }
+      })
+
+      Taro.hideLoading()
+
+      const rd: any = upInfoRes.data
+      if (rd && rd.code === 200) {
+        setShowAuthModal(false)
+        Taro.showToast({ title: '保存成功', icon: 'success' })
+        fetchLatestUserInfo()
+      } else {
+        Taro.showToast({ title: rd?.msg || '保存失败', icon: 'none' })
+      }
+    } catch(err: any) {
+      Taro.hideLoading()
+      Taro.showToast({ title: err.message || '操作失败', icon: 'none' })
+    }
   }
+
+  // ✅ 新增：格式化数字
+  const formatNumber = (num: number | string): string => {
+    if (num === '-') return '-';
+    const value = Number(num);
+    if (value >= 10000) {
+      return (value / 10000).toFixed(1).replace(/\.0$/, '') + 'w';
+    }
+    if (value >= 1000) {
+      return (value / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    }
+    return String(value);
+  };
+
+  // ✅ 新增：处理统计数据点击
+  const handleStatClick = (type: string | null) => {
+    // 未登录或无数据时不跳转
+    if (!isLogin || !hasData || !type) return;
+
+    Taro.navigateTo({
+      url: `/pages/user/follow-list/index?type=${type}&userId=${userInfo.user_id || ''}`
+    });
+  };
 
   // 界面配置
   const hasData = isLogin || needPhoneAuth;
+
+  // ✅ 修改：给 stats 添加 type 字段
   const stats = [
-    { label: '关注', value: hasData ? userStats?.following || 0 : '-' },
-    { label: '粉丝', value: hasData ? userStats?.follower || 0 : '-' },
-    { label: '赞/收藏', value: hasData ? userStats?.likes || 0 : '-' },
+    {
+      label: '关注',
+      value: hasData ? userStats?.following || 0 : '-',
+      type: 'following' // 关注列表
+    },
+    {
+      label: '粉丝',
+      value: hasData ? userStats?.follower || 0 : '-',
+      type: 'follower' // 粉丝列表
+    },
+    {
+      label: '赞/收藏',
+      value: hasData ? userStats?.likes || 0 : '-',
+      type: null // 不可点击
+    },
   ];
 
   const mainNavItems = [
@@ -322,21 +359,21 @@ export default function UserPage() {
   return (
     <View className='user-page-dark'>
       <View className='custom-nav-bar' style={{ height: `${statusBarHeight + navBarHeight}px` }}>
-          <View style={{ height: `${statusBarHeight}px` }} />
-          <View className='nav-bar-content' style={{ height: `${navBarHeight}px` }}>
-              <Text className='page-title'>我的</Text>
-          </View>
+        <View style={{ height: `${statusBarHeight}px` }} />
+        <View className='nav-bar-content' style={{ height: `${navBarHeight}px` }}>
+          <Text className='page-title'>我的</Text>
+        </View>
       </View>
 
       <View className='header-section' style={{ marginTop: `${statusBarHeight + navBarHeight}px` }}>
         <View className='user-profile'>
           <View className='avatar-container'>
             {hasData && userInfo.avatar_url ? (
-               <Image className='avatar-img' src={userInfo.avatar_url} mode='aspectFill' />
+              <Image className='avatar-img' src={userInfo.avatar_url} mode='aspectFill' />
             ) : (
-               <View className='avatar-placeholder'>
-                 <AtIcon value='user' size='30' color='#999' />
-               </View>
+              <View className='avatar-placeholder'>
+                <AtIcon value='user' size='30' color='#999' />
+              </View>
             )}
           </View>
 
@@ -362,16 +399,21 @@ export default function UserPage() {
           </View>
 
           <View className='edit-btn-wrap'>
-             <View className='edit-profile-btn' onClick={handleOpenEdit}>
-                {isLogin ? '编辑资料' : '去登录'}
-             </View>
+            <View className='edit-profile-btn' onClick={handleOpenEdit}>
+              {isLogin ? '编辑资料' : '去登录'}
+            </View>
           </View>
         </View>
 
+        {/* ✅ 修改：添加点击事件和 className */}
         <View className='stats-row'>
           {stats.map((stat, index) => (
-            <View key={index} className='stat-item'>
-              <Text className='stat-val'>{stat.value}</Text>
+            <View
+              key={index}
+              className={`stat-item ${stat.type ? 'clickable' : ''}`}
+              onClick={() => handleStatClick(stat.type)}
+            >
+              <Text className='stat-val'>{formatNumber(stat.value)}</Text>
               <Text className='stat-lbl'>{stat.label}</Text>
             </View>
           ))}
@@ -395,30 +437,30 @@ export default function UserPage() {
 
 
       <View className='section-card'>
-         <View className='section-header'>
-            <View className='tab-active'><Text>我的订阅</Text></View>
-            <View className='tab-inactive'><Text>动态</Text></View>
-            <Text className='section-extra'>3个活动</Text>
-         </View>
-         <View className='scroll-row'>
-            {[1, 2, 3].map((i) => (
-               <View key={i} className='activity-card'>
-                  <View className='status-tag'><Text>进行中</Text></View>
-               </View>
-            ))}
-         </View>
+        <View className='section-header'>
+          <View className='tab-active'><Text>我的订阅</Text></View>
+          <View className='tab-inactive'><Text>动态</Text></View>
+          <Text className='section-extra'>3个活动</Text>
+        </View>
+        <View className='scroll-row'>
+          {[1, 2, 3].map((i) => (
+            <View key={i} className='activity-card'>
+              <View className='status-tag'><Text>进行中</Text></View>
+            </View>
+          ))}
+        </View>
       </View>
 
       <View className='section-card'>
-         <View className='section-header'>
-            <Text className='section-title'>我参与的</Text>
-            <Text className='section-more'>查看全部</Text>
-         </View>
-         <View className='scroll-row'>
-             {[1, 2, 3].map((i) => (
-               <View key={i} className='poster-card' />
-             ))}
-         </View>
+        <View className='section-header'>
+          <Text className='section-title'>我参与的</Text>
+          <Text className='section-more'>查看全部</Text>
+        </View>
+        <View className='scroll-row'>
+          {[1, 2, 3].map((i) => (
+            <View key={i} className='poster-card' />
+          ))}
+        </View>
       </View>
 
       {isLogin && (
