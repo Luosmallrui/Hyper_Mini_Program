@@ -14,7 +14,7 @@ interface UserProfile {
   gender?: number;
   location?: string;
   ip_location?: string;
-  join_date?: string;
+  created_at?: string;
 }
 
 interface UserStats {
@@ -25,12 +25,26 @@ interface UserStats {
 }
 
 interface Note {
-  note_id: string;
-  cover: string;
+  id: string | number; // 改为 string | number，兼容两种类型
+  user_id: number;
   title: string;
+  type: number;
+  created_at: string;
+  updated_at: string;
+  media_data: {
+    url: string;
+    thumbnail_url: string;
+    width: number;
+    height: number;
+    duration: number;
+  };
   like_count: number;
-  author_avatar?: string;
-  author_name?: string;
+  coll_count: number;
+  share_count: number;
+  comment_count: number;
+  is_liked: boolean;
+  is_collected: boolean;
+  is_followed: boolean;
 }
 
 const UserProfilePage: React.FC = () => {
@@ -39,72 +53,27 @@ const UserProfilePage: React.FC = () => {
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userStats, setUserStats] = useState<UserStats>({
-    following: 12,
-    follower: 48,
-    likes: 12,
+    following: 0,
+    follower: 0,
+    likes: 0,
     notes: 0
   });
   const [noteList, setNoteList] = useState<Note[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [activeTab, setActiveTab] = useState<'activity' | 'dynamic'>('dynamic');
+  const [cursor, setCursor] = useState<string>('');
+  const [hasMore, setHasMore] = useState(false);
 
   const token = Taro.getStorageSync('access_token');
   const myUserId = Taro.getStorageSync('userInfo')?.user_id;
 
-  // 模拟数据 - 实际使用时从接口获取
-  const mockUserProfile: UserProfile = {
-    user_id: 'Hyper14076729928',
-    nickname: 'Hyper14076729928',
-    avatar_url: 'https://lanhu-dds-backend.oss-cn-beijing.aliyuncs.com/merge_image/imgs/0c4dd0045b5c4630b47d7e60726341cb_mergeImage.png',
-    signature: '',
-    join_date: '2025-09-12'
-  };
-
-  const mockNotes: Note[] = [
-    {
-      note_id: '1',
-      cover: 'https://lanhu-dds-backend.oss-cn-beijing.aliyuncs.com/merge_image/imgs/2a899dd81faf4032bb6be8419d3833e6_mergeImage.png',
-      title: '我来自祖安，想带你尝尝微光❤️',
-      like_count: 1014,
-      author_avatar: 'https://lanhu-dds-backend.oss-cn-beijing.aliyuncs.com/merge_image/imgs/68b2dc1aa7fc4f538f0d31970500c074_mergeImage.png',
-      author_name: '小蝴蝶不谈恋爱'
-    },
-    {
-      note_id: '2',
-      cover: 'https://lanhu-dds-backend.oss-cn-beijing.aliyuncs.com/merge_image/imgs/7335858173e442269d23e2f73c6ecd24_mergeImage.png',
-      title: '泳池派对｜原来你跟谁玩都那么开心我讨厌你😭',
-      like_count: 2301,
-      author_avatar: 'https://lanhu-dds-backend.oss-cn-beijing.aliyuncs.com/merge_image/imgs/3b5965a03bb641d395ffac51d0755c06_mergeImage.png',
-      author_name: '倩十三三'
-    },
-    {
-      note_id: '3',
-      cover: 'https://lanhu-dds-backend.oss-cn-beijing.aliyuncs.com/merge_image/imgs/04daae7c23c647658e3673223368bd4a_mergeImage.png',
-      title: '夏日清凉穿搭分享',
-      like_count: 856,
-      author_avatar: 'https://lanhu-dds-backend.oss-cn-beijing.aliyuncs.com/merge_image/imgs/68b2dc1aa7fc4f538f0d31970500c074_mergeImage.png',
-      author_name: '时尚博主'
-    },
-    {
-      note_id: '4',
-      cover: 'https://lanhu-dds-backend.oss-cn-beijing.aliyuncs.com/merge_image/imgs/77caebfa17444f1eac83488c26afe703_mergeImage.png',
-      title: '周末好去处推荐',
-      like_count: 1523,
-      author_avatar: 'https://lanhu-dds-backend.oss-cn-beijing.aliyuncs.com/merge_image/imgs/3b5965a03bb641d395ffac51d0755c06_mergeImage.png',
-      author_name: '旅行达人'
-    }
-  ];
-
   useEffect(() => {
-    // 使用模拟数据
-    setUserProfile(mockUserProfile);
-    setNoteList(mockNotes);
-    setLoading(false);
-
-    // 实际使用时取消注释以下代码
-    // loadUserProfile();
-    // loadUserNotes();
+    if (userId) {
+      loadUserProfile();
+      loadUserNotes();
+    }
   }, [userId]);
 
   // 加载用户资料
@@ -124,7 +93,9 @@ const UserProfilePage: React.FC = () => {
       if (typeof resBody === 'string') {
         try {
           resBody = JSON.parse(resBody);
-        } catch (e) {}
+        } catch (e) {
+          console.error('解析响应失败:', e);
+        }
       }
 
       if (resBody.code === 200 && resBody.data) {
@@ -136,38 +107,96 @@ const UserProfilePage: React.FC = () => {
           notes: 0
         });
         setIsFollowing(resBody.data.is_following || false);
+      } else {
+        Taro.showToast({
+          title: resBody.msg || '加载失败',
+          icon: 'none'
+        });
       }
     } catch (error) {
       console.error('加载用户资料失败:', error);
+      Taro.showToast({
+        title: '网络请求失败',
+        icon: 'none'
+      });
     } finally {
       setLoading(false);
     }
   };
 
   // 加载用户笔记/动态
-  const loadUserNotes = async () => {
+  const loadUserNotes = async (isLoadMore: boolean = false) => {
+    // 如果正在加载更多，避免重复请求
+    if (isLoadMore && loadingMore) return;
+
+    if (isLoadMore) {
+      setLoadingMore(true);
+    }
+
     try {
+      const params: any = {
+        user_id: userId,
+        pageSize: 20
+      };
+
+      // 如果是加载更多，则传入 cursor
+      if (isLoadMore && cursor) {
+        params.cursor = cursor;
+      }
+
       const res = await Taro.request({
         url: `${BASE_URL}/api/v1/user/note`,
         method: 'GET',
-        data: { user_id: userId, page: 1, pageSize: 9 },
+        data: params,
         header: { 'Authorization': `Bearer ${token}` },
-        dataType: 'string',
+        dataType: 'string', // 关键：设置为 string，避免 JSON 自动解析时丢失精度
         responseType: 'text'
       });
 
       let resBody: any = res.data;
       if (typeof resBody === 'string') {
         try {
-          resBody = JSON.parse(resBody);
-        } catch (e) {}
+          // 使用自定义解析，保留 id 为字符串
+          resBody = JSON.parse(resBody, (key, value) => {
+            // 如果是 id 字段且是大数字，保持为字符串
+            if (key === 'id' && typeof value === 'number' && value > Number.MAX_SAFE_INTEGER) {
+              return String(value);
+            }
+            return value;
+          });
+        } catch (e) {
+          console.error('解析响应失败:', e);
+        }
       }
 
       if (resBody.code === 200 && resBody.data) {
-        setNoteList(resBody.data.list || []);
+        const newNotes = resBody.data.notes || [];
+
+        if (isLoadMore) {
+          setNoteList(prev => [...prev, ...newNotes]);
+        } else {
+          setNoteList(newNotes);
+        }
+
+        // 更新分页信息
+        setCursor(resBody.data.next_cursor || '');
+        setHasMore(resBody.data.has_more || false);
+      } else {
+        Taro.showToast({
+          title: resBody.msg || '加载失败',
+          icon: 'none'
+        });
       }
     } catch (error) {
       console.error('加载笔记失败:', error);
+      Taro.showToast({
+        title: '网络请求失败',
+        icon: 'none'
+      });
+    } finally {
+      if (isLoadMore) {
+        setLoadingMore(false);
+      }
     }
   };
 
@@ -189,7 +218,9 @@ const UserProfilePage: React.FC = () => {
       if (typeof resBody === 'string') {
         try {
           resBody = JSON.parse(resBody);
-        } catch (e) {}
+        } catch (e) {
+          console.error('解析响应失败:', e);
+        }
       }
 
       if (resBody.code === 200) {
@@ -203,8 +234,14 @@ const UserProfilePage: React.FC = () => {
           title: isFollowing ? '已取消关注' : '已关注',
           icon: 'success'
         });
+      } else {
+        Taro.showToast({
+          title: resBody.msg || '操作失败',
+          icon: 'none'
+        });
       }
     } catch (error) {
+      console.error('关注操作失败:', error);
       Taro.showToast({
         title: '操作失败',
         icon: 'none'
@@ -223,6 +260,16 @@ const UserProfilePage: React.FC = () => {
     return String(num);
   };
 
+  // 计算图片显示高度（基于宽度和原始比例）
+  const calculateImageHeight = (width: number, height: number): number => {
+    const containerWidth = (Taro.getSystemInfoSync().windowWidth - 40) / 2; // 减去padding和gap
+    const aspectRatio = height / width;
+    const calculatedHeight = containerWidth * aspectRatio;
+
+    // 限制高度在 200-400px 之间
+    return Math.min(Math.max(calculatedHeight, 200), 400);
+  };
+
   // 跳转到关注/粉丝列表
   const handleStatsClick = (type: string) => {
     if (type === 'likes') return;
@@ -232,9 +279,12 @@ const UserProfilePage: React.FC = () => {
   };
 
   // 跳转到笔记详情
-  const handleNoteClick = (noteId: string) => {
+  const handleNoteClick = (noteId: string | number) => {
+    // 确保 noteId 是字符串
+    const id = String(noteId);
+    console.log('跳转到笔记详情, ID:', id);
     Taro.navigateTo({
-      url: `/pages/note/detail/index?noteId=${noteId}`
+      url: `/pages/square/post-detail/index?id=${id}`
     });
   };
 
@@ -283,7 +333,16 @@ const UserProfilePage: React.FC = () => {
         </View>
       </View>
 
-      <ScrollView className="scroll-content" scrollY>
+      <ScrollView
+        className="scroll-content"
+        scrollY
+        onScrollToLower={() => {
+          if (hasMore && !loading) {
+            loadUserNotes(true);
+          }
+        }}
+        lowerThreshold={100}
+      >
         {/* 头部背景区域 */}
         <View className="header-section">
           {/* 背景装饰 */}
@@ -305,9 +364,11 @@ const UserProfilePage: React.FC = () => {
 
             <Text className="username">{userProfile.nickname}</Text>
 
-            {userProfile.join_date && (
+            {userProfile.created_at && (
               <View className="join-date">
-                <Text className="join-text">{userProfile.join_date} 加入HYPER</Text>
+                <Text className="join-text">
+                  {userProfile.created_at.split('T')[0]} 加入HYPER
+                </Text>
               </View>
             )}
 
@@ -369,76 +430,92 @@ const UserProfilePage: React.FC = () => {
           {noteList.length > 0 ? (
             <View className="waterfall-container">
               <View className="waterfall-column">
-                {noteList.filter((_, i) => i % 2 === 0).map(note => (
-                  <View
-                    key={note.note_id}
-                    className="note-card"
-                    onClick={() => handleNoteClick(note.note_id)}
-                  >
-                    <Image
-                      className="note-cover"
-                      src={note.cover}
-                      mode="aspectFill"
-                    />
-                    <View className="note-info">
-                      <Text className="note-title">{note.title}</Text>
-                      <View className="note-footer">
-                        <View className="author-info">
-                          <Image
-                            className="author-avatar"
-                            src={note.author_avatar || userProfile.avatar_url}
-                            mode="aspectFill"
-                          />
-                          <Text className="author-name">{note.author_name || userProfile.nickname}</Text>
-                        </View>
-                        <View className="like-info">
-                          <Image
-                            className="like-icon"
-                            src="https://lanhu-oss-proxy.lanhuapp.com/SketchPng56c4ed6e45b36ac80da5a57945656d859402021c84bb632895042bc45d1d384d"
-                            mode="aspectFit"
-                          />
-                          <Text className="like-count">{formatNumber(note.like_count)}</Text>
+                {noteList.filter((_, i) => i % 2 === 0).map(note => {
+                  const imageHeight = calculateImageHeight(
+                    note.media_data.width,
+                    note.media_data.height
+                  );
+
+                  return (
+                    <View
+                      key={String(note.id)}
+                      className="note-card"
+                      onClick={() => handleNoteClick(note.id)}
+                    >
+                      <Image
+                        className="note-cover"
+                        src={note.media_data.thumbnail_url || note.media_data.url}
+                        mode="aspectFill"
+                        style={{ height: `${imageHeight}px` }}
+                      />
+                      <View className="note-info">
+                        <Text className="note-title">{note.title}</Text>
+                        <View className="note-footer">
+                          <View className="author-info">
+                            <Image
+                              className="author-avatar"
+                              src={userProfile.avatar_url}
+                              mode="aspectFill"
+                            />
+                            <Text className="author-name">{userProfile.nickname}</Text>
+                          </View>
+                          <View className="like-info">
+                            <Image
+                              className="like-icon"
+                              src="https://lanhu-oss-proxy.lanhuapp.com/SketchPng56c4ed6e45b36ac80da5a57945656d859402021c84bb632895042bc45d1d384d"
+                              mode="aspectFit"
+                            />
+                            <Text className="like-count">{formatNumber(note.like_count)}</Text>
+                          </View>
                         </View>
                       </View>
                     </View>
-                  </View>
-                ))}
+                  );
+                })}
               </View>
               <View className="waterfall-column">
-                {noteList.filter((_, i) => i % 2 === 1).map(note => (
-                  <View
-                    key={note.note_id}
-                    className="note-card"
-                    onClick={() => handleNoteClick(note.note_id)}
-                  >
-                    <Image
-                      className="note-cover"
-                      src={note.cover}
-                      mode="aspectFill"
-                    />
-                    <View className="note-info">
-                      <Text className="note-title">{note.title}</Text>
-                      <View className="note-footer">
-                        <View className="author-info">
-                          <Image
-                            className="author-avatar"
-                            src={note.author_avatar || userProfile.avatar_url}
-                            mode="aspectFill"
-                          />
-                          <Text className="author-name">{note.author_name || userProfile.nickname}</Text>
-                        </View>
-                        <View className="like-info">
-                          <Image
-                            className="like-icon"
-                            src="https://lanhu-oss-proxy.lanhuapp.com/SketchPng5379aaf9ac689ec74e734de4db8beca5e1e59dfd9f6996e73d01dc59d51db754"
-                            mode="aspectFit"
-                          />
-                          <Text className="like-count">{formatNumber(note.like_count)}</Text>
+                {noteList.filter((_, i) => i % 2 === 1).map(note => {
+                  const imageHeight = calculateImageHeight(
+                    note.media_data.width,
+                    note.media_data.height
+                  );
+
+                  return (
+                    <View
+                      key={String(note.id)}
+                      className="note-card"
+                      onClick={() => handleNoteClick(note.id)}
+                    >
+                      <Image
+                        className="note-cover"
+                        src={note.media_data.thumbnail_url || note.media_data.url}
+                        mode="aspectFill"
+                        style={{ height: `${imageHeight}px` }}
+                      />
+                      <View className="note-info">
+                        <Text className="note-title">{note.title}</Text>
+                        <View className="note-footer">
+                          <View className="author-info">
+                            <Image
+                              className="author-avatar"
+                              src={userProfile.avatar_url}
+                              mode="aspectFill"
+                            />
+                            <Text className="author-name">{userProfile.nickname}</Text>
+                          </View>
+                          <View className="like-info">
+                            <Image
+                              className="like-icon"
+                              src="https://lanhu-oss-proxy.lanhuapp.com/SketchPng5379aaf9ac689ec74e734de4db8beca5e1e59dfd9f6996e73d01dc59d51db754"
+                              mode="aspectFit"
+                            />
+                            <Text className="like-count">{formatNumber(note.like_count)}</Text>
+                          </View>
                         </View>
                       </View>
                     </View>
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             </View>
           ) : (
@@ -447,6 +524,20 @@ const UserProfilePage: React.FC = () => {
               <Text className="empty-text">
                 {isMe ? '还没有发布动态' : 'TA还没有发布动态'}
               </Text>
+            </View>
+          )}
+
+          {/* 加载更多提示 */}
+          {loadingMore && (
+            <View className="loading-more">
+              <Text className="loading-more-text">加载中...</Text>
+            </View>
+          )}
+
+          {/* 没有更多数据提示 */}
+          {!hasMore && noteList.length > 0 && (
+            <View className="no-more">
+              <Text className="no-more-text">没有更多了</Text>
             </View>
           )}
         </View>

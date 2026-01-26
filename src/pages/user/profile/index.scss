@@ -337,14 +337,11 @@ $accent-color: #c7c7c7;
   }
 
   .note-cover {
+    display: block;
     width: 100%;
-    height: auto;
-    min-height: 300px;
-    max-height: 480px;
     object-fit: cover;
     border-radius: 16px 16px 0 0;
   }
-
   .note-info {
     padding: 20px;
 
