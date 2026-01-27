@@ -164,7 +164,7 @@ export default function PointsPage() {
         <View className="navbar-right">
           <Image
             className="more-icon"
-            src={require('../../../assets/images/coin.webp')}
+            src={require('../../../assets/images/coin.png')}
             mode="aspectFit"
           />
         </View>
