@@ -1,0 +1,206 @@
+.follow-list-page {
+  min-height: 100vh;
+  height: 100vh;
+  background: #000000;
+  color: #ffffff;
+  overflow: hidden;
+
+  .custom-navbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .navbar-content {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32rpx;
+  }
+
+  .back-button {
+    width: 64rpx;
+    height: 64rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .navbar-right {
+    width: 64rpx;
+    height: 64rpx;
+  }
+
+  .tabs {
+    display: flex;
+    align-items: center;
+    gap: 48rpx;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .tab-item {
+    position: relative;
+    padding: 8rpx 0;
+
+    .tab-text {
+      font-size: 30rpx;
+      color: #8f8f8f;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    &.active {
+      .tab-text {
+        color: #ffffff;
+      }
+
+      .tab-indicator {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40rpx;
+        height: 4rpx;
+        background: #ffffff;
+        border-radius: 2rpx;
+      }
+    }
+  }
+
+  .scroll-view {
+    padding: 24rpx 0 40rpx;
+    background: #000000;
+  }
+
+  .user-list {
+    padding: 0 32rpx;
+    background: transparent;
+  }
+
+  .user-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24rpx 0;
+    border-bottom: 1rpx solid rgba(255, 255, 255, 0.08);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 24rpx;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .avatar {
+      width: 96rpx;
+      height: 96rpx;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
+    }
+
+    .info-content {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8rpx;
+    }
+
+    .nickname {
+      font-size: 30rpx;
+      color: #ffffff;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .signature {
+      font-size: 24rpx;
+      color: #9c9c9c;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .action-btn {
+      margin-left: 24rpx;
+      flex-shrink: 0;
+    }
+
+    .btn {
+      padding: 12rpx 32rpx;
+      border-radius: 32rpx;
+      transition: transform 0.2s ease;
+
+      &:active {
+        transform: scale(0.95);
+      }
+
+      .btn-text {
+        font-size: 26rpx;
+        font-weight: 500;
+        line-height: 1;
+      }
+
+      &.btn-mutual,
+      &.btn-following {
+        background: rgba(255, 255, 255, 0.12);
+
+        .btn-text {
+          color: #d0d0d0;
+        }
+      }
+
+      &.btn-follow {
+        background: #ff2e4d;
+
+        .btn-text {
+          color: #ffffff;
+        }
+      }
+    }
+  }
+
+  .loading-more,
+  .no-more {
+    padding: 40rpx 0;
+    text-align: center;
+
+    .loading-text,
+    .no-more-text {
+      font-size: 24rpx;
+      color: #9c9c9c;
+    }
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 200rpx 0;
+
+    .empty-icon {
+      font-size: 120rpx;
+      margin-bottom: 32rpx;
+    }
+
+    .empty-text {
+      font-size: 28rpx;
+      color: #9c9c9c;
+    }
+  }
+}

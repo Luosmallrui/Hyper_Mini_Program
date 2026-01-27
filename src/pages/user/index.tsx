@@ -9,16 +9,18 @@ import './index.scss';
 
 const BASE_URL = 'https://www.hypercn.cn';
 
+interface NoteMedia {
+  url: string;
+  thumbnail_url: string;
+  width: number;
+  height: number;
+}
+
 interface Note {
   id: string;
   title: string;
   content: string;
-  media_data: Array<{
-    url: string;
-    thumbnail_url: string;
-    width: number;
-    height: number;
-  }>;
+  media_data: NoteMedia[];
   type: number;
   created_at: string;
 }
@@ -31,7 +33,6 @@ interface UserStats {
 }
 
 export default function UserPage() {
-  // 用户状态
   const [isLogin, setIsLogin] = useState(false);
   const [userInfo, setUserInfo] = useState<any>({});
   const [userStats, setUserStats] = useState<UserStats>({
@@ -41,30 +42,23 @@ export default function UserPage() {
     notes: 0
   });
   const [needPhoneAuth, setNeedPhoneAuth] = useState(false);
-
-  // 弹窗状态
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [tempAvatar, setTempAvatar] = useState('');
   const [tempNickname, setTempNickname] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
-
-  // 布局适配状态
   const [statusBarHeight, setStatusBarHeight] = useState(20);
   const [navBarHeight, setNavBarHeight] = useState(44);
-
-  // 笔记相关状态
   const [noteList, setNoteList] = useState<Note[]>([]);
   const [cursor, setCursor] = useState<string>('');
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'activity' | 'dynamic'>('activity');
 
-  // 生命周期
   useEffect(() => {
     setTabBarIndex(4);
 
     const sysInfo = Taro.getWindowInfo();
     const menuInfo = Taro.getMenuButtonBoundingClientRect();
-
     const sbHeight = sysInfo.statusBarHeight || 20;
     setStatusBarHeight(sbHeight);
 
@@ -93,14 +87,12 @@ export default function UserPage() {
     }
   });
 
-  // 登录后自动加载笔记
   useEffect(() => {
     if (isLogin) {
       loadMyNotes();
     }
   }, [isLogin]);
 
-  // 初始化登录状态
   const initLoginState = () => {
     const accessToken = Taro.getStorageSync('access_token');
     const cachedUser = Taro.getStorageSync('userInfo');
@@ -117,7 +109,6 @@ export default function UserPage() {
     }
   };
 
-  // 获取最新用户信息
   const fetchLatestUserInfo = async () => {
     try {
       const res = await request({
@@ -136,15 +127,12 @@ export default function UserPage() {
 
       if (resBody && resBody.code === 200 && resBody.data) {
         const { user, stats } = resBody.data;
-
         setUserInfo(user);
         if (stats) {
           setUserStats(stats);
         }
-
         Taro.setStorageSync('userInfo', user);
         Taro.eventCenter.trigger('USER_INFO_UPDATED', user);
-
         setIsLogin(true);
         setNeedPhoneAuth(!user.phone_number);
       }
@@ -153,22 +141,14 @@ export default function UserPage() {
     }
   };
 
-  // 加载我的笔记
   const loadMyNotes = async (isLoadMore: boolean = false) => {
-    // 如果正在加载，避免重复请求
     if (loading) return;
-
-    // 如果是加载更多但没有更多数据，直接返回
     if (isLoadMore && !hasMore) return;
 
     setLoading(true);
 
     try {
-      const params: any = {
-        pageSize: 6
-      };
-
-      // 如果是加载更多，传入 cursor
+      const params: any = { pageSize: 20 };
       if (isLoadMore && cursor) {
         params.cursor = cursor;
       }
@@ -190,13 +170,11 @@ export default function UserPage() {
 
       if (resBody && resBody.code === 200 && resBody.data) {
         const { list, next_cursor, has_more } = resBody.data;
-
         if (isLoadMore) {
           setNoteList(prev => [...prev, ...list]);
         } else {
           setNoteList(list || []);
         }
-
         setCursor(next_cursor || '');
         setHasMore(has_more || false);
       } else {
@@ -216,7 +194,6 @@ export default function UserPage() {
     }
   };
 
-  // 退出登录
   const handleLogout = () => {
     Taro.removeStorageSync('access_token');
     Taro.removeStorageSync('refresh_token');
@@ -244,13 +221,22 @@ export default function UserPage() {
     }, 50);
   };
 
-  // 登录
+  const handleOpenSettings = () => {
+    Taro.showActionSheet({
+      itemList: ['退出登录'],
+      success: res => {
+        if (res.tapIndex === 0) {
+          handleLogoutClick();
+        }
+      }
+    });
+  };
+
   const handleLogin = async (isSilent = false) => {
     if (!isSilent) Taro.showLoading({ title: '登录中...' });
 
     try {
       const loginRes = await Taro.login();
-
       const res = await Taro.request({
         url: `${BASE_URL}/api/v1/auth/wx-login`,
         method: 'POST',
@@ -270,24 +256,18 @@ export default function UserPage() {
 
       if (resBody && resBody.code === 200 && resBody.data) {
         const { access_token, refresh_token, access_expire } = resBody.data;
-
         Taro.setStorageSync('access_token', access_token);
         Taro.setStorageSync('refresh_token', refresh_token);
-
         saveTokens(access_token, refresh_token, access_expire);
-
         await fetchLatestUserInfo();
-
         if (!isSilent) {
           Taro.hideLoading();
           Taro.showToast({ title: '登录成功', icon: 'success' });
         }
-      } else {
-        if (!isSilent) {
-          Taro.hideLoading();
-          const errorMsg = resBody?.msg || '登录失败';
-          Taro.showToast({ title: errorMsg, icon: 'none' });
-        }
+      } else if (!isSilent) {
+        Taro.hideLoading();
+        const errorMsg = resBody?.msg || '登录失败';
+        Taro.showToast({ title: errorMsg, icon: 'none' });
       }
     } catch (error) {
       if (!isSilent) {
@@ -298,7 +278,6 @@ export default function UserPage() {
     }
   };
 
-  // 绑定手机号
   const onGetPhoneNumber = async (e: any) => {
     if (!e.detail?.code) return;
     Taro.showLoading({ title: '绑定中...' });
@@ -326,22 +305,18 @@ export default function UserPage() {
     }
   };
 
-  // 选择头像
   const onChooseAvatar = (e: any) => {
     setTempAvatar(e.detail.avatarUrl);
   };
 
-  // 昵称输入
   const onNicknameBlur = (e: any) => {
     setTempNickname(e.detail.value);
   };
 
-  // 关闭弹窗
   const handleCloseModal = () => {
     setShowAuthModal(false);
   };
 
-  // 打开编辑资料
   const handleOpenEdit = () => {
     if (!isLogin) {
       handleLogin(false);
@@ -353,7 +328,6 @@ export default function UserPage() {
     setShowAuthModal(true);
   };
 
-  // 提交个人资料
   const handleSubmitProfile = async () => {
     if (!tempNickname) {
       Taro.showToast({ title: '请输入昵称', icon: 'none' });
@@ -416,7 +390,6 @@ export default function UserPage() {
     }
   };
 
-  // 格式化数字
   const formatNumber = (num: number | string): string => {
     if (num === '-') return '-';
     const value = Number(num);
@@ -429,30 +402,25 @@ export default function UserPage() {
     return String(value);
   };
 
-  // 点击统计数据
   const handleStatClick = (type: string | null) => {
     if (!isLogin || !hasData || !type) return;
-
     Taro.navigateTo({
       url: `/pages/user/follow-list/index?type=${type}&userId=${userInfo.user_id || ''}`
     });
   };
 
-  // 点击笔记
   const handleNoteClick = (noteId: string) => {
     Taro.navigateTo({
       url: `/pages/square/post-detail/index?id=${noteId}`
     });
   };
 
-  // 查看全部笔记
   const handleViewAll = () => {
     Taro.navigateTo({
       url: `/pages/user/profile/index?userId=${userInfo.user_id}`
     });
   };
 
-  // 获取笔记封面图
   const getNoteCover = (note: Note): string => {
     if (note.media_data && note.media_data.length > 0) {
       return note.media_data[0].thumbnail_url || note.media_data[0].url;
@@ -460,60 +428,85 @@ export default function UserPage() {
     return '';
   };
 
-  // 点击导航项
+  const calculateImageHeight = (media?: NoteMedia): number => {
+    const containerWidth = (Taro.getSystemInfoSync().windowWidth - 64 - 12) / 2;
+    if (!media || !media.width || !media.height) {
+      return containerWidth;
+    }
+    const aspectRatio = media.height / media.width;
+    const calculatedHeight = containerWidth * aspectRatio;
+    return Math.min(Math.max(calculatedHeight, 200), 420);
+  };
+
   const handleItemClick = (item: any) => {
     if (!isLogin) {
       handleLogin(false);
       return;
     }
-
     if (item.route) {
-      Taro.navigateTo({
-        url: item.route
-      });
+      Taro.navigateTo({ url: item.route });
     }
   };
 
   const hasData = isLogin || needPhoneAuth;
+  const joinDate = userInfo?.created_at ? String(userInfo.created_at).split('T')[0] : '';
 
   const stats = [
-    {
-      label: '关注',
-      value: hasData ? userStats?.following || 0 : '-',
-      type: 'following'
-    },
-    {
-      label: '粉丝',
-      value: hasData ? userStats?.follower || 0 : '-',
-      type: 'follower'
-    },
-    {
-      label: '赞/收藏',
-      value: hasData ? userStats?.likes || 0 : '-',
-      type: null
-    }
+    { label: '获赞/收藏', value: hasData ? userStats?.likes || 0 : '-', type: null },
+    { label: '关注', value: hasData ? userStats?.following || 0 : '-', type: 'following' },
+    { label: '粉丝', value: hasData ? userStats?.follower || 0 : '-', type: 'follower' }
   ];
 
   const mainNavItems = [
-    { icon: 'list', label: '订单', action: '全部订单', route: '/pages/order/index' },
-    { icon: 'sketch', label: '钱包', action: '充值' },
-    { icon: 'tag', label: '票务', action: '优惠券' },
-    { icon: 'star', label: '积分', action: '积分' },
-    { icon: 'home', label: '主办中心', action: '站点' }
+    {
+      icon: require('../../assets/images/Order.png'),
+      label: '订单',
+      route: '/pages/order/index'
+    },
+    {
+      icon: require('../../assets/images/Ticketing.png'),
+      label: '票务'
+    },
+    {
+      icon: require('../../assets/images/Points.png'),
+      label: '积分'
+    },
+    {
+      icon: require('../../assets/images/Account_Center.png'),
+      label: '账号中心'
+    },
+    {
+      icon: require('../../assets/images/Event_Organizing_Center.png'),
+      label: '主办中心'
+    }
   ];
 
   return (
-    <ScrollView className="user-page-dark" scrollY>
+    <ScrollView className="user-page" scrollY>
       <View className="custom-nav-bar" style={{ height: `${statusBarHeight + navBarHeight}px` }}>
         <View style={{ height: `${statusBarHeight}px` }} />
         <View className="nav-bar-content" style={{ height: `${navBarHeight}px` }}>
-          <Text className="page-title">我的</Text>
+          <View className="nav-side" />
+          <View className="nav-center">
+            <Image
+              className="nav-logo"
+              src={require('../../assets/images/hyper-icon.png')}
+              mode="aspectFit"
+            />
+          </View>
+          <View className="nav-side" />
         </View>
       </View>
 
-      <View className="header-section" style={{ marginTop: `${statusBarHeight + navBarHeight}px` }}>
-        <View className="user-profile">
-          <View className="avatar-container">
+      <View
+        className="header-section"
+        style={{
+          marginTop: `${statusBarHeight + navBarHeight}px`,
+          backgroundImage: `url(${require('../../assets/images/background.webp')})`
+        }}
+      >
+        <View className="profile-card">
+          <View className="avatar-wrapper">
             {hasData && userInfo.avatar_url ? (
               <Image className="avatar-img" src={userInfo.avatar_url} mode="aspectFill" />
             ) : (
@@ -521,147 +514,134 @@ export default function UserPage() {
                 <AtIcon value="user" size="30" color="#999" />
               </View>
             )}
+            <View className="avatar-ring" />
           </View>
 
-          <View className="info-container">
-            {isLogin ? (
-              <>
-                <View className="name-row">
-                  <Text className="username">{userInfo.nickname || '微信用户'}</Text>
-                  <View className="vip-tag">
-                    <Text className="vip-text">VIP会员</Text>
-                  </View>
-                </View>
-                <Text className="user-id">ID: {userInfo.user_id}</Text>
-              </>
-            ) : (
-              <View className="login-actions">
-                <Text className="welcome-text">
-                  {needPhoneAuth ? `你好，${userInfo.nickname || '新用户'}` : '欢迎来到 HyperFun'}
-                </Text>
-                {needPhoneAuth ? (
-                  <Button
-                    className="login-btn phone-btn"
-                    openType="getPhoneNumber"
-                    onGetPhoneNumber={onGetPhoneNumber}
-                  >
-                    绑定手机号
-                  </Button>
-                ) : (
-                  <Button className="login-btn" onClick={() => handleLogin(false)}>
-                    立即登录 / 注册
-                  </Button>
-                )}
+          <Text className="username">{hasData ? userInfo.nickname || '微信用户' : '未登录'}</Text>
+          {!!joinDate && <Text className="join-text">{joinDate} 加入HYPER</Text>}
+
+          <View className="stats-container">
+            {stats.map((stat, index) => (
+              <View
+                key={index}
+                className={`stat-item ${stat.type ? 'clickable' : ''}`}
+                onClick={() => handleStatClick(stat.type)}
+              >
+                <Text className="stat-number">{formatNumber(stat.value)}</Text>
+                <Text className="stat-label">{stat.label}</Text>
               </View>
-            )}
+            ))}
           </View>
 
-          <View className="edit-btn-wrap">
-            <View className="edit-profile-btn" onClick={handleOpenEdit}>
-              {isLogin ? '编辑资料' : '去登录'}
+          <View className="action-row">
+            <View className="action-btn primary" onClick={handleOpenEdit}>
+              {isLogin ? '编辑个人资料' : '去登录'}
+            </View>
+            <View className="action-btn ghost" onClick={handleOpenSettings}>
+              设置
             </View>
           </View>
-        </View>
-
-        <View className="stats-row">
-          {stats.map((stat, index) => (
-            <View
-              key={index}
-              className={`stat-item ${stat.type ? 'clickable' : ''}`}
-              onClick={() => handleStatClick(stat.type)}
-            >
-              <Text className="stat-val">{formatNumber(stat.value)}</Text>
-              <Text className="stat-lbl">{stat.label}</Text>
-            </View>
-          ))}
         </View>
       </View>
 
       <View className="main-nav-card">
         {mainNavItems.map((item, index) => (
           <View key={index} className="nav-item" onClick={() => handleItemClick(item)}>
-            <View className="nav-icon-circle">
-              <AtIcon value={item.icon} size="24" color="#fff" />
-            </View>
+            <Image className="nav-icon" src={item.icon} mode="aspectFit" />
             <Text className="nav-text">{item.label}</Text>
           </View>
         ))}
       </View>
 
-      <View className="section-card">
-        <View className="section-header">
-          <View className="tab-active">
-            <Text>我的订阅</Text>
-          </View>
-          <View className="tab-inactive">
-            <Text>动态</Text>
-          </View>
-          <Text className="section-extra">3个活动</Text>
-        </View>
-        <View className="scroll-row">
-          {[1, 2, 3].map(i => (
-            <View key={i} className="activity-card">
-              <View className="status-tag">
-                <Text>进行中</Text>
-              </View>
-            </View>
-          ))}
-        </View>
+      <View className="activity-tabs">
+        <Text
+          className={`tab-text ${activeTab === 'activity' ? 'active' : ''}`}
+          onClick={() => setActiveTab('activity')}
+        >
+          我的活动
+        </Text>
+        <Text
+          className={`tab-text ${activeTab === 'dynamic' ? 'active' : ''}`}
+          onClick={() => setActiveTab('dynamic')}
+        >
+          我的动态
+        </Text>
       </View>
 
-      <View className="section-card">
-        <View className="section-header">
-          <Text className="section-title">我参与的</Text>
-          <Text className="section-more">查看全部</Text>
-        </View>
-        <View className="scroll-row">
-          {[1, 2, 3].map(i => (
-            <View key={i} className="poster-card" />
-          ))}
-        </View>
-      </View>
-
-      {/* 我的笔记区域 - 移到退出登录之前 */}
-      {isLogin && (
-        <View className="my-content-section">
-          <View className="section-header">
-            <Text className="section-title">
-              我的动态 {userStats.notes > 0 && `(${userStats.notes})`}
-            </Text>
-            <Text className="section-more" onClick={handleViewAll}>
-              查看全部
-            </Text>
+      {activeTab === 'activity' && (
+        <View className="activity-card">
+          <View className="activity-header">
+            <Text className="activity-title active">我参加过的活动</Text>
+            <View className="activity-divider" />
+            <Text className="activity-title">我订阅的活动(18)</Text>
           </View>
-
-          <View className="notes-container">
-            {loading ? (
-              <View className="loading-state">
-                <Text className="loading-text">加载中...</Text>
-              </View>
-            ) : noteList.length > 0 ? (
-              <View className="notes-grid">
-                {noteList.slice(0, 6).map(note => (
-                  <View key={String(note.id)} className="note-card" onClick={() => handleNoteClick(note.id)}>
-                    <Image className="note-cover" src={getNoteCover(note)} mode="aspectFill" />
-                    <Text className="note-title">{note.title}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <View className="empty-state">
-                <Text className="empty-icon">📝</Text>
-                <Text className="empty-text">还没有发布笔记</Text>
-              </View>
-            )}
-          </View>
+          <ScrollView className="activity-scroll" scrollX enableFlex>
+            {[1, 2, 3, 4].map(i => (
+              <View key={i} className="activity-poster" />
+            ))}
+          </ScrollView>
         </View>
       )}
 
-      {isLogin && (
-        <View className="logout-section">
-          <View className="logout-btn" onClick={handleLogoutClick}>
-            <Text>退出登录</Text>
-          </View>
+      {activeTab === 'dynamic' && (
+        <View className="notes-section">
+          {noteList.length > 0 ? (
+            <View className="waterfall">
+              <View className="waterfall-column">
+                {noteList.filter((_, i) => i % 2 === 0).map(note => {
+                  const media = note.media_data?.[0];
+                  const imageHeight = calculateImageHeight(media);
+                  return (
+                    <View
+                      key={String(note.id)}
+                      className="note-card"
+                      onClick={() => handleNoteClick(note.id)}
+                    >
+                      <Image
+                        className="note-cover"
+                        src={getNoteCover(note)}
+                        mode="aspectFill"
+                        style={{ height: `${imageHeight}px` }}
+                      />
+                      <Text className="note-title">{note.title}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+              <View className="waterfall-column">
+                {noteList.filter((_, i) => i % 2 === 1).map(note => {
+                  const media = note.media_data?.[0];
+                  const imageHeight = calculateImageHeight(media);
+                  return (
+                    <View
+                      key={String(note.id)}
+                      className="note-card"
+                      onClick={() => handleNoteClick(note.id)}
+                    >
+                      <Image
+                        className="note-cover"
+                        src={getNoteCover(note)}
+                        mode="aspectFill"
+                        style={{ height: `${imageHeight}px` }}
+                      />
+                      <Text className="note-title">{note.title}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          ) : (
+            <View className="empty-state">
+              <Text className="empty-icon">📝</Text>
+              <Text className="empty-text">还没有发布动态</Text>
+            </View>
+          )}
+
+          {loading && (
+            <View className="loading-state">
+              <Text className="loading-text">加载中...</Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -697,6 +677,18 @@ export default function UserPage() {
               保存信息
             </Button>
           </View>
+        </View>
+      )}
+
+      {needPhoneAuth && (
+        <View className="phone-auth">
+          <Button
+            className="phone-btn"
+            openType="getPhoneNumber"
+            onGetPhoneNumber={onGetPhoneNumber}
+          >
+            绑定手机号
+          </Button>
         </View>
       )}
     </ScrollView>

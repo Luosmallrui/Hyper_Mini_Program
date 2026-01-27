@@ -28,6 +28,7 @@ export default function MessagePage() {
   // 布局适配状态
   const [navBarPaddingTop, setNavBarPaddingTop] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
+  const [scrollHeight, setScrollHeight] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   Taro.useDidShow(() => {
@@ -41,9 +42,12 @@ export default function MessagePage() {
     const menuInfo = Taro.getMenuButtonBoundingClientRect()
     const sbHeight = sysInfo.statusBarHeight || 20
     const nbHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
+    const windowHeight = sysInfo.windowHeight || sysInfo.screenHeight || 0
 
     setNavBarPaddingTop(sbHeight)
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
+    const contentHeight = windowHeight - sbHeight - (nbHeight > 0 ? nbHeight : 44)
+    setScrollHeight(contentHeight > 0 ? contentHeight : windowHeight)
   }, [])
 
   // 2. 监听 sessionList 变化，自动计算未读数和红点
@@ -154,14 +158,16 @@ export default function MessagePage() {
       }
     } catch (err) {
       console.error('[MessagePage] 网络异常', err)
-    } finally {
-      setIsRefreshing(false)
     }
   }
 
   const handlePullDownRefresh = async () => {
     setIsRefreshing(true)
     await fetchSessionList()
+    setTimeout(() => {
+      setIsRefreshing(false)
+      Taro.showToast({ title: '刷新成功', icon: 'success' })
+    }, 1200)
   }
 
   const handleChat = (item: SessionItem) => {
@@ -233,7 +239,11 @@ export default function MessagePage() {
       <ScrollView
         scrollY
         className='message-scroll'
-        style={{ paddingTop: `${navBarPaddingTop + navBarHeight}px` }}
+        style={{
+          paddingTop: `${navBarPaddingTop + navBarHeight}px`,
+          paddingBottom: '120px',
+          height: scrollHeight ? `${scrollHeight}px` : '100vh'
+        }}
         refresherEnabled
         refresherTriggered={isRefreshing}
         onRefresherRefresh={handlePullDownRefresh}
@@ -299,7 +309,6 @@ export default function MessagePage() {
           )}
         </View>
 
-        <View style={{height: '120px'}} />
       </ScrollView>
     </View>
   )

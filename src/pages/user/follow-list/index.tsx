@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Image, ScrollView } from '@tarojs/components';
 import Taro, { useRouter, useDidShow } from '@tarojs/taro';
-import './index.scss';
+import { AtIcon } from 'taro-ui';
+import 'taro-ui/dist/style/components/icon.scss';
+import './index.less';
 
 const BASE_URL = 'https://www.hypercn.cn';
 
@@ -24,6 +26,8 @@ const FollowList: React.FC = () => {
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState(type);
+  const [navBarHeight, setNavBarHeight] = useState(44);
+  const [statusBarHeight, setStatusBarHeight] = useState(20);
 
   // Tab 配置
   const tabs = [
@@ -40,6 +44,15 @@ const FollowList: React.FC = () => {
   useDidShow(() => {
     resetAndLoad();
   });
+
+  useEffect(() => {
+    const sysInfo = Taro.getWindowInfo();
+    const menuInfo = Taro.getMenuButtonBoundingClientRect();
+    const sbHeight = sysInfo.statusBarHeight || 20;
+    setStatusBarHeight(sbHeight);
+    const calculatedNavHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height;
+    setNavBarHeight(Number.isNaN(calculatedNavHeight) ? 44 : calculatedNavHeight);
+  }, []);
 
   const resetAndLoad = () => {
     setList([]);
@@ -196,14 +209,14 @@ const FollowList: React.FC = () => {
   return (
     <View className="follow-list-page">
       {/* 自定义导航栏 */}
-      <View className="custom-navbar">
+      <View className="custom-navbar" style={{ top: `${statusBarHeight}px`, height: `${navBarHeight}px` }}>
         <View className="navbar-content">
-          {/*<View*/}
-          {/*  className="back-button"*/}
-          {/*  onClick={() => Taro.navigateBack()}*/}
-          {/*>*/}
-          {/*  <Text className="icon-back">←</Text>*/}
-          {/*</View>*/}
+          <View
+            className="back-button"
+            onClick={() => Taro.navigateBack()}
+          >
+            <AtIcon value="chevron-left" size="22" color="#fff" />
+          </View>
 
           <View className="tabs">
             {tabs.map(tab => (
@@ -228,6 +241,10 @@ const FollowList: React.FC = () => {
         scrollY
         enableBackToTop
         onScrollToLower={handleScrollToLower}
+        style={{
+          height: `calc(100vh - ${statusBarHeight + navBarHeight}px)`,
+          marginTop: `${statusBarHeight + navBarHeight}px`,
+        }}
       >
         <View className="user-list">
           {list.map(user => {

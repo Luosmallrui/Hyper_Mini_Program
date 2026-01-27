@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="45px" height="44px" viewBox="0 0 45 44" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg width="44px" height="44px" viewBox="0 0 44 44" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     <title>形状结合</title>
     <defs>
-        <linearGradient x1="22.658664%" y1="-5.44703171e-14%" x2="21.8185456%" y2="100%" id="linearGradient-1">
-            <stop stop-color="#F9706B" offset="0%"></stop>
-            <stop stop-color="#FA202A" offset="100%"></stop>
+        <linearGradient x1="0.0666000592%" y1="2.35922393e-14%" x2="99.9333999%" y2="100%" id="linearGradient-1">
+            <stop stop-color="#333844" offset="0%"></stop>
+            <stop stop-color="#525461" offset="100%"></stop>
         </linearGradient>
     </defs>
-    <g id="页面-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-        <g id="画板" transform="translate(-352, -30)" fill="url(#linearGradient-1)" fill-rule="nonzero">
-            <path d="M374.558961,30 C386.701466,30 396.544304,39.8494 396.544304,52 C396.544304,64.1506 386.701466,74 374.558961,74 C362.416456,74 352.573618,64.1506 352.573618,52 C352.573618,39.8494 362.416456,30 374.558961,30 Z M383.353098,54.2 L365.764823,54.2 C365.764823,59.0601058 369.702093,63 374.558961,63 C379.415829,63 383.353098,59.0601058 383.353098,54.2 Z" id="形状结合"></path>
+    <g id="最终版" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="个人中心" transform="translate(-648, -1484)" fill="url(#linearGradient-1)" fill-rule="nonzero">
+            <path d="M669.985343,1484 C682.127848,1484 691.970686,1493.8494 691.970686,1506 C691.970686,1518.1506 682.127848,1528 669.985343,1528 C657.842838,1528 648,1518.1506 648,1506 C648,1493.8494 657.842838,1484 669.985343,1484 Z M669.985343,1489.5 C660.878716,1489.5 653.496336,1496.8873 653.496336,1506 C653.496336,1515.1127 660.878716,1522.5 669.985343,1522.5 C679.09197,1522.5 686.47435,1515.1127 686.47435,1506 C686.47435,1496.8873 679.09197,1489.5 669.985343,1489.5 Z M678.77948,1508.2 C678.77948,1513.06011 674.842211,1517 669.985343,1517 C665.128475,1517 661.191206,1513.06011 661.191206,1508.2 L678.77948,1508.2 Z" id="形状结合"></path>
         </g>
     </g>
 </svg>

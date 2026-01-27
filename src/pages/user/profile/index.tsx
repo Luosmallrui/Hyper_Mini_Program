@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Image, ScrollView } from '@tarojs/components';
 import Taro, { useRouter } from '@tarojs/taro';
 import { AtIcon } from 'taro-ui';
-import './index.scss';
+import './index.less';
 
 const BASE_URL = 'https://www.hypercn.cn';
 
@@ -65,6 +65,8 @@ const UserProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'activity' | 'dynamic'>('dynamic');
   const [cursor, setCursor] = useState<string>('');
   const [hasMore, setHasMore] = useState(false);
+  const [navBarHeight, setNavBarHeight] = useState(44);
+  const [statusBarHeight, setStatusBarHeight] = useState(20);
 
   const token = Taro.getStorageSync('access_token');
   const myUserId = Taro.getStorageSync('userInfo')?.user_id;
@@ -75,6 +77,15 @@ const UserProfilePage: React.FC = () => {
       loadUserNotes();
     }
   }, [userId]);
+
+  useEffect(() => {
+    const sysInfo = Taro.getWindowInfo();
+    const menuInfo = Taro.getMenuButtonBoundingClientRect();
+    const sbHeight = sysInfo.statusBarHeight || 20;
+    setStatusBarHeight(sbHeight);
+    const calculatedNavHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height;
+    setNavBarHeight(Number.isNaN(calculatedNavHeight) ? 44 : calculatedNavHeight);
+  }, []);
 
   // 加载用户资料
   const loadUserProfile = async () => {
@@ -317,20 +328,21 @@ const UserProfilePage: React.FC = () => {
   return (
     <View className="user-profile-page">
       {/* 顶部导航栏 */}
-      <View className="navbar">
+      <View
+        className="navbar"
+        style={{ top: `${statusBarHeight}px`, height: `${navBarHeight}px` }}
+      >
         <View className="navbar-left" onClick={handleBack}>
           <AtIcon value="chevron-left" size="24" color="#fff" />
         </View>
         <View className="navbar-center">
           <Image
             className="navbar-logo"
-            src="https://lanhu-oss-proxy.lanhuapp.com/SketchPngc3eeec34d6dfe9f2731cad3de1301c2a31831d7d48d7a8257a693589efb598ca"
+            src={require('../../../assets/images/hyper-icon.png')}
             mode="aspectFit"
           />
         </View>
-        <View className="navbar-right">
-          <AtIcon value="menu" size="20" color="#fff" />
-        </View>
+        <View className="navbar-right" />
       </View>
 
       <ScrollView
@@ -344,12 +356,12 @@ const UserProfilePage: React.FC = () => {
         lowerThreshold={100}
       >
         {/* 头部背景区域 */}
-        <View className="header-section">
-          {/* 背景装饰 */}
-          <View className="header-bg">
-            <View className="bg-decoration bg-decoration-1" />
-            <View className="bg-decoration bg-decoration-2" />
-          </View>
+        <View
+          className="header-section"
+          style={{
+            backgroundImage: `url(${require('../../../assets/images/background.webp')})`,
+          }}
+        >
 
           {/* 用户头像卡片 */}
           <View className="profile-card">

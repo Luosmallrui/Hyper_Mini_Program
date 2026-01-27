@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="51px" height="75px" viewBox="0 0 51 75" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>lightning-2</title>
+    <defs>
+        <linearGradient x1="37.3359559%" y1="1.16914336%" x2="36.9549258%" y2="99.1231425%" id="linearGradient-1">
+            <stop stop-color="#FD3045" offset="0%"></stop>
+            <stop stop-color="#FD1B62" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="最终版" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="个人中心" transform="translate(-350, -1467)" fill="url(#linearGradient-1)" fill-rule="nonzero">
+            <g id="lightning-2" transform="translate(350, 1467)">
+                <path d="M48.9985849,34.3283717 L35.377104,34.3283717 C34.1496738,34.3283717 33.2116378,33.2212939 33.4112199,32.0144793 L38.2610659,2.32285208 C38.5803973,0.377985664 36.1754325,-0.798907859 34.8282531,0.637301186 L0.540041772,37.3105002 C-0.64747195,38.5871305 0.250647672,40.6716283 1.99699138,40.6716283 L15.6184723,40.6716283 C16.8459025,40.6716283 17.7839385,41.7787061 17.5843564,42.9855207 L12.7345104,72.6771479 C12.415179,74.6220143 14.8201437,75.7989079 16.1673232,74.3626988 L50.4555345,37.6894998 C51.6530273,36.4128695 50.7449286,34.3283717 48.9985849,34.3283717 Z" id="路径"></path>
+            </g>
+        </g>
+    </g>
+</svg>

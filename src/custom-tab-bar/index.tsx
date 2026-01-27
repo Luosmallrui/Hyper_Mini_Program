@@ -1,5 +1,5 @@
 import { Component } from 'react'
-import { View, Image, Text } from '@tarojs/components'
+import { View, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { tabBarStore } from '../store/tabbar'
 import './index.scss'
@@ -15,15 +15,20 @@ interface TabItem {
 interface State {
   selected: number
   list: TabItem[]
+  indicatorOffset: number
 }
 
 export default class CustomTabBar extends Component<{}, State> {
   private unsubscribe: (() => void) | null = null
+  private readonly tabUnits = [1, 1, 1.5, 1, 1]
+  private readonly tabPaddingRpx = 20
+  private readonly pillWidthRpx = 100
 
   constructor(props) {
     super(props)
     this.state = {
-      selected: 0,
+      selected: tabBarStore.getSelected(),
+      indicatorOffset: this.getIndicatorOffset(tabBarStore.getSelected()),
       list: [
         {
           pagePath: '/pages/index/index',
@@ -56,7 +61,10 @@ export default class CustomTabBar extends Component<{}, State> {
 
   componentDidMount() {
     this.unsubscribe = tabBarStore.subscribe((selectedIndex) => {
-      this.setState({ selected: selectedIndex })
+      this.setState({
+        selected: selectedIndex,
+        indicatorOffset: this.getIndicatorOffset(selectedIndex),
+      })
     })
     tabBarStore.updateByCurrentRoute()
   }
@@ -103,12 +111,25 @@ export default class CustomTabBar extends Component<{}, State> {
     })
   }
 
+  getIndicatorOffset = (index: number) => {
+    const totalUnits = this.tabUnits.reduce((sum, unit) => sum + unit, 0)
+    const containerWidthRpx = 750 - this.tabPaddingRpx * 2
+    const unitWidthRpx = containerWidthRpx / totalUnits
+    const unitsBefore = this.tabUnits.slice(0, index).reduce((sum, unit) => sum + unit, 0)
+    const centerRpx = this.tabPaddingRpx + unitWidthRpx * (unitsBefore + this.tabUnits[index] / 2)
+    return centerRpx - this.pillWidthRpx / 2
+  }
+
   render() {
-    const { selected, list } = this.state
+    const { selected, list, indicatorOffset } = this.state
   
     return (
       <View className='custom-tab-bar'>
         <View className='tab-bar-container'>
+          <View
+            className='tab-active-pill'
+            style={{ transform: `translate3d(${indicatorOffset}rpx, -50%, 0)` }}
+          />
           {list.map((item, index) => {
             const isSelected = selected === index
             const isSpecial = item.isSpecial || false
@@ -121,8 +142,11 @@ export default class CustomTabBar extends Component<{}, State> {
               >
                 <View className='icon-wrapper'>
                   {isSpecial ? (
-                    // 修改点：直接使用 Text 渲染 + 号
-                    <Text className='tab-text-plus'>+</Text>
+                    <Image
+                      src={require('../assets/images/lightning.png')}
+                      className='tab-icon-image tab-icon-special'
+                      mode='aspectFit'
+                    />
                   ) : (
                     <Image
                       src={isSelected ? item.selectedIconPath! : item.iconPath!}

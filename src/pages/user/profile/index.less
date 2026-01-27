@@ -1,17 +1,17 @@
 // 变量定义
-$bg-color: #000000;
-$card-bg: #161616;
-$text-primary: #ffffff;
-$text-secondary: #b7b7b7;
-$text-muted: #656565;
-$text-hint: #9c9c9c;
-$border-color: #979797;
-$accent-color: #c7c7c7;
+@bg-color: #000000;
+@card-bg: #161616;
+@text-primary: #ffffff;
+@text-secondary: #b7b7b7;
+@text-muted: #656565;
+@text-hint: #9c9c9c;
+@border-color: #979797;
+@accent-color: #c7c7c7;
 
 // 页面容器
 .user-profile-page {
   min-height: 100vh;
-  background-color: $bg-color;
+  background-color: @bg-color;
   position: relative;
   overflow: hidden;
 
@@ -26,14 +26,14 @@ $accent-color: #c7c7c7;
       width: 80px;
       height: 80px;
       border: 4px solid rgba(255, 255, 255, 0.1);
-      border-top-color: $text-primary;
+      border-top-color: @text-primary;
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
 
     .loading-text {
       margin-top: 32px;
-      color: $text-secondary;
+      color: @text-secondary;
       font-size: 28px;
     }
   }
@@ -51,7 +51,7 @@ $accent-color: #c7c7c7;
     }
 
     .empty-text {
-      color: $text-secondary;
+      color: @text-secondary;
       font-size: 32px;
     }
   }
@@ -75,8 +75,6 @@ $accent-color: #c7c7c7;
   justify-content: space-between;
   height: 88px;
   padding: 0 32px;
-  padding-top: constant(safe-area-inset-top);
-  padding-top: env(safe-area-inset-top);
   background: transparent;
 
   .navbar-left,
@@ -113,40 +111,9 @@ $accent-color: #c7c7c7;
   position: relative;
   padding: 40px 30px;
   min-height: 600px;
-
-  .header-bg {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    overflow: hidden;
-
-    .bg-decoration {
-      position: absolute;
-      border-radius: 50%;
-      background: linear-gradient(
-          135deg,
-          rgba(255, 255, 255, 0.05) 0%,
-          rgba(255, 255, 255, 0.02) 100%
-      );
-      filter: blur(2px);
-
-      &.bg-decoration-1 {
-        width: 400px;
-        height: 400px;
-        top: -100px;
-        right: -150px;
-      }
-
-      &.bg-decoration-2 {
-        width: 300px;
-        height: 300px;
-        bottom: 50px;
-        left: -100px;
-      }
-    }
-  }
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
 }
 
 // 用户资料卡片
@@ -167,7 +134,7 @@ $accent-color: #c7c7c7;
       width: 140px;
       height: 140px;
       border-radius: 50%;
-      border: 6px solid $text-primary;
+      border: 6px solid @text-primary;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     }
 
@@ -186,7 +153,7 @@ $accent-color: #c7c7c7;
   .username {
     font-size: 36px;
     font-weight: 500;
-    color: $text-primary;
+    color: @text-primary;
     letter-spacing: 1.2px;
     margin-bottom: 16px;
     font-family: PingFangSC-Medium, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -198,7 +165,7 @@ $accent-color: #c7c7c7;
 
     .join-text {
       font-size: 22px;
-      color: $text-hint;
+      color: @text-hint;
       font-family: PingFangSC-Regular, -apple-system, BlinkMacSystemFont, sans-serif;
     }
   }
@@ -219,14 +186,14 @@ $accent-color: #c7c7c7;
     .stat-number {
       font-size: 34px;
       font-weight: 600;
-      color: $text-primary;
+      color: @text-primary;
       line-height: 48px;
       font-family: PingFangSC-Semibold, -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     .stat-label {
       font-size: 24px;
-      color: $text-primary;
+      color: @text-primary;
       margin-top: 8px;
       font-family: PingFangSC-Regular, -apple-system, BlinkMacSystemFont, sans-serif;
     }
@@ -244,7 +211,7 @@ $accent-color: #c7c7c7;
     flex: 1;
     height: 77px;
     border-radius: 16px;
-    border: 2px solid $border-color;
+    border: 2px solid @border-color;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -256,7 +223,7 @@ $accent-color: #c7c7c7;
 
     .btn-text {
       font-size: 26px;
-      color: $accent-color;
+      color: @accent-color;
       font-family: PingFangSC-Regular, -apple-system, BlinkMacSystemFont, sans-serif;
     }
   }
@@ -265,14 +232,14 @@ $accent-color: #c7c7c7;
     width: 200px;
     height: 77px;
     border-radius: 16px;
-    border: 2px solid $border-color;
+    border: 2px solid @border-color;
     display: flex;
     align-items: center;
     justify-content: center;
 
     .btn-text {
       font-size: 26px;
-      color: $accent-color;
+      color: @accent-color;
       font-family: PingFangSC-Regular, -apple-system, BlinkMacSystemFont, sans-serif;
     }
   }
@@ -295,7 +262,7 @@ $accent-color: #c7c7c7;
       transition: color 0.3s ease;
 
       &.active {
-        color: $text-primary;
+        color: @text-primary;
         font-weight: 500;
         font-family: PingFangSC-Medium, -apple-system, BlinkMacSystemFont, sans-serif;
       }
@@ -327,7 +294,7 @@ $accent-color: #c7c7c7;
 
 // 笔记卡片
 .note-card {
-  background-color: $card-bg;
+  background-color: @card-bg;
   border-radius: 16px;
   overflow: hidden;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -348,7 +315,7 @@ $accent-color: #c7c7c7;
     .note-title {
       font-size: 26px;
       font-weight: 500;
-      color: $text-secondary;
+      color: @text-secondary;
       line-height: 40px;
       display: -webkit-box;
       -webkit-line-clamp: 2;
@@ -377,7 +344,7 @@ $accent-color: #c7c7c7;
 
         .author-name {
           font-size: 22px;
-          color: $text-muted;
+          color: @text-muted;
           max-width: 150px;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -398,7 +365,7 @@ $accent-color: #c7c7c7;
 
         .like-count {
           font-size: 24px;
-          color: $text-muted;
+          color: @text-muted;
           font-family: PingFangSC-Regular, -apple-system, BlinkMacSystemFont, sans-serif;
         }
       }
@@ -421,7 +388,7 @@ $accent-color: #c7c7c7;
 
   .empty-text {
     font-size: 28px;
-    color: $text-muted;
+    color: @text-muted;
     font-family: PingFangSC-Regular, -apple-system, BlinkMacSystemFont, sans-serif;
   }
 }
