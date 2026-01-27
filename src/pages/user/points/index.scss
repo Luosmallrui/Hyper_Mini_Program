@@ -1,0 +1,368 @@
+.points-page {
+  background-color: #000000;
+  min-height: 100vh;
+  padding-bottom: 20px;
+
+  // 顶部导航栏
+  .navbar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 120px;
+    padding: 20px 30px;
+    background-image: linear-gradient(180deg, rgba(255, 46, 77, 0.2) 0%, rgba(0, 0, 0, 0.8) 100%);
+
+    // 背景图叠加
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: url('../../../assets/images/backgound.png');
+      background-size: cover;
+      background-position: center;
+      opacity: 0.8;
+      z-index: 0;
+    }
+
+    .navbar-left,
+    .navbar-title,
+    .navbar-right {
+      position: relative;
+      z-index: 1;
+    }
+
+    .navbar-left {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .back-icon {
+        width: 32px;
+        height: 32px;
+      }
+    }
+
+    .navbar-title {
+      color: #f3f3f4;
+      font-size: 32px;
+      font-weight: 600;
+      line-height: 40px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .navbar-right {
+      margin-top: 700px;
+      width: 300px;
+      height:300px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+
+      .more-icon {
+        width: 200%;
+        height: 200%;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+      }
+    }
+  }
+
+  .scroll-content {
+    height: calc(100vh - 120px);
+  }
+
+  // 积分余额卡片
+  .balance-card {
+    position: relative;
+    width: 680px;
+    height: 365px;
+    margin: 32px auto 0;
+    background-image:  url('../../../assets/images/backgound.png');
+    background-size: cover;
+    background-position: center;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(255, 46, 77, 0.15);
+
+    .balance-content {
+      padding: 183px 30px 0;
+      position: relative;
+      z-index: 2;
+
+      .balance-label {
+        color: #747474;
+        font-size: 20px;
+        line-height: 28px;
+        letter-spacing: 0.86px;
+        display: block;
+      }
+
+      .balance-amount {
+        color: #ffffff;
+        font-size: 52px;
+        font-weight: 600;
+        line-height: 73px;
+        display: block;
+        margin-top: 8px;
+      }
+
+      .pending-info {
+        position: absolute;
+        bottom: -94px;
+        left: 30px;
+        padding: 10px 30px;
+        background-image: url('https://lanhu-oss-proxy.lanhuapp.com/SketchPngcc36db948b5630c8d2952db27d31c9181ea3e39cff351469d5667808234babfe');
+        background-size: cover;
+        border-radius: 8px;
+
+        .pending-text {
+          color: #b7b7b7;
+          font-size: 20px;
+          line-height: 28px;
+          letter-spacing: 0.86px;
+          white-space: nowrap;
+        }
+      }
+    }
+
+    .card-decoration {
+      position: absolute;
+      right: -13px;
+      bottom: 46px;
+      width: 272px;
+      height: 273px;
+      z-index: 1;
+    }
+  }
+
+  // 明细容器
+  .records-container {
+    width: 690px;
+    margin: 52px auto 0;
+    background-color: #161616;
+    border-radius: 12px;
+    padding: 30px;
+
+    // Tab 切换
+    .tabs {
+      display: flex;
+      align-items: center;
+      gap: 60px;
+      margin-bottom: 40px;
+
+      .tab-item {
+        cursor: pointer;
+
+        .tab-text {
+          color: #8e8e8e;
+          font-size: 28px;
+          line-height: 28px;
+          transition: color 0.3s;
+
+          &.active {
+            color: #ffffff;
+            font-weight: 500;
+          }
+        }
+      }
+    }
+
+    // 积分明细列表
+    .records-list {
+      .record-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 20px 0;
+
+        &:not(:last-child) {
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .record-info {
+          flex: 1;
+
+          .record-desc {
+            color: #8e8e8e;
+            font-size: 28px;
+            line-height: 40px;
+            display: block;
+          }
+
+          .record-time {
+            color: #b7b7b7;
+            font-size: 20px;
+            line-height: 28px;
+            letter-spacing: 0.86px;
+            display: block;
+            margin-top: 10px;
+          }
+        }
+
+        .record-amount {
+          font-size: 30px;
+          font-weight: 500;
+          line-height: 42px;
+          letter-spacing: 1.29px;
+          margin-top: 18px;
+
+          &.income {
+            color: #ffffff;
+          }
+
+          &.expense {
+            color: #ff4444;
+          }
+        }
+      }
+
+      // 空状态
+      .empty-state {
+        padding: 80px 0;
+        text-align: center;
+
+        .empty-text {
+          color: #8e8e8e;
+          font-size: 28px;
+        }
+      }
+
+      // 加载中
+      .loading-more {
+        padding: 30px 0;
+        text-align: center;
+
+        .loading-text {
+          color: #8e8e8e;
+          font-size: 24px;
+        }
+      }
+
+      // 没有更多
+      .no-more {
+        padding: 30px 0;
+        text-align: center;
+
+        .no-more-text {
+          color: #666666;
+          font-size: 24px;
+        }
+      }
+    }
+  }
+
+  // 底部安全区
+  .safe-area-bottom {
+    height: 20px;
+  }
+}
+
+// 响应式适配
+@media screen and (max-width: 375px) {
+  .points-page {
+    .navbar {
+      height: 100px;
+      padding: 15px 20px;
+
+      .navbar-left {
+        width: 40px;
+        height: 40px;
+
+        .back-icon {
+          width: 28px;
+          height: 28px;
+        }
+      }
+
+      .navbar-title {
+        font-size: 26px;
+      }
+
+      .navbar-right {
+        width: 100px;
+        height: 65px;
+      }
+    }
+
+    .scroll-content {
+      height: calc(100vh - 100px);
+    }
+
+    .balance-card {
+      width: 345px;
+      height: 185px;
+
+      .balance-content {
+        padding: 90px 15px 0;
+
+        .balance-label {
+          font-size: 16px;
+        }
+
+        .balance-amount {
+          font-size: 40px;
+          line-height: 56px;
+        }
+
+        .pending-info {
+          bottom: -50px;
+          left: 15px;
+          padding: 8px 15px;
+
+          .pending-text {
+            font-size: 14px;
+          }
+        }
+      }
+
+      .card-decoration {
+        width: 136px;
+        height: 136px;
+        right: -6px;
+        bottom: 23px;
+      }
+    }
+
+    .records-container {
+      width: 345px;
+      padding: 15px;
+
+      .tabs {
+        gap: 30px;
+        margin-bottom: 20px;
+
+        .tab-text {
+          font-size: 22px;
+        }
+      }
+
+      .records-list {
+        .record-item {
+          padding: 15px 0;
+
+          .record-info {
+            .record-desc {
+              font-size: 22px;
+              line-height: 32px;
+            }
+
+            .record-time {
+              font-size: 16px;
+              line-height: 22px;
+            }
+          }
+
+          .record-amount {
+            font-size: 24px;
+            line-height: 36px;
+          }
+        }
+      }
+    }
+  }
+}

@@ -469,7 +469,8 @@ export default function UserPage() {
     },
     {
       icon: require('../../assets/images/Points.png'),
-      label: '积分'
+      label: '积分',
+      route: '/pages/user/points/index'
     },
     {
       icon: require('../../assets/images/Account_Center.png'),
