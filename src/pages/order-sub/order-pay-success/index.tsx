@@ -33,7 +33,7 @@ export default function OrderSuccessPage() {
   const handleViewOrder = () => {
     // 跳转到订单详情页
     Taro.navigateTo({
-      url: `/pages/order/order-detail/index`
+      url: `/pages/order-sub/order-detail/index`
     })
   }
 

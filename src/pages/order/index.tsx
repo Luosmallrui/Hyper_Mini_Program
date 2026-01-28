@@ -90,14 +90,14 @@ export default function OrderPage() {
 
   const handleOrderClick = (order) => {
     Taro.navigateTo({
-      url: `/pages/order/order-detail/index?orderNo=${order.orderNo}`
+      url: `/pages/order-sub/order-detail/index?orderNo=${order.orderNo}`
     })
   }
 
   const handleViewQRCode = (e, order) => {
     e.stopPropagation()
     Taro.navigateTo({
-      url: `/pages/order/order-detail/index?orderNo=${order.orderNo}`
+      url: `/pages/order-sub/order-detail/index?orderNo=${order.orderNo}`
     })
   }
 

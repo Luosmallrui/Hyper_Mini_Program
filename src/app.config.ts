@@ -21,7 +21,7 @@ export default defineAppConfig({
       pages: ['index']
     },
     {
-      root: 'pages/order',
+      root: 'pages/order-sub',
       pages: [
         'order-detail/index',
         'order-pay-success/index'

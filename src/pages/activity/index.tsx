@@ -73,7 +73,7 @@ export default function ActivityPage() {
           Taro.showToast({title: '支付成功', icon: 'success'});
           // 支付成功后的跳转
           setTimeout(() => {
-            Taro.navigateTo({url: `/pages/order/order-pay-success/index`});
+            Taro.navigateTo({url: `/pages/order-sub/order-pay-success/index`});
           }, 1000);
         },
         fail: (err) => {
