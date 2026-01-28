@@ -5,7 +5,7 @@ export default defineAppConfig({
     'pages/message/index',
     'pages/user/index',
     'pages/search/index',
-    'pages/order',
+    'pages/order/index',
   ],
   subpackages: [
     {
