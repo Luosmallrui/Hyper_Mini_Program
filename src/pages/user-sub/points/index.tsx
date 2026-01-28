@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { View, Text, Image, ScrollView } from '@tarojs/components';
+import {useState, useEffect} from 'react';
+import {View, Text, Image, ScrollView} from '@tarojs/components';
 import Taro from '@tarojs/taro';
-import { request } from '../../../utils/request';
+import {request} from '@/utils/request';
 import './index.scss';
 
 interface PointRecord {
@@ -18,6 +18,7 @@ interface PointsData {
   pending_count: number;
   pending_amount: number;
   records: PointRecord[];
+  next_cursor: string | number | null; // 后端返回的下一个游标
 }
 
 export default function PointsPage() {
@@ -26,11 +27,12 @@ export default function PointsPage() {
     balance: 0,
     pending_count: 0,
     pending_amount: 0,
-    records: []
+    records: [],
+    next_cursor: null // 初始化游标为空
   });
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+
 
   // 加载积分数据
   useEffect(() => {
@@ -40,9 +42,7 @@ export default function PointsPage() {
 
   // 当 tab 切换时重新加载
   useEffect(() => {
-    setPage(1);
-    setPointsData(prev => ({ ...prev, records: [] }));
-    loadPointsRecords(1, activeTab);
+    loadPointsRecords(true);
   }, [activeTab]);
 
   // 加载积分余额和待入账信息
@@ -67,51 +67,46 @@ export default function PointsPage() {
   };
 
   // 加载积分明细
-  const loadPointsRecords = async (pageNum: number = page, type: string = activeTab) => {
-    if (loading) return;
+  const loadPointsRecords = async (isRefresh: boolean = false) => {
+    if (loading || (!isRefresh && !hasMore)) return;
 
     setLoading(true);
+
+    // 如果是刷新，cursor 传空；否则传当前持有的 next_cursor
+    const currentCursor = isRefresh ? '' : pointsData.next_cursor;
+
     try {
       const res = await request({
         url: '/api/v1/points/records',
         method: 'GET',
         data: {
-          page: pageNum,
           pageSize: 20,
-          type: type === 'all' ? '' : type
+          cursor: currentCursor, // 使用 cursor 替代 page
+          type: activeTab === 'all' ? '' : activeTab
         }
       });
 
       if (res.data && res.data.code === 200) {
-        const newRecords = res.data.data.records || [];
-        if (pageNum === 1) {
-          setPointsData(prev => ({ ...prev, records: newRecords }));
-        } else {
-          setPointsData(prev => ({
-            ...prev,
-            records: [...prev.records, ...newRecords]
-          }));
-        }
+        const {records: newRecords, next_cursor, has_more} = res.data.data;
 
-        setHasMore(res.data.data.has_more || false);
-        setPage(pageNum);
+        setPointsData(prev => ({
+          ...prev,
+          // 如果是刷新则替换，否则追加
+          records: isRefresh ? newRecords : [...prev.records, ...newRecords],
+          next_cursor: next_cursor // 更新下次请求需要的游标
+        }));
+
+        setHasMore(has_more);
       }
     } catch (error) {
       console.error('加载积分明细失败:', error);
-      Taro.showToast({
-        title: '加载失败',
-        icon: 'none'
-      });
+      Taro.showToast({title: '加载失败', icon: 'none'});
     } finally {
       setLoading(false);
     }
   };
-
-  // 滚动到底部加载更多
   const handleScrollToLower = () => {
-    if (hasMore && !loading) {
-      loadPointsRecords(page + 1, activeTab);
-    }
+    loadPointsRecords(false);
   };
 
   // 返回上一页
@@ -173,7 +168,7 @@ export default function PointsPage() {
         className="scroll-content"
         scrollY
         onScrollToLower={handleScrollToLower}
-        lowerThreshold={100}
+        lowerThreshold={150}
       >
         {/* 积分余额卡片 */}
         <View className="balance-card">
@@ -265,7 +260,7 @@ export default function PointsPage() {
       </ScrollView>
 
       {/* 底部安全区 */}
-      <View className="safe-area-bottom" />
+      <View className="safe-area-bottom"/>
     </View>
   );
 }
