@@ -5,6 +5,7 @@ import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import './index.scss'
 import { setTabBarIndex } from '../../store/tabbar'
+import { getCustomTabBarHeight } from '../../utils/layout'
 // 引入封装好的请求工具
 import { request } from '../../utils/request'
 
@@ -30,6 +31,9 @@ export default function MessagePage() {
   const [navBarHeight, setNavBarHeight] = useState(44)
   const [scrollHeight, setScrollHeight] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [tabBarHeight, setTabBarHeight] = useState(0)
+  const [scrollIntoView, setScrollIntoView] = useState('')
+  const [currentScrollTop, setCurrentScrollTop] = useState(0)
 
   Taro.useDidShow(() => {
     setTabBarIndex(3)
@@ -43,10 +47,12 @@ export default function MessagePage() {
     const sbHeight = sysInfo.statusBarHeight || 20
     const nbHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
     const windowHeight = sysInfo.windowHeight || sysInfo.screenHeight || 0
+    const customTabBarHeight = getCustomTabBarHeight()
 
     setNavBarPaddingTop(sbHeight)
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
-    const contentHeight = windowHeight - sbHeight - (nbHeight > 0 ? nbHeight : 44)
+    setTabBarHeight(customTabBarHeight)
+    const contentHeight = windowHeight - sbHeight - (nbHeight > 0 ? nbHeight : 44) - customTabBarHeight
     setScrollHeight(contentHeight > 0 ? contentHeight : windowHeight)
   }, [])
 
@@ -162,10 +168,16 @@ export default function MessagePage() {
   }
 
   const handlePullDownRefresh = async () => {
+    if (currentScrollTop > 20) {
+      setIsRefreshing(false)
+      return
+    }
     setIsRefreshing(true)
+    setScrollIntoView('scroll-top-anchor')
     await fetchSessionList()
     setTimeout(() => {
       setIsRefreshing(false)
+      setScrollIntoView('')
       Taro.showToast({ title: '刷新成功', icon: 'success' })
     }, 1200)
   }
@@ -241,15 +253,21 @@ export default function MessagePage() {
         className='message-scroll'
         style={{
           paddingTop: `${navBarPaddingTop + navBarHeight}px`,
-          paddingBottom: '120px',
+          paddingBottom: '20px',
           height: scrollHeight ? `${scrollHeight}px` : '100vh'
         }}
+        scrollIntoView={scrollIntoView}
         refresherEnabled
         refresherTriggered={isRefreshing}
         onRefresherRefresh={handlePullDownRefresh}
         refresherBackground="#000000"
         refresherDefaultStyle="white"
+        onScroll={e => {
+          const top = e.detail?.scrollTop || 0
+          setCurrentScrollTop(top)
+        }}
       >
+        <View id='scroll-top-anchor' />
         <View className='system-list'>
           {systemNotices.map(item => (
             <View key={item.id} className='msg-item system-item'>
@@ -308,6 +326,7 @@ export default function MessagePage() {
              </View>
           )}
         </View>
+        <View style={{ height: `${tabBarHeight + 24}px` }} />
 
       </ScrollView>
     </View>

@@ -1,4 +1,4 @@
-export default definePageConfig({
+﻿export default definePageConfig({
   navigationStyle: 'custom',
   navigationBarTextStyle: 'white',
 })

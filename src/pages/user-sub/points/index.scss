@@ -1,368 +1,306 @@
-.points-page {
+﻿/* 全局背景黑 */
+page {
   background-color: #000000;
-  min-height: 100vh;
-  padding-bottom: 20px;
+  height: 100%;
+  overflow: hidden;
+}
 
-  // 顶部导航栏
-  .navbar {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 120px;
-    padding: 20px 30px;
-    background-image: linear-gradient(180deg, rgba(255, 46, 77, 0.2) 0%, rgba(0, 0, 0, 0.8) 100%);
+.points-page {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: #000;
+  position: relative;
+}
 
-    // 背景图叠加
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-image: url('../../../assets/images/backgound.png');
-      background-size: cover;
-      background-position: center;
-      opacity: 0.8;
-      z-index: 0;
-    }
+/* 1. 顶部导航 */
+.custom-navbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background-color: transparent; 
+  display: flex;
+  flex-direction: column;
+}
 
-    .navbar-left,
-    .navbar-title,
-    .navbar-right {
+.status-bar {
+  width: 100%;
+}
+
+.nav-content {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.nav-left {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.nav-title {
+  flex: 1;
+  text-align: center;
+  color: #fff;
+  font-size: 34rpx;
+  font-weight: 600;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16rpx;
+  box-sizing: border-box;
+}
+
+.nav-action {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 28rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.scroll-content {
+  flex: 1;
+}
+
+.page-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 顶部背景层：从标题区延伸到列表卡片顶部 */
+.top-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 760rpx;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.top-bg-img {
+  width: 100%;
+  height: 100%;
+}
+
+/* 2. 头部积分卡片区域 */
+.hero-section {
+  position: relative;
+  margin: 20rpx 32rpx 0;
+  height: 300rpx;
+  border-radius: 0;
+  overflow: visible;
+  background-color: transparent;
+  z-index: 1;
+  
+  /* 金币装饰 - 绝对定位右上角 */
+  .coin-decoration {
+    position: absolute;
+    top: 79px;
+    right: 31px;
+    width: 273px;
+    height: auto;
+    z-index: 1;
+  }
+
+  /* 内容层 - 浮在图片之上 */
+  .header-card-content {
       position: relative;
-      z-index: 1;
-    }
-
-    .navbar-left {
-      width: 48px;
-      height: 48px;
+      z-index: 2; /* 确保在金币之上(如果需要遮挡金币则改小z-index，通常文字在最上层) */
+      height: 100%;
       display: flex;
-      align-items: center;
+      flex-direction: column;
       justify-content: center;
+      padding-left: 30px;
 
-      .back-icon {
-        width: 32px;
-        height: 32px;
-      }
-    }
+      .card-left {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
 
-    .navbar-title {
-      color: #f3f3f4;
-      font-size: 32px;
-      font-weight: 600;
-      line-height: 40px;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-
-    .navbar-right {
-      margin-top: 700px;
-      width: 300px;
-      height:300px;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-
-      .more-icon {
-        width: 200%;
-        height: 200%;
-        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-      }
-    }
-  }
-
-  .scroll-content {
-    height: calc(100vh - 120px);
-  }
-
-  // 积分余额卡片
-  .balance-card {
-    position: relative;
-    width: 680px;
-    height: 365px;
-    margin: 32px auto 0;
-    background-image:  url('../../../assets/images/backgound.png');
-    background-size: cover;
-    background-position: center;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 8px 24px rgba(255, 46, 77, 0.15);
-
-    .balance-content {
-      padding: 183px 30px 0;
-      position: relative;
-      z-index: 2;
-
-      .balance-label {
-        color: #747474;
-        font-size: 20px;
-        line-height: 28px;
-        letter-spacing: 0.86px;
-        display: block;
-      }
-
-      .balance-amount {
-        color: #ffffff;
-        font-size: 52px;
-        font-weight: 600;
-        line-height: 73px;
-        display: block;
-        margin-top: 8px;
-      }
-
-      .pending-info {
-        position: absolute;
-        bottom: -94px;
-        left: 30px;
-        padding: 10px 30px;
-        background-image: url('https://lanhu-oss-proxy.lanhuapp.com/SketchPngcc36db948b5630c8d2952db27d31c9181ea3e39cff351469d5667808234babfe');
-        background-size: cover;
-        border-radius: 8px;
-
-        .pending-text {
-          color: #b7b7b7;
-          font-size: 20px;
-          line-height: 28px;
-          letter-spacing: 0.86px;
-          white-space: nowrap;
-        }
-      }
-    }
-
-    .card-decoration {
-      position: absolute;
-      right: -13px;
-      bottom: 46px;
-      width: 272px;
-      height: 273px;
-      z-index: 1;
-    }
-  }
-
-  // 明细容器
-  .records-container {
-    width: 690px;
-    margin: 52px auto 0;
-    background-color: #161616;
-    border-radius: 12px;
-    padding: 30px;
-
-    // Tab 切换
-    .tabs {
-      display: flex;
-      align-items: center;
-      gap: 60px;
-      margin-bottom: 40px;
-
-      .tab-item {
-        cursor: pointer;
-
-        .tab-text {
-          color: #8e8e8e;
-          font-size: 28px;
-          line-height: 28px;
-          transition: color 0.3s;
-
-          &.active {
-            color: #ffffff;
-            font-weight: 500;
+          .label {
+              font-size: 20px;
+              font-weight: 400;
+              color: #747474;
+              margin-bottom: 12rpx;
+              display: block;
           }
-        }
-      }
-    }
-
-    // 积分明细列表
-    .records-list {
-      .record-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        padding: 20px 0;
-
-        &:not(:last-child) {
-          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .record-info {
-          flex: 1;
-
-          .record-desc {
-            color: #8e8e8e;
-            font-size: 28px;
-            line-height: 40px;
-            display: block;
+          .amount {
+              font-size: 52px;
+              font-weight: 600;
+              color: #ffffff;
+              font-family: 'DIN', sans-serif;
+              margin-bottom: 20rpx;
+              text-shadow: 0 4px 8px rgba(0,0,0,0.3); /* 增加一点阴影提升可读性 */
+              display: block;
           }
-
-          .record-time {
-            color: #b7b7b7;
-            font-size: 20px;
-            line-height: 28px;
-            letter-spacing: 0.86px;
-            display: block;
-            margin-top: 10px;
+          
+          .pending-tag {
+              margin-top: 24rpx;
+              background: transparent;
+              padding: 0;
+              border-radius: 0;
+              display: inline-block;
+              text-align: left;
+              
+              text {
+                  font-size: 20px;
+                  font-weight: 400;
+                  color: #b7b7b7;
+                  display: block;
+              }
           }
-        }
-
-        .record-amount {
-          font-size: 30px;
-          font-weight: 500;
-          line-height: 42px;
-          letter-spacing: 1.29px;
-          margin-top: 18px;
-
-          &.income {
-            color: #ffffff;
-          }
-
-          &.expense {
-            color: #ff4444;
-          }
-        }
       }
-
-      // 空状态
-      .empty-state {
-        padding: 80px 0;
-        text-align: center;
-
-        .empty-text {
-          color: #8e8e8e;
-          font-size: 28px;
-        }
-      }
-
-      // 加载中
-      .loading-more {
-        padding: 30px 0;
-        text-align: center;
-
-        .loading-text {
-          color: #8e8e8e;
-          font-size: 24px;
-        }
-      }
-
-      // 没有更多
-      .no-more {
-        padding: 30px 0;
-        text-align: center;
-
-        .no-more-text {
-          color: #666666;
-          font-size: 24px;
-        }
-      }
-    }
-  }
-
-  // 底部安全区
-  .safe-area-bottom {
-    height: 20px;
   }
 }
 
-// 响应式适配
-@media screen and (max-width: 375px) {
-  .points-page {
-    .navbar {
-      height: 100px;
-      padding: 15px 20px;
+/* 3. 列表区域 */
+.records-container {
+    background-color: rgba(22, 22, 22, 0.88); /* 深灰玻璃 */
+    width: 690rpx;
+    margin: 13px auto 40rpx;
+    border-radius: 24rpx;
+    padding: 30rpx;
+    box-sizing: border-box;
+    min-height: 500rpx;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
 
-      .navbar-left {
-        width: 40px;
-        height: 40px;
-
-        .back-icon {
-          width: 28px;
-          height: 28px;
+    /* Tabs */
+    .tabs-header {
+        display: flex;
+        gap: 44rpx;
+        margin-bottom: 40rpx;
+        
+        .tab-item {
+            font-size: 28rpx;
+            color: #8E8E8E;
+            font-weight: 500;
+            transition: all 0.2s;
+            position: relative;
+            padding-bottom: 10rpx;
+            
+            &.active {
+                color: #fff;
+                font-weight: 600;
+                font-size: 30rpx;
+                
+                .indicator {
+                    position: absolute;
+                    bottom: 0;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    width: 40rpx;
+                    height: 4rpx;
+                    background-color: #FF2E4D;
+                    border-radius: 2rpx;
+                }
+            }
         }
-      }
-
-      .navbar-title {
-        font-size: 26px;
-      }
-
-      .navbar-right {
-        width: 100px;
-        height: 65px;
-      }
     }
 
-    .scroll-content {
-      height: calc(100vh - 100px);
+    .list-scroll {
+        flex: 1;
+        min-height: 0;
+        height: 100%;
+        padding-right: 16rpx;
+        box-sizing: border-box;
     }
 
-    .balance-card {
-      width: 345px;
-      height: 185px;
+    /* 记录列表 */
+    .list-content {
+        padding-right: 24rpx;
+        box-sizing: border-box;
 
-      .balance-content {
-        padding: 90px 15px 0;
-
-        .balance-label {
-          font-size: 16px;
-        }
-
-        .balance-amount {
-          font-size: 40px;
-          line-height: 56px;
-        }
-
-        .pending-info {
-          bottom: -50px;
-          left: 15px;
-          padding: 8px 15px;
-
-          .pending-text {
-            font-size: 14px;
-          }
-        }
-      }
-
-      .card-decoration {
-        width: 136px;
-        height: 136px;
-        right: -6px;
-        bottom: 23px;
-      }
-    }
-
-    .records-container {
-      width: 345px;
-      padding: 15px;
-
-      .tabs {
-        gap: 30px;
-        margin-bottom: 20px;
-
-        .tab-text {
-          font-size: 22px;
-        }
-      }
-
-      .records-list {
         .record-item {
-          padding: 15px 0;
-
-          .record-info {
-            .record-desc {
-              font-size: 22px;
-              line-height: 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30rpx 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06); 
+            
+            &:last-child {
+                border-bottom: none;
+            }
+            
+            .info {
+                display: flex;
+                flex-direction: column;
+                gap: 10rpx;
+                max-width: 70%;
+                
+                .desc {
+                    color: #e0e0e0;
+                    font-size: 28rpx;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+                .time {
+                    color: #8E8E8E;
+                    font-size: 22rpx;
+                }
             }
 
-            .record-time {
-              font-size: 16px;
-              line-height: 22px;
-            }
-          }
+            .amount {
+                font-size: 32rpx;
+                font-weight: 600;
+                font-family: 'DIN', sans-serif;
+                margin-right: 8rpx;
 
-          .record-amount {
-            font-size: 24px;
-            line-height: 36px;
-          }
+                &.plus { color: #fff; } 
+                &.minus { color: #fff; }   
+            }
         }
-      }
+        
+        .empty-state {
+            text-align: center;
+            color: #666;
+            padding: 80rpx 0;
+            font-size: 26rpx;
+        }
+        
+        .loading-center {
+            display: flex;
+            justify-content: center;
+            padding: 20rpx;
+        }
+        
+        .no-more {
+            text-align: center;
+            color: #444;
+            padding: 30rpx 0;
+            font-size: 22rpx;
+        }
     }
-  }
+}
+
+.safe-area-spacer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: env(safe-area-inset-bottom);
+    width: 100%;
+    pointer-events: none;
 }

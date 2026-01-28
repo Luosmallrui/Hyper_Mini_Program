@@ -1,5 +1,5 @@
 ﻿import { View, Text, Input, ScrollView, Image } from '@tarojs/components'
-import Taro, { useRouter } from '@tarojs/taro'
+import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useState, useEffect, useRef } from 'react'
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
@@ -46,7 +46,7 @@ export default function ChatPage() {
   const [keyboardHeight, setKeyboardHeight] = useState(0)
 
   const [isFollowed, setIsFollowed] = useState(false)
-  const [unreadCount] = useState(20)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => { msgListRef.current = msgList }, [msgList])
   useEffect(() => { nextCursorRef.current = nextCursor }, [nextCursor])
@@ -72,7 +72,31 @@ export default function ChatPage() {
       }
     })
 
-    return resultList.sort((a, b) => a.time - b.time)
+    return resultList.sort((a, b) => {
+      if (a.time !== b.time) return a.time - b.time
+      return compareMessageId(a.id, b.id)
+    })
+  }
+
+  const normalizeTimestamp = (value?: number) => {
+    if (!value) return Math.floor(Date.now() / 1000)
+    const num = Number(value)
+    if (!Number.isFinite(num)) return Math.floor(Date.now() / 1000)
+    if (num > 1e11) return Math.floor(num / 1000)
+    return Math.floor(num)
+  }
+
+  const compareMessageId = (aId: MessageItem['id'], bId: MessageItem['id']) => {
+    const aStr = String(aId)
+    const bStr = String(bId)
+    const aNum = /^\d+$/.test(aStr)
+    const bNum = /^\d+$/.test(bStr)
+    if (aNum && bNum) {
+      if (aStr.length !== bStr.length) return aStr.length - bStr.length
+      if (aStr === bStr) return 0
+      return aStr < bStr ? -1 : 1
+    }
+    return aStr.localeCompare(bStr)
   }
 
   useEffect(() => {
@@ -87,7 +111,8 @@ export default function ChatPage() {
     const menuInfo = Taro.getMenuButtonBoundingClientRect()
     const sbHeight = sysInfo.statusBarHeight || 20
     setStatusBarHeight(sbHeight)
-    const nbHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
+    const designTotalHeight = 100
+    const nbHeight = designTotalHeight - sbHeight
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
     const rightMargin = sysInfo.screenWidth - menuInfo.right
     setMenuButtonWidth(menuInfo.width + (rightMargin * 2))
@@ -131,7 +156,7 @@ export default function ChatPage() {
           sender_id: Number(newMsg.sender_id),
           content: newMsg.content,
           msg_type: newMsg.msg_type,
-          time: newMsg.timestamp ? Math.floor(newMsg.timestamp / 1000) : (newMsg.time || Math.floor(Date.now() / 1000)),
+          time: normalizeTimestamp(newMsg.timestamp || newMsg.time || Date.now()),
           ext: newMsg.ext || {},
           is_self: isSelfMsg
         }
@@ -160,7 +185,14 @@ export default function ChatPage() {
     }
     Taro.eventCenter.on('TOKEN_REFRESHED', onTokenRefreshed)
 
+    const onFollowStatusUpdated = (payload) => {
+      if (!payload || String(payload.userId) !== String(peer_id)) return
+      fetchFollowStatus()
+    }
+    Taro.eventCenter.on('FOLLOW_STATUS_UPDATED', onFollowStatusUpdated)
+
     fetchMessages(true)
+    fetchFollowStatus()
     clearUnread()
 
     return () => {
@@ -168,13 +200,36 @@ export default function ChatPage() {
       Taro.eventCenter.off('IM_NEW_MESSAGE', onNewMessage)
       Taro.eventCenter.off('IM_CONNECTED', onImConnected)
       Taro.eventCenter.off('TOKEN_REFRESHED', onTokenRefreshed)
+      Taro.eventCenter.off('FOLLOW_STATUS_UPDATED', onFollowStatusUpdated)
     }
   }, [peer_id, type, myUserId])
+
+  useDidShow(() => {
+    if (peer_id) {
+      fetchFollowStatus()
+    }
+  })
+
+  const fetchFollowStatus = async () => {
+    try {
+      const res = await request({
+        url: `/api/v1/follow/${peer_id}`,
+        method: 'GET'
+      })
+      let resData: any = res.data
+      if (typeof resData === 'string') {
+        try { resData = JSON.parse(resData) } catch (e) {}
+      }
+      if (resData && resData.code === 200 && typeof resData.data?.is_followed === 'boolean') {
+        setIsFollowed(resData.data.is_followed)
+      }
+    } catch (e) {}
+  }
 
   const clearUnread = async () => {
     try {
       await request({
-        url: '/api/v1/message/clear-unread',
+        url: '/api/v1/session/clear-unread',
         method: 'POST',
         data: { session_type: Number(type), peer_id: Number(peer_id) }
       })
@@ -205,7 +260,10 @@ export default function ChatPage() {
       if (typeof resBody === 'string') try { resBody = JSON.parse(resBody) } catch (e) {}
 
       if (resBody.code === 200 && resBody.data) {
-        const newMsgs: MessageItem[] = resBody.data.list || []
+        const newMsgs: MessageItem[] = (resBody.data.list || []).map((item: MessageItem) => ({
+          ...item,
+          time: normalizeTimestamp(item.time)
+        }))
 
         if (newMsgs.length > 0) {
           console.log(`[ChatPage] 补洞拉取到 ${newMsgs.length} 条消息`)
@@ -268,12 +326,17 @@ export default function ChatPage() {
 
       if (resBody.code === 200 && resBody.data) {
         const data = resBody.data
-        const newMsgs: MessageItem[] = data.list || []
+        const newMsgs: MessageItem[] = (data.list || []).map((item: MessageItem) => ({
+          ...item,
+          time: normalizeTimestamp(item.time)
+        }))
         const cursor = data.next_cursor
 
         if (isRefresh) {
           if (data.avatar) setPeerAvatar(data.avatar)
           if (data.self_avatar) setSelfAvatar(data.self_avatar)
+          if (typeof data.is_followed === 'boolean') setIsFollowed(data.is_followed)
+          if (typeof data.unread_total === 'number') setUnreadCount(data.unread_total)
         }
 
         const sortedMsgs = newMsgs.sort((a, b) => a.time - b.time)
@@ -368,7 +431,8 @@ export default function ChatPage() {
 
   const formatTime = (ts: number) => {
     if (!ts) return ''
-    const date = new Date(ts * 1000)
+    const normalized = normalizeTimestamp(ts)
+    const date = new Date(normalized * 1000)
     const now = new Date()
     const z = (n: number) => (n < 10 ? `0${n}` : n)
     const timeStr = `${z(date.getHours())}:${z(date.getMinutes())}`
@@ -388,9 +452,29 @@ export default function ChatPage() {
     }
   }
 
-  const handleToggleFollow = () => {
-    setIsFollowed(prev => !prev)
-    Taro.showToast({ title: isFollowed ? '已取消关注' : '已关注', icon: 'none' })
+  const handleToggleFollow = async () => {
+    const nextFollowed = !isFollowed
+    setIsFollowed(nextFollowed)
+
+    try {
+      const action = nextFollowed ? 'follow' : 'unfollow'
+      const res = await request({
+        url: `/api/v1/follow/${action}`,
+        method: 'POST',
+        data: { user_id: String(peer_id) }
+      })
+      const resData: any = res.data
+      if (!resData || resData.code !== 200) throw new Error(resData?.msg || '操作失败')
+      Taro.showToast({ title: nextFollowed ? '已关注' : '已取消关注', icon: 'none' })
+    } catch (e) {
+      setIsFollowed(!nextFollowed)
+      Taro.showToast({ title: '操作失败', icon: 'none' })
+    }
+  }
+
+  const handleOpenPeerProfile = () => {
+    if (!peer_id) return
+    Taro.navigateTo({ url: `/pages/user-sub/profile/index?userId=${peer_id}` })
   }
 
   const safeDecode = (value?: string) => {
@@ -417,9 +501,11 @@ export default function ChatPage() {
         </View>
         <View className='nav-center'>
           <Text className='nav-title'>{safeTitle}</Text>
-          <View className={`follow-btn ${isFollowed ? 'followed' : ''}`} onClick={handleToggleFollow}>
-            <Text className='follow-text'>{isFollowed ? '已关注' : '关注'}</Text>
-          </View>
+          {!isFollowed && (
+            <View className='follow-btn' onClick={handleToggleFollow}>
+              <Text className='follow-text'>关注</Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -455,7 +541,7 @@ export default function ChatPage() {
                 {(index === 0 || index % 10 === 0) && (<View className='time-stamp'>{formatTime(msg.time)}</View>)}
                 <View className='msg-body'>
                   {!isSelf && (
-                    <View className='avatar'>
+                    <View className='avatar' onClick={handleOpenPeerProfile}>
                       {peerAvatar ? (
                         <Image src={peerAvatar} className='avatar-img' mode='aspectFill' />
                       ) : (

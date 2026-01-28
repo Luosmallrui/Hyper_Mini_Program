@@ -21,20 +21,51 @@ src/
 ├── app.config.ts          # 全局路由与窗口配置
 ├── app.tsx                # App 入口 (IM 初始化, 全局事件监听)
 ├── app.less               # 全局样式 (引入字体图标)
+├── index.html             # H5 入口模板
 ├── assets/                # 静态资源 (图标, 图片)
+├── components/            # 通用组件
+│   └── NoData/            # 空状态组件
+├── constants/             # 常量定义
+│   ├── config.ts          # 全局配置常量
+│   └── statusCode.ts      # 状态码枚举
 ├── custom-tab-bar/        # 自定义底部栏 (5项, 中间为红色悬浮加号, 背景透明)
+├── models/                # 数据模型聚合
+│   └── index.ts           # 模型导出
+├── services/              # API 服务层
+│   └── index.ts           # 服务聚合
 ├── store/                 # 简单状态存储 (如 tabbar index)
 ├── utils/
-│   ├── request.ts         # HTTP 请求封装 (自动注入 Token, 处理 401 刷新, 广播强制登出)
-│   └── im.ts              # WebSocket 管理类 (心跳, 断线重连, 消息分发, 补洞触发)
+│   ├── request/           # HTTP 封装目录 (拦截器/通用参数)
+│   │   ├── http.ts         # HTTP 请求封装
+│   │   ├── http-util.ts    # 通用工具
+│   │   └── index.ts        # 请求导出
+│   ├── app-update.ts      # 小程序更新管理
+│   ├── im.ts              # WebSocket 管理类 (心跳, 断线重连, 消息分发, 补洞触发)
+│   ├── request.ts         # 兼容层/快捷入口
+│   ├── toast.ts           # Toast 工具
+│   └── utils.ts           # 通用工具方法
 └── pages/
     ├── index/             # 首页 (暗黑地图 + 底部 Swiper 卡片 + 复杂筛选)
     ├── square/            # 广场 (顶部 Tab + 瀑布流/单列流切换)
+    ├── square-sub/        # 广场子页
     │   ├── post-create/   # 发帖页 (图片预上传, 暗黑表单)
     │   └── post-detail/   # 帖子详情 (Swiper 轮播, 评论, ID精度修复)
+    ├── activity/          # 活动详情
+    ├── activity-list/     # 活动列表
+    ├── activity-attendee/ # 活动参与者列表
     ├── message/           # 消息列表 (系统通知 + 会话列表)
     ├── chat/              # 聊天详情 (1v1 聊天, 历史记录, WS 同步, 键盘避让)
-    └── user/              # 用户中心 (登录, 编辑资料, 设置)
+    ├── order/             # 订单列表
+    ├── order-sub/         # 订单子页
+    │   ├── order-detail/  # 订单详情
+    │   └── order-pay-success/ # 支付成功
+    ├── my-tickets/        # 我的票夹
+    ├── search/            # 搜索页
+    ├── user/              # 用户中心 (登录, 编辑资料, 设置)
+    └── user-sub/          # 用户子页
+        ├── follow-list/   # 关注/粉丝列表
+        ├── points/        # 积分页
+        └── profile/       # 个人资料编辑
 ```
 
 # 功能状态与开发路线
@@ -68,6 +99,12 @@ src/
     *   必须使用 `Taro.getMenuButtonBoundingClientRect()` 动态计算高度和 Padding。
     *   必须确保内容（如标题、返回键）垂直居中且不被微信胶囊按钮遮挡。
 *   **安全区**: 固定在底部的元素（如输入框、Tab栏）必须添加 `padding-bottom: calc(X + env(safe-area-inset-bottom))`。
+*   **自定义 TabBar 留白**: 项目启用了 `custom-tab-bar`，真实高度 = **80px 容器 + 30px 底部 padding + safeAreaBottom**。已新增公共方法：
+    *   `src/utils/layout.ts`
+        *   `getCustomTabBarHeight()` 返回完整高度
+        *   `getCustomTabBarPadding(extra)` 返回高度 + 额外留白
+    *   已在 `src/utils/index.ts` 导出，其他页面统一使用此方法处理底部留白，避免被 TabBar 遮挡。
+    *   **消息页占位块**: 在 `ScrollView` 末尾追加一个 `View`（高度 = `getCustomTabBarHeight() + 24`），强制列表可滚出 TabBar 区域，避免被底部黑块遮挡。
 
 ## 2. 网络与数据
 *   **请求工具**: 必须使用 `import { request } from '@/utils/request'`，**严禁**直接使用 `Taro.request` (除了 `wx-login` 初始调用或处理原始字符串流时)。
@@ -75,6 +112,10 @@ src/
     *   后端返回的 ID 是 19 位 Int64。
     *   **关键规则**: 在获取详情或列表时，若涉及 ID，必须使用 `dataType: 'string'` 获取原始响应，并使用正则 `jsonStr.replace(/"id":\s*(\d{16,})/g, '"id": "$1"')` 将数字转换为字符串，防止 JS 精度丢失。
 *   **图片上传**: 使用 `Taro.chooseMedia` + `Taro.uploadFile`。选择图片后**立即**触发上传，不要等到点“发布”按钮才上传。
+*   **关注接口**:
+    *   `GET /api/v1/follow/:userid` 返回 `data.is_followed`
+    *   `POST /api/v1/follow/{follow|unfollow}` 需传 `user_id` **字符串**，否则后端会报类型错误
+    *   关注状态跨页同步通过事件：`Taro.eventCenter.trigger('FOLLOW_STATUS_UPDATED', { userId, followed })`
 
 ## 3. WebSocket 与 聊天
 *   **单例调用**: 必须通过 `IMService.getInstance()` 访问 IM。
@@ -82,6 +123,9 @@ src/
 *   **列表渲染**:
     *   使用 `useRef` 解决 `useEffect` 闭包中的旧状态问题。
     *   加载历史消息时，使用“视觉锚点”技术（记录第一条消息 ID，渲染后 `scrollIntoView` 回去），防止列表跳动。
+*   **时间戳与排序**:
+    *   消息时间可能是秒或毫秒，统一用 `normalizeTimestamp()` 转成秒。
+    *   实时消息排序采用 `time` + `id` 二级排序，避免同秒乱序。
 
 ## 4. 性能优化
 *   **图片**: 列表页图片必须开启 `lazyLoad`，且模式统一为 `aspectFill`。

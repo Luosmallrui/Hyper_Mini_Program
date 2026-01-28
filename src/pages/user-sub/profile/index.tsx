@@ -94,7 +94,7 @@ const UserProfilePage: React.FC = () => {
       const res = await Taro.request({
         url: `${BASE_URL}/api/v1/user/info`,
         method: 'GET',
-        data: { user_id: userId },
+        data: { user_id: String(userId) },
         header: { 'Authorization': `Bearer ${token}` },
         dataType: 'string',
         responseType: 'text'
@@ -219,7 +219,7 @@ const UserProfilePage: React.FC = () => {
       const res = await Taro.request({
         url: `${BASE_URL}/api/v1/follow/${action}`,
         method: 'POST',
-        data: { user_id: userId },
+        data: { user_id: String(userId) },
         header: { 'Authorization': `Bearer ${token}` },
         dataType: 'string',
         responseType: 'text'
@@ -235,11 +235,13 @@ const UserProfilePage: React.FC = () => {
       }
 
       if (resBody.code === 200) {
-        setIsFollowing(!isFollowing);
+        const nextFollowed = !isFollowing;
+        setIsFollowing(nextFollowed);
         setUserStats(prev => ({
           ...prev,
           follower: isFollowing ? prev.follower - 1 : prev.follower + 1
         }));
+        Taro.eventCenter.trigger('FOLLOW_STATUS_UPDATED', { userId, followed: nextFollowed });
 
         Taro.showToast({
           title: isFollowing ? '已取消关注' : '已关注',
@@ -424,7 +426,7 @@ const UserProfilePage: React.FC = () => {
             onClick={() => setActiveTab('activity')}
           >
             <Text className={`tab-text ${activeTab === 'activity' ? '' : 'inactive'}`}>
-              他的活动
+              TA的活动
             </Text>
           </View>
           <View
@@ -432,7 +434,7 @@ const UserProfilePage: React.FC = () => {
             onClick={() => setActiveTab('dynamic')}
           >
             <Text className={`tab-text ${activeTab === 'dynamic' ? 'active' : ''}`}>
-              他的动态
+              TA的动态
             </Text>
           </View>
         </View>

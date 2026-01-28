@@ -1,4 +1,4 @@
-import { View, Text, Image, Swiper, SwiperItem, ScrollView, Input } from '@tarojs/components'
+﻿import { View, Text, Image, Swiper, SwiperItem, ScrollView, Input } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { AtIcon, AtActivityIndicator } from 'taro-ui'
@@ -82,7 +82,7 @@ export default function PostDetailPage() {
     }
   }, [id])
 
-  // ... (parseJSONWithBigInt 保持不变)
+  // Parse string response and keep 16+ digit IDs as strings.
   const parseJSONWithBigInt = (jsonStr: string) => {
     if (typeof jsonStr !== 'string') return jsonStr
     try {
@@ -91,7 +91,6 @@ export default function PostDetailPage() {
     } catch (e) { return {} }
   }
 
-  // ... (fetchNoteDetail 保持不变)
   const fetchNoteDetail = async (noteId: string) => {
     try {
       const token = Taro.getStorageSync('access_token')
@@ -111,10 +110,13 @@ export default function PostDetailPage() {
         }
         setNote({ ...data, id: String(data.id), media_data: mediaList, topic_ids: data.topic_ids || [] })
       }
-    } catch (e) { console.error(e) } finally { setLoading(false) }
+    } catch (e) {
+      console.error('获取详情失败', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // ... (fetchComments 保持不变)
   const fetchComments = async (noteId: string, isRefresh = false) => {
     if (isCommentLoading || (!isRefresh && !hasMoreComments)) return
     setIsCommentLoading(true)
@@ -142,12 +144,14 @@ export default function PostDetailPage() {
           setCommentCursor(String(next_cursor))
           setHasMoreComments(has_more)
       }
-    } catch(e) { console.error(e) } finally { setIsCommentLoading(false) }
+    } catch (e) {
+      console.error('获取评论失败', e)
+    } finally {
+      setIsCommentLoading(false)
+    }
   }
 
-  // ... (fetchReplies, openReplyModal, onClickReply, handleSend 保持不变)
   const fetchReplies = async (rootId: string, isRefresh = false) => {
-    /* ... 略，复用之前代码 ... */
     const commentIndex = commentList.findIndex(c => c.id === rootId)
     if (commentIndex === -1) return
     const comment = commentList[commentIndex]
@@ -177,7 +181,7 @@ export default function PostDetailPage() {
           setCommentList(prev => {
               const newList = [...prev]
               const target = newList[commentIndex]
-              // 去重合并
+              // De-duplicate replies by id.
               const existingIds = new Set(target.latest_replies.map(r => r.id))
               const uniqueNewReplies = newReplies.filter((r: ReplyItem) => !existingIds.has(r.id))
 
@@ -217,7 +221,6 @@ export default function PostDetailPage() {
   }
 
   const handleSend = async () => {
-      /* ... 略，复用之前代码 ... */
       if (!inputText.trim()) { Taro.showToast({ title: '说点什么吧', icon: 'none' }); return }
       if (!note) return
       Taro.showLoading({ title: '发送中' })
@@ -240,12 +243,13 @@ export default function PostDetailPage() {
           } else {
               Taro.showToast({ title: resData?.msg || '失败', icon: 'none' })
           }
-      } catch(e) { Taro.hideLoading(); console.error(e) }
+      } catch (e) {
+          Taro.hideLoading()
+          console.error('发送评论失败', e)
+          Taro.showToast({ title: '失败', icon: 'none' })
+      }
   }
 
-  // --- 【核心修改】通用点赞处理 (一级 & 二级) ---
-  // type: 'comment' | 'reply'
-  // parentCommentId: 如果是二级评论，需要知道它属于哪个一级评论，方便更新 state
   const handleLikeItem = async (
     type: 'comment' | 'reply',
     commentId: string,
@@ -286,7 +290,6 @@ export default function PostDetailPage() {
     }
   }
 
-  // 帖子点赞
   const handleToggleLike = async () => {
     if (!note) return
     const oldIsLiked = note.is_liked
@@ -314,21 +317,55 @@ export default function PostDetailPage() {
       Taro.previewImage({ current: url, urls: note?.media_data.map(m=>m.url)||[] })
   }
 
+  const handleOpenUserProfile = (e) => {
+      e?.stopPropagation?.()
+      if (!note?.user_id) return
+      Taro.navigateTo({ url: `/pages/user-sub/profile/index?userId=${note.user_id}` })
+  }
+
+  const handleToggleFollow = async (e) => {
+      e?.stopPropagation?.()
+      if (!note) return
+
+      const nextFollowed = !note.is_followed
+      const action = nextFollowed ? 'follow' : 'unfollow'
+
+      setNote(prev => prev ? ({ ...prev, is_followed: nextFollowed }) : prev)
+
+      try {
+          const res = await request({
+              url: `/api/v1/follow/${action}`,
+              method: 'POST',
+              data: { user_id: String(note.user_id) }
+          })
+          const resData: any = res.data
+          if (!resData || resData.code !== 200) throw new Error(resData?.msg || '操作失败')
+          Taro.showToast({ title: nextFollowed ? '已关注' : '已取消关注', icon: 'success' })
+      } catch (err) {
+          setNote(prev => prev ? ({ ...prev, is_followed: !nextFollowed }) : prev)
+          Taro.showToast({ title: '操作失败', icon: 'none' })
+      }
+  }
+
   if (loading) return <View className='post-detail-page loading-center'><AtActivityIndicator content='加载中...' color='#999' mode='center'/></View>
   if (!note) return <View className='post-detail-page loading-center'><Text style={{color: '#999'}}>内容不存在</Text></View>
 
   return (
     <View className='post-detail-page'>
       <View className='custom-nav' style={{ paddingTop: `${statusBarHeight}px`, height: `${navBarHeight}px`, paddingRight: `${navBarPaddingRight}px` }}>
-         <View className='left-area' onClick={() => Taro.navigateBack()}>
-            <AtIcon value='chevron-left' size='24' color='#fff' />
-            <View className='user-mini'>
+         <View className='left-area'>
+            <View className='back-btn' onClick={() => Taro.navigateBack()}>
+               <AtIcon value='chevron-left' size='24' color='#fff' />
+            </View>
+            <View className='user-mini' onClick={handleOpenUserProfile}>
                <Image src={note.avatar} className='avatar' mode='aspectFill'/>
                <Text className='name'>{note.nickname}</Text>
             </View>
          </View>
          <View className='right-area'>
-            <View className={`follow-btn ${note.is_followed ? 'followed' : ''}`}>{note.is_followed ? '已关注' : '关注'}</View>
+            <View className={`follow-btn ${note.is_followed ? 'followed' : ''}`} onClick={handleToggleFollow}>
+              {note.is_followed ? '已关注' : '关注'}
+            </View>
             <AtIcon value='share' size='20' color='#fff' style={{marginLeft: '15px'}} />
          </View>
       </View>
@@ -336,7 +373,6 @@ export default function PostDetailPage() {
       <ScrollView scrollY className='detail-scroll'>
          <Swiper
            className='media-swiper'
-            // 【核心修改】确保 Swiper 有高度，Image mode 改为 aspectFill 铺满
            style={{ height: '500px' }}
            indicatorDots={note.media_data.length > 1}
            indicatorColor='rgba(255,255,255,0.3)'
@@ -364,19 +400,18 @@ export default function PostDetailPage() {
 
          {/* 评论区 */}
          <View className='comment-section'>
-            <Text className='comment-count'>共 {note.comment_count} 条评论</Text>
+            <Text className='comment-count'>共{note.comment_count} 条评论</Text>
 
             {commentList.map(comment => (
                 <View key={comment.id} className='comment-item'>
                     <Image src={comment.user.avatar} className='c-avatar' mode='aspectFill' />
                     <View className='c-content'>
 
-                        {/* 一级评论头部：昵称 + 点赞 */}
+                        {/* Header: user + like */}
                         <View className='c-header-row'>
                             <Text className='c-user'>{comment.user.nickname}</Text>
                             {String(comment.user_id) === String(note.user_id) && <Text className='author-tag'>作者</Text>}
 
-                            {/* 【核心修改】一级评论点赞移到头部右侧 */}
                             <View
                               className='c-like-wrap'
                               onClick={(e) => { e.stopPropagation(); handleLikeItem('comment', comment.id, comment.is_liked); }}
@@ -397,14 +432,12 @@ export default function PostDetailPage() {
                             <View className='c-action' onClick={(e) => { e.stopPropagation(); onClickReply('comment', comment, comment.id) }}><Text>回复</Text></View>
                         </View>
 
-                        {/* 二级回复 */}
                         <View className='sub-reply-container'>
                             {comment.latest_replies && comment.latest_replies.map(reply => (
                                 <View key={reply.id} className='sub-reply-item' onClick={(e) => { e.stopPropagation(); onClickReply('reply', reply, comment.id) }}>
                                     <Image src={reply.user.avatar} className='sub-avatar' mode='aspectFill' />
                                     <View className='sub-right'>
 
-                                        {/* 二级评论头部：昵称 + 点赞 */}
                                         <View className='sub-header-row'>
                                             <View className='sub-user-info'>
                                                 <Text className='sub-user'>{reply.user.nickname}</Text>
@@ -417,12 +450,11 @@ export default function PostDetailPage() {
                                                 )}
                                             </View>
 
-                                            {/* 【核心修改】二级评论点赞移到头部右侧 */}
                                             <View
                                               className='sub-like-wrap'
                                               onClick={(e) => {
                                                     e.stopPropagation();
-                                                    // 传入 parentCommentId 以便更新 state
+                                                    // Pass parentCommentId to update state.
                                                     handleLikeItem('reply', reply.id, reply.is_liked, comment.id);
                                                 }}
                                             >
@@ -447,11 +479,11 @@ export default function PostDetailPage() {
                             {comment.reply_has_more && (
                                 <View className='expand-more-btn' onClick={(e) => { e.stopPropagation(); fetchReplies(comment.id) }}>
                                     {comment.reply_loading ? (
-                                        <Text>加载中...</Text>
+                                        <AtActivityIndicator content='加载中...' color='#666' />
                                     ) : (
                                         <>
                                             <Text className='line-bar'></Text>
-                                            <Text>展开更多回复</Text>
+                                            <Text className='expand-text'>展开更多回复</Text>
                                             <AtIcon value='chevron-down' size='12' color='#666' />
                                         </>
                                     )}
@@ -463,7 +495,11 @@ export default function PostDetailPage() {
             ))}
 
             {!isCommentLoading && hasMoreComments && (
-                <View className='load-more-btn' onClick={() => fetchComments(note.id, false)}>展开更多评论</View>
+              <View className='expand-more-btn' onClick={() => fetchComments(note.id)}>
+                <Text className='line-bar'></Text>
+                <Text className='expand-text'>展开更多评论</Text>
+                <AtIcon value='chevron-down' size='12' color='#666' />
+              </View>
             )}
             {isCommentLoading && <AtActivityIndicator content='加载中...' color='#666' />}
             {!hasMoreComments && commentList.length > 0 && <View className='no-more'>- 没有更多评论了 -</View>}
@@ -476,7 +512,7 @@ export default function PostDetailPage() {
       <View className='bottom-bar'>
          <View className='input-box' onClick={() => onClickReply('note', {id: note.id})}>
             <AtIcon value='edit' size='14' color='#999' style={{marginRight: '8px'}}/>
-            <Text className='placeholder'>说些好听的...</Text>
+            <Text className='placeholder'>说点好听的...</Text>
          </View>
          <View className='icons'>
             <View className='icon-item' onClick={handleToggleLike}>
@@ -490,7 +526,7 @@ export default function PostDetailPage() {
          </View>
       </View>
 
-      {/* 真实输入框 */}
+         {/* 评论区 */}
       {inputFocus && (
           <View className='comment-input-mask' onClick={() => setInputFocus(false)}>
               <View className='real-input-bar' onClick={e => e.stopPropagation()}>
@@ -512,3 +548,5 @@ export default function PostDetailPage() {
     </View>
   )
 }
+
+

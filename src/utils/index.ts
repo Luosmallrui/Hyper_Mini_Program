@@ -3,6 +3,7 @@ import Taro from '@tarojs/taro';
 export { showToast } from './toast';
 export { isLogin, cloneDeep, copyText, navigateJumpTo, switchTabTo, dateToChinese, moneyToThousands } from './utils';
 export { appUpdate } from './app-update';
+export { getCustomTabBarHeight, getCustomTabBarPadding } from './layout';
 
 export interface IRequest {
   get<T = any>(url: string, params?: any): Promise<T>;

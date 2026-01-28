@@ -1,266 +1,240 @@
-import {useState, useEffect} from 'react';
-import {View, Text, Image, ScrollView} from '@tarojs/components';
-import Taro from '@tarojs/taro';
-import {request} from '@/utils/request';
-import './index.scss';
+﻿import { useEffect, useState } from 'react'
+import { View, Text, Image, ScrollView } from '@tarojs/components'
+import Taro from '@tarojs/taro'
+import { AtIcon, AtActivityIndicator } from 'taro-ui'
+import { request } from '@/utils/request'
+import 'taro-ui/dist/style/components/icon.scss'
+import 'taro-ui/dist/style/components/activity-indicator.scss'
+import './index.scss'
 
 interface PointRecord {
-  id: string | number;
-  type: string;
-  amount: number;
-  description: string;
-  created_at: string;
-  order_type?: string;
+  id: string | number
+  type: string
+  amount: number
+  description: string
+  created_at: string
+  order_type?: string
 }
 
 interface PointsData {
-  balance: number;
-  pending_count: number;
-  pending_amount: number;
-  records: PointRecord[];
-  next_cursor: string | number | null; // 后端返回的下一个游标
+  balance: number
+  pending_count: number
+  pending_amount: number
+  records: PointRecord[]
+  next_cursor: string | number | null
 }
 
 export default function PointsPage() {
-  const [activeTab, setActiveTab] = useState<'all' | 'income' | 'expense'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'income' | 'expense'>('all')
   const [pointsData, setPointsData] = useState<PointsData>({
     balance: 0,
     pending_count: 0,
     pending_amount: 0,
     records: [],
-    next_cursor: null // 初始化游标为空
-  });
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+    next_cursor: null
+  })
+  const [loading, setLoading] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  
+  // 布局适配状态
+  const [navBarHeight, setNavBarHeight] = useState(44)
+  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const [menuButtonWidth, setMenuButtonWidth] = useState(0)
 
-
-  // 加载积分数据
   useEffect(() => {
-    loadPointsData();
-    loadPointsRecords();
-  }, []);
+    const sysInfo = Taro.getWindowInfo()
+    const menuInfo = Taro.getMenuButtonBoundingClientRect()
+    
+    const sbHeight = sysInfo.statusBarHeight || 20
+    setStatusBarHeight(sbHeight)
+    
+    const nbHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
+    setNavBarHeight(Number.isNaN(nbHeight) ? 44 : nbHeight)
+    
+    const rightPadding = sysInfo.screenWidth - menuInfo.left
+    setMenuButtonWidth(rightPadding)
+  }, [])
 
-  // 当 tab 切换时重新加载
   useEffect(() => {
-    loadPointsRecords(true);
-  }, [activeTab]);
+    loadPointsData()
+    loadPointsRecords(true)
+  }, [])
 
-  // 加载积分余额和待入账信息
+  useEffect(() => {
+    setHasMore(true)
+    setPointsData(prev => ({ ...prev, records: [], next_cursor: null }))
+    loadPointsRecords(true)
+  }, [activeTab])
+
   const loadPointsData = async () => {
     try {
-      const res = await request({
-        url: '/api/v1/points/balance',
-        method: 'GET'
-      });
-
+      const res = await request({ url: '/api/v1/points/balance', method: 'GET' })
       if (res.data && res.data.code === 200) {
         setPointsData(prev => ({
           ...prev,
           balance: res.data.data.balance || 0,
           pending_count: res.data.data.pending_count || 0,
           pending_amount: res.data.data.pending_amount || 0
-        }));
+        }))
       }
-    } catch (error) {
-      console.error('加载积分余额失败:', error);
-    }
-  };
+    } catch (error) { console.error(error) }
+  }
 
-  // 加载积分明细
   const loadPointsRecords = async (isRefresh: boolean = false) => {
-    if (loading || (!isRefresh && !hasMore)) return;
-
-    setLoading(true);
-
-    // 如果是刷新，cursor 传空；否则传当前持有的 next_cursor
-    const currentCursor = isRefresh ? '' : pointsData.next_cursor;
+    if (loading || (!isRefresh && !hasMore)) return
+    setLoading(true)
+    const currentCursor = isRefresh ? '' : pointsData.next_cursor
 
     try {
       const res = await request({
         url: '/api/v1/points/records',
         method: 'GET',
-        data: {
-          pageSize: 20,
-          cursor: currentCursor, // 使用 cursor 替代 page
-          type: activeTab === 'all' ? '' : activeTab
-        }
-      });
+        data: { pageSize: 20, cursor: currentCursor, type: activeTab === 'all' ? '' : activeTab }
+      })
 
       if (res.data && res.data.code === 200) {
-        const {records: newRecords, next_cursor, has_more} = res.data.data;
-
+        const { records: newRecords, next_cursor, has_more } = res.data.data
         setPointsData(prev => ({
           ...prev,
-          // 如果是刷新则替换，否则追加
           records: isRefresh ? newRecords : [...prev.records, ...newRecords],
-          next_cursor: next_cursor // 更新下次请求需要的游标
-        }));
-
-        setHasMore(has_more);
+          next_cursor
+        }))
+        setHasMore(has_more)
       }
     } catch (error) {
-      console.error('加载积分明细失败:', error);
-      Taro.showToast({title: '加载失败', icon: 'none'});
+      Taro.showToast({ title: '加载失败', icon: 'none' })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
-  const handleScrollToLower = () => {
-    loadPointsRecords(false);
-  };
+  }
 
-  // 返回上一页
-  const handleBack = () => {
-    Taro.navigateBack();
-  };
-
-  // 格式化日期
   const formatDate = (dateStr: string): string => {
-    const date = new Date(dateStr);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hour = String(date.getHours()).padStart(2, '0');
-    const minute = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hour}:${minute}`;
-  };
+    if (!dateStr) return ''
+    const date = new Date(dateStr)
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    const h = String(date.getHours()).padStart(2, '0')
+    const min = String(date.getMinutes()).padStart(2, '0')
+    return `${y}-${m}-${d} ${h}:${min}`
+  }
 
-  // 格式化金额显示
   const formatAmount = (amount: number): string => {
-    return amount >= 0 ? `+${amount}` : `${amount}`;
-  };
-
-  // 筛选记录
-  const getFilteredRecords = (): PointRecord[] => {
-    if (activeTab === 'all') {
-      return pointsData.records;
-    } else if (activeTab === 'income') {
-      return pointsData.records.filter(r => r.amount > 0);
-    } else {
-      return pointsData.records.filter(r => r.amount < 0);
-    }
-  };
-
-  const filteredRecords = getFilteredRecords();
+    return amount > 0 ? `+${amount}` : `${amount}`
+  }
 
   return (
-    <View className="points-page">
-      {/* 顶部导航栏 */}
-      <View className="navbar">
-        <View className="navbar-left" onClick={handleBack}>
-          <Image
-            className="back-icon"
-            src={require('../../../assets/images/background.webp')}
-            mode="aspectFit"
-          />
-        </View>
-        <Text className="navbar-title">我的积分</Text>
-        <View className="navbar-right">
-          <Image
-            className="more-icon"
-            src={require('../../../assets/images/coin.png')}
-            mode="aspectFit"
-          />
+    <View className='points-page'>
+      <View className='top-bg'>
+        <Image
+          className='top-bg-img'
+          src={require('../../../assets/images/backgound.png')}
+          mode='scaleToFill'
+        />
+      </View>
+
+      <View className='custom-navbar' style={{ height: `${statusBarHeight + navBarHeight}px` }}>
+        <View className='status-bar' style={{ height: `${statusBarHeight}px` }} />
+        <View className='nav-content' style={{ height: `${navBarHeight}px` }}>
+          <View
+            className='nav-left'
+            style={{ width: `${menuButtonWidth}px` }}
+            onClick={() => Taro.navigateBack()}
+          >
+            <AtIcon value='chevron-left' size='24' color='#fff' />
+          </View>
+          <View className='nav-title'>我的积分</View>
+          <View className='nav-right' style={{ width: `${menuButtonWidth}px` }}>
+            <View className='nav-action'>
+              <AtIcon value='more' size='18' color='#fff' />
+            </View>
+          </View>
         </View>
       </View>
 
-      <ScrollView
-        className="scroll-content"
-        scrollY
-        onScrollToLower={handleScrollToLower}
-        lowerThreshold={150}
+      <View
+        className='page-body'
+        style={{
+          height: `calc(100vh - ${statusBarHeight + navBarHeight}px)`,
+          marginTop: `${statusBarHeight + navBarHeight}px`
+        }}
       >
-        {/* 积分余额卡片 */}
-        <View className="balance-card">
-          <View className="balance-content">
-            <Text className="balance-label">积分余额</Text>
-            <Text className="balance-amount">{pointsData.balance.toFixed(1)}</Text>
-            {pointsData.pending_count > 0 && (
-              <View className="pending-info">
-                <Text className="pending-text">
-                  {pointsData.pending_count}笔订单 共{pointsData.pending_amount}分待入账
-                </Text>
-              </View>
-            )}
-          </View>
+        {/* 头部卡片区域 */}
+        <View className='hero-section'>
           <Image
-            className="card-decoration"
-            src="https://lanhu-oss-proxy.lanhuapp.com/SketchPng12b21fca23b24f33663f7787454508cd34d5ec97b4eb6a02d0fee58399560371"
-            mode="aspectFit"
+            className='coin-decoration'
+            src={require('../../../assets/images/coin.png')}
+            mode='widthFix'
           />
+
+          <View className='header-card-content'>
+            <View className='card-left'>
+              <Text className='label'>积分余额</Text>
+              <Text className='amount'>{pointsData.balance.toFixed(1)}</Text>
+
+              {pointsData.pending_count > 0 && (
+                <View className='pending-tag'>
+                  <Text>{pointsData.pending_count}笔订单 共{pointsData.pending_amount}分待入账</Text>
+                </View>
+              )}
+            </View>
+          </View>
         </View>
 
-        {/* Tab 切换 */}
-        <View className="records-container">
-          <View className="tabs">
-            <View
-              className={`tab-item ${activeTab === 'all' ? 'active' : ''}`}
-              onClick={() => setActiveTab('all')}
-            >
-              <Text className={`tab-text ${activeTab === 'all' ? 'active' : ''}`}>
-                全部
-              </Text>
-            </View>
-            <View
-              className={`tab-item ${activeTab === 'income' ? 'active' : ''}`}
-              onClick={() => setActiveTab('income')}
-            >
-              <Text className={`tab-text ${activeTab === 'income' ? 'active' : ''}`}>
-                积分收入
-              </Text>
-            </View>
-            <View
-              className={`tab-item ${activeTab === 'expense' ? 'active' : ''}`}
-              onClick={() => setActiveTab('expense')}
-            >
-              <Text className={`tab-text ${activeTab === 'expense' ? 'active' : ''}`}>
-                积分支出
-              </Text>
-            </View>
+        {/* 列表区域 */}
+        <View className='records-container'>
+          <View className='tabs-header'>
+            {[
+              { key: 'all', label: '全部' },
+              { key: 'income', label: '积分收入' },
+              { key: 'expense', label: '积分支出' }
+            ].map(tab => (
+              <View
+                key={tab.key}
+                className={`tab-item ${activeTab === tab.key ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.key as any)}
+              >
+                <Text>{tab.label}</Text>
+                {activeTab === tab.key && <View className='indicator' />}
+              </View>
+            ))}
           </View>
 
-          {/* 积分明细列表 */}
-          <View className="records-list">
-            {filteredRecords.length > 0 ? (
-              filteredRecords.map((record, index) => (
-                <View key={`${record.id}-${index}`} className="record-item">
-                  <View className="record-info">
-                    <Text className="record-desc">{record.description}</Text>
-                    <Text className="record-time">
-                      {record.amount > 0 ? '积分发放时间' : '积分使用时间'}{' '}
-                      {formatDate(record.created_at)}
+          <ScrollView
+            className='list-scroll'
+            scrollY
+            onScrollToLower={() => loadPointsRecords(false)}
+            lowerThreshold={100}
+          >
+            <View className='list-content'>
+              {pointsData.records.length > 0 ? (
+                pointsData.records.map((item, idx) => (
+                  <View key={`${item.id}-${idx}`} className='record-item'>
+                    <View className='info'>
+                      <Text className='desc'>{item.description || (item.amount > 0 ? '消费 (门票)' : '积分使用')}</Text>
+                      <Text className='time'>
+                        {item.amount > 0 ? '积分发放时间' : '积分使用时间'} {formatDate(item.created_at)}
+                      </Text>
+                    </View>
+                    <Text className={`amount ${item.amount > 0 ? 'plus' : 'minus'}`}>
+                      {formatAmount(item.amount)}
                     </Text>
                   </View>
-                  <Text className={`record-amount ${record.amount > 0 ? 'income' : 'expense'}`}>
-                    {formatAmount(record.amount)}
-                  </Text>
+                ))
+              ) : (
+                <View className='empty-state'>
+                  <Text>暂无记录</Text>
                 </View>
-              ))
-            ) : (
-              <View className="empty-state">
-                <Text className="empty-text">暂无记录</Text>
-              </View>
-            )}
+              )}
 
-            {/* 加载更多提示 */}
-            {loading && (
-              <View className="loading-more">
-                <Text className="loading-text">加载中...</Text>
-              </View>
-            )}
-
-            {/* 没有更多数据提示 */}
-            {!hasMore && filteredRecords.length > 0 && (
-              <View className="no-more">
-                <Text className="no-more-text">没有更多了</Text>
-              </View>
-            )}
-          </View>
+              {loading && <View className='loading-center'><AtActivityIndicator color='#999' /></View>}
+              {!hasMore && pointsData.records.length > 0 && <View className='no-more'>- 没有更多了 -</View>}
+            </View>
+          </ScrollView>
         </View>
-      </ScrollView>
 
-      {/* 底部安全区 */}
-      <View className="safe-area-bottom"/>
+        <View className='safe-area-spacer' />
+      </View>
     </View>
-  );
+  )
 }
