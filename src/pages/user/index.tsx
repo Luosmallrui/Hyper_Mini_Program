@@ -405,21 +405,21 @@ export default function UserPage() {
   const handleStatClick = (type: string | null) => {
     if (!isLogin || !hasData || !type) return;
     Taro.navigateTo({
-      url: `/pages/user/follow-list/index?type=${type}&userId=${userInfo.user_id || ''}`
+      url: `/pages/user-sub/follow-list/index?type=${type}&userId=${userInfo.user_id || ''}`
     });
   };
 
   const handleNoteClick = (noteId: string) => {
     Taro.navigateTo({
-      url: `/pages/square/post-detail/index?id=${noteId}`
+      url: `/pages/square-sub/post-detail/index?id=${noteId}`
     });
   };
 
-  const handleViewAll = () => {
-    Taro.navigateTo({
-      url: `/pages/user/profile/index?userId=${userInfo.user_id}`
-    });
-  };
+  // const handleViewAll = () => {
+  //   Taro.navigateTo({
+  //     url: `/pages/user-sub/profile/index?userId=${userInfo.user_id}`
+  //   });
+  // };
 
   const getNoteCover = (note: Note): string => {
     if (note.media_data && note.media_data.length > 0) {
@@ -470,7 +470,7 @@ export default function UserPage() {
     {
       icon: require('../../assets/images/Points.png'),
       label: '积分',
-      route: '/pages/user/points/index'
+      route: '/pages/user-sub/points/index'
     },
     {
       icon: require('../../assets/images/Account_Center.png'),

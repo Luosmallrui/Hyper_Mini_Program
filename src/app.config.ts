@@ -1,27 +1,55 @@
 export default defineAppConfig({
   pages: [
-    'pages/index/index',          // 首页
-    'pages/search/index',            // 搜索页
-    'pages/activity-list/index',     // 活动列表（信息流模式）
-    'pages/my-tickets/index',        // 我的票夹
-
-    'pages/square/index', // 广场界面
-    'pages/order/order-pay-success/index', // 订单购买成功
-    'pages/order/order-detail/index', // 订单详情界面
-    'pages/order/index', //订单列表界面
-
-    'pages/square/post-create/index', // 广场发布页
-    'pages/square/post-detail/index', // 广场详情页
-    'pages/message/index', // 消息界面
-    'pages/chat/index', // chat detail
-    'pages/activity/index', // activity detail (new)
-    'pages/activity-attendee/index', // activity attendee (new)
-
-    'pages/user/index', // 用户界面
-    'pages/user/follow-list/index', // 用户关注列表界面
-    'pages/user/profile/index', // 用户关注列表界面
-
-    'pages/user/points/index', // 用户关注列表界面
+    'pages/index/index',
+    'pages/square/index',
+    'pages/message/index',
+    'pages/user/index',
+    'pages/search/index',
+    'pages/order',
+  ],
+  subpackages: [
+    {
+      root: 'pages/activity',
+      pages: ['index']
+    },
+    {
+      root: 'pages/activity-attendee',
+      pages: ['index']
+    },
+    {
+      root: 'pages/activity-list',
+      pages: ['index']
+    },
+    {
+      root: 'pages/order',
+      pages: [
+        'order-detail/index',
+        'order-pay-success/index'
+      ]
+    },
+    {
+      root: 'pages/square-sub',
+      pages: [
+        'post-create/index',
+        'post-detail/index'
+      ]
+    },
+    {
+      root: 'pages/user-sub',
+      pages: [
+        'follow-list/index',
+        'profile/index',
+        'points/index'
+      ]
+    },
+    {
+      root: 'pages/chat',
+      pages: ['index']
+    },
+    {
+      root: 'pages/my-tickets',
+      pages: ['index']
+    }
   ],
   window: {
     backgroundTextStyle: 'light',

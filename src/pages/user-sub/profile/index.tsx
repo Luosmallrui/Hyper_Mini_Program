@@ -285,7 +285,7 @@ const UserProfilePage: React.FC = () => {
   const handleStatsClick = (type: string) => {
     if (type === 'likes') return;
     Taro.navigateTo({
-      url: `/pages/user/follow-list/index?type=${type}&userId=${userId}`
+      url: `/pages/user-sub/follow-list/index?type=${type}&userId=${userId}`
     });
   };
 
@@ -295,7 +295,7 @@ const UserProfilePage: React.FC = () => {
     const id = String(noteId);
     console.log('跳转到笔记详情, ID:', id);
     Taro.navigateTo({
-      url: `/pages/square/post-detail/index?id=${id}`
+      url: `/pages/square-sub/post-detail/index?id=${id}`
     });
   };
 

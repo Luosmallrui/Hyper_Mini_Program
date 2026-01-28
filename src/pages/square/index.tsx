@@ -314,8 +314,7 @@ export default function SquarePage() {
     if (e.detail.source === 'touch') setActiveIdx(e.detail.current)
   }
   const goDetail = (id: string) => {
-    console.log(id, 66);
-    Taro.navigateTo({ url: `/pages/square/post-detail/index?id=${id}` })
+    Taro.navigateTo({ url: `/pages/square-sub/post-detail/index?id=${id}` })
   }
 
   // --- 组件渲染 ---

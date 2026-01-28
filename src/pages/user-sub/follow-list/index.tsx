@@ -177,7 +177,7 @@ const FollowList: React.FC = () => {
 
   const handleUserClick = (targetUserId: string) => {
     Taro.navigateTo({
-      url: `/pages/user/profile/index?userId=${targetUserId}`
+      url: `/pages/user-sub/profile/index?userId=${targetUserId}`
     });
   };
 

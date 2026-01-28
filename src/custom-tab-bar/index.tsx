@@ -6,10 +6,10 @@ import './index.scss'
 
 interface TabItem {
   pagePath: string
-  iconPath?: string 
+  iconPath?: string
   selectedIconPath?: string
-  iconName?: string 
-  isSpecial?: boolean 
+  iconName?: string
+  isSpecial?: boolean
 }
 
 interface State {
@@ -42,8 +42,8 @@ export default class CustomTabBar extends Component<{}, State> {
         },
         {
           // 中间特殊按钮
-          pagePath: "/pages/square/post-create/index", 
-          isSpecial: true 
+          pagePath: "/pages/square-sub/post-create/index",
+          isSpecial: true
         },
         {
           pagePath: "/pages/message/index",
@@ -122,7 +122,7 @@ export default class CustomTabBar extends Component<{}, State> {
 
   render() {
     const { selected, list, indicatorOffset } = this.state
-  
+
     return (
       <View className='custom-tab-bar'>
         <View className='tab-bar-container'>
