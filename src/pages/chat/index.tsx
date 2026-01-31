@@ -15,11 +15,16 @@ interface MessageItem {
   time: number
   ext: any
   is_self: boolean
+  nickname?: string
+  avatar?: string
+  client_msg_id?: string
 }
 
 export default function ChatPage() {
   const router = useRouter()
   const { peer_id, title, type } = router.params
+  const sessionType = Number(type) === 2 ? 2 : 1
+  const isGroupChat = sessionType === 2
 
   const [msgList, setMsgList] = useState<MessageItem[]>([])
   const msgListRef = useRef<MessageItem[]>([])
@@ -34,6 +39,7 @@ export default function ChatPage() {
   const [peerAvatar, setPeerAvatar] = useState('')
   const [selfAvatar, setSelfAvatar] = useState('')
   const [myUserId, setMyUserId] = useState<number>(0)
+  const [myNickname, setMyNickname] = useState('')
 
   const [scrollId, setScrollId] = useState('')
 
@@ -42,6 +48,7 @@ export default function ChatPage() {
 
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
+  const [navBarGap, setNavBarGap] = useState(0)
   const [menuButtonWidth, setMenuButtonWidth] = useState(0)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
 
@@ -56,19 +63,79 @@ export default function ChatPage() {
     const resultList = [...oldItems]
 
     newItems.forEach(newMsg => {
+      const normalizedTime = normalizeTimestamp(newMsg.time)
+      const normalizedTimeMs = normalizeTimestampMs(newMsg.time)
+
+      if (newMsg.client_msg_id) {
+        const clientIndex = resultList.findIndex(local => local.client_msg_id === newMsg.client_msg_id)
+        if (clientIndex !== -1) {
+          const existing = resultList[clientIndex]
+          resultList[clientIndex] = {
+            ...existing,
+            ...newMsg,
+            id: newMsg.id || existing.id,
+            time: normalizedTime
+          }
+          return
+        }
+      }
+
       if (newMsg.is_self) {
         const tempIndex = resultList.findIndex(local =>
           local.id.toString().startsWith('temp_') &&
           local.content === newMsg.content
         )
         if (tempIndex !== -1) {
-          resultList.splice(tempIndex, 1)
+          const existing = resultList[tempIndex]
+          resultList[tempIndex] = {
+            ...existing,
+            ...newMsg,
+            id: newMsg.id || existing.id,
+            time: normalizedTime
+          }
+          return
+        }
+
+        const similarIndex = resultList.findIndex(local =>
+          local.is_self &&
+          local.content === newMsg.content &&
+          local.msg_type === newMsg.msg_type &&
+          Math.abs(normalizeTimestampMs(local.time) - normalizedTimeMs) <= 2000
+        )
+        if (similarIndex !== -1) {
+          const existing = resultList[similarIndex]
+          resultList[similarIndex] = {
+            ...existing,
+            ...newMsg,
+            id: newMsg.id || existing.id,
+            time: normalizedTime
+          }
+          return
         }
       }
 
       const exists = resultList.some(local => String(local.id) === String(newMsg.id))
       if (!exists) {
-        resultList.push(newMsg)
+        const similarAnyIndex = resultList.findIndex(local =>
+          local.sender_id === newMsg.sender_id &&
+          local.content === newMsg.content &&
+          local.msg_type === newMsg.msg_type &&
+          Math.abs(normalizeTimestampMs(local.time) - normalizedTimeMs) <= 2000
+        )
+        if (similarAnyIndex !== -1) {
+          const existing = resultList[similarAnyIndex]
+          resultList[similarAnyIndex] = {
+            ...existing,
+            ...newMsg,
+            id: newMsg.id || existing.id,
+            time: normalizedTime
+          }
+        } else {
+          resultList.push({
+            ...newMsg,
+            time: normalizedTime
+          })
+        }
       }
     })
 
@@ -84,6 +151,15 @@ export default function ChatPage() {
     if (!Number.isFinite(num)) return Math.floor(Date.now() / 1000)
     if (num > 1e11) return Math.floor(num / 1000)
     return Math.floor(num)
+  }
+
+  const normalizeTimestampMs = (value?: number) => {
+    if (!value) return Date.now()
+    const num = Number(value)
+    if (!Number.isFinite(num)) return Date.now()
+    if (num > 1e11) return Math.floor(num)
+    if (num > 1e9) return Math.floor(num * 1000)
+    return Date.now()
   }
 
   const compareMessageId = (aId: MessageItem['id'], bId: MessageItem['id']) => {
@@ -104,6 +180,11 @@ export default function ChatPage() {
       const userInfo = Taro.getStorageSync('userInfo')
       if (userInfo && userInfo.user_id) {
         setMyUserId(Number(userInfo.user_id))
+        if (userInfo.nickname) {
+          setMyNickname(String(userInfo.nickname))
+        } else if (userInfo.nickName) {
+          setMyNickname(String(userInfo.nickName))
+        }
       }
     } catch (e) {}
 
@@ -111,11 +192,12 @@ export default function ChatPage() {
     const menuInfo = Taro.getMenuButtonBoundingClientRect()
     const sbHeight = sysInfo.statusBarHeight || 20
     setStatusBarHeight(sbHeight)
-    const designTotalHeight = 100
-    const nbHeight = designTotalHeight - sbHeight
-    setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
-    const rightMargin = sysInfo.screenWidth - menuInfo.right
-    setMenuButtonWidth(menuInfo.width + (rightMargin * 2))
+    const baseHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
+    const extraBottom = 22
+    setNavBarGap(extraBottom)
+    setNavBarHeight(baseHeight > 0 ? baseHeight : 44)
+    const rightPadding = sysInfo.screenWidth - menuInfo.left
+    setMenuButtonWidth(rightPadding)
 
     const onKeyboardChange = (res) => {
       setKeyboardHeight(res.height)
@@ -131,14 +213,21 @@ export default function ChatPage() {
       if (res.event && res.event !== 'chat') return
 
       const msgSenderId = String(newMsg.sender_id)
-      const msgTargetId = String(newMsg.target_id)
+      const msgTargetId = String(newMsg.target_id || newMsg.group_id || '')
       const currentPeerId = String(peer_id)
       const currentMyId = String(myUserId || Taro.getStorageSync('userInfo')?.user_id || 0)
+      const payloadIsSelf = typeof res.is_self === 'boolean' ? res.is_self : undefined
+      const payloadNickname = newMsg.nickname || res.nickname
+      const payloadAvatar = newMsg.avatar || res.avatar
 
       let isCurrentChat = false
-      let isSelfMsg = (msgSenderId === currentMyId)
+      const computedSelf = msgSenderId === currentMyId
+      let isSelfMsg = typeof newMsg.is_self === 'boolean'
+        ? newMsg.is_self
+        : (typeof payloadIsSelf === 'boolean' ? payloadIsSelf : computedSelf)
 
-      if (Number(type) === 2) {
+      if (sessionType === 2) {
+        if (Number(newMsg.session_type) !== 2) return
         isCurrentChat = msgTargetId === currentPeerId
       } else {
         if (msgSenderId === currentPeerId) {
@@ -151,14 +240,20 @@ export default function ChatPage() {
       }
 
       if (isCurrentChat) {
+        if (sessionType === 2 && computedSelf) {
+          isSelfMsg = true
+        }
         const incomingMsg: MessageItem = {
-          id: newMsg.msg_id || `ws_${Date.now()}_${Math.random()}`,
+          id: newMsg.msg_id || newMsg.id || newMsg.message_id || `ws_${Date.now()}_${Math.random()}`,
           sender_id: Number(newMsg.sender_id),
           content: newMsg.content,
           msg_type: newMsg.msg_type,
           time: normalizeTimestamp(newMsg.timestamp || newMsg.time || Date.now()),
           ext: newMsg.ext || {},
-          is_self: isSelfMsg
+          is_self: isSelfMsg,
+          nickname: payloadNickname,
+          avatar: payloadAvatar,
+          client_msg_id: newMsg.client_msg_id || newMsg.clientMsgId
         }
 
         setMsgList(prev => {
@@ -192,7 +287,9 @@ export default function ChatPage() {
     Taro.eventCenter.on('FOLLOW_STATUS_UPDATED', onFollowStatusUpdated)
 
     fetchMessages(true)
-    fetchFollowStatus()
+    if (!isGroupChat) {
+      fetchFollowStatus()
+    }
     clearUnread()
 
     return () => {
@@ -202,15 +299,16 @@ export default function ChatPage() {
       Taro.eventCenter.off('TOKEN_REFRESHED', onTokenRefreshed)
       Taro.eventCenter.off('FOLLOW_STATUS_UPDATED', onFollowStatusUpdated)
     }
-  }, [peer_id, type, myUserId])
+  }, [peer_id, sessionType, myUserId])
 
   useDidShow(() => {
-    if (peer_id) {
+    if (peer_id && !isGroupChat) {
       fetchFollowStatus()
     }
   })
 
   const fetchFollowStatus = async () => {
+    if (isGroupChat) return
     try {
       const res = await request({
         url: `/api/v1/follow/${peer_id}`,
@@ -231,7 +329,7 @@ export default function ChatPage() {
       await request({
         url: '/api/v1/session/clear-unread',
         method: 'POST',
-        data: { session_type: Number(type), peer_id: Number(peer_id) }
+        data: { session_type: sessionType, peer_id: Number(peer_id) }
       })
     } catch (e) {}
   }
@@ -246,6 +344,7 @@ export default function ChatPage() {
 
       const params: any = {
         peer_id: Number(peer_id),
+        session_type: sessionType,
         limit: 50,
         since: sinceTime
       }
@@ -297,6 +396,7 @@ export default function ChatPage() {
     try {
       const params: any = {
         peer_id: Number(peer_id),
+        session_type: sessionType,
         limit: 20
       }
 
@@ -347,7 +447,7 @@ export default function ChatPage() {
           setTimeout(() => setFirstLoaded(true), 200)
         } else {
           if (sortedMsgs.length > 0) {
-            setMsgList(prev => [...sortedMsgs, ...prev])
+            setMsgList(prev => mergeMessages(prev, sortedMsgs))
 
             if (anchorMsgId) {
               setScrollId('')
@@ -373,16 +473,24 @@ export default function ChatPage() {
     if (!inputText.trim()) return
     const contentToSend = inputText
     setInputText('')
+    const currentUserId = Number(myUserId || Taro.getStorageSync('userInfo')?.user_id || 0)
+    if (!myUserId && currentUserId) {
+      setMyUserId(currentUserId)
+    }
+    const clientMsgId = `${currentUserId || '0'}_${Date.now()}_${Math.random().toString(16).slice(2)}`
 
     const tempId = `temp_${Date.now()}`
     const tempMsg: MessageItem = {
       id: tempId,
-      sender_id: myUserId,
+      sender_id: currentUserId,
       content: contentToSend,
       msg_type: 1,
       time: Math.floor(Date.now() / 1000),
       ext: {},
-      is_self: true
+      is_self: true,
+      nickname: myNickname,
+      avatar: selfAvatar,
+      client_msg_id: clientMsgId
     }
 
     setMsgList(prev => {
@@ -395,7 +503,14 @@ export default function ChatPage() {
       const res = await request({
         url: '/api/v1/message/send',
         method: 'POST',
-        data: { target_id: String(peer_id), session_type: Number(type), msg_type: 1, content: contentToSend, ext: {} }
+        data: {
+          target_id: String(peer_id),
+          session_type: sessionType,
+          msg_type: 1,
+          content: contentToSend,
+          client_msg_id: clientMsgId,
+          ext: {}
+        }
       })
 
       let resData: any = res.data
@@ -408,7 +523,10 @@ export default function ChatPage() {
             return {
               ...m,
               id: serverMsg.msg_id || serverMsg.id || m.id,
-              time: serverMsg.time || m.time || m.time
+              time: serverMsg.time || m.time || m.time,
+              nickname: serverMsg.nickname || m.nickname,
+              avatar: serverMsg.avatar || m.avatar,
+              client_msg_id: serverMsg.client_msg_id || m.client_msg_id
             }
           }
           return m
@@ -473,8 +591,22 @@ export default function ChatPage() {
   }
 
   const handleOpenPeerProfile = () => {
-    if (!peer_id) return
+    if (!peer_id || isGroupChat) return
     Taro.navigateTo({ url: `/pages/user-sub/profile/index?userId=${peer_id}` })
+  }
+
+  // 创建群聊暂缓，后续开启时再恢复
+  // const handleOpenGroupCreate = () => {
+  //   if (!peer_id || isGroupChat) return
+  //   const params = `peer_id=${peer_id}&peer_name=${encodeURIComponent(safeTitle)}&peer_avatar=${encodeURIComponent(peerAvatar || '')}`
+  //   Taro.navigateTo({ url: `/pages/chat/group-select/index?${params}` })
+  // }
+
+  const handleOpenGroupMembers = () => {
+    if (!peer_id || !isGroupChat) return
+    Taro.navigateTo({
+      url: `/pages/chat/group-members/index?group_id=${peer_id}&group_name=${encodeURIComponent(safeTitle)}`
+    })
   }
 
   const safeDecode = (value?: string) => {
@@ -501,18 +633,26 @@ export default function ChatPage() {
         </View>
         <View className='nav-center'>
           <Text className='nav-title'>{safeTitle}</Text>
-          {!isFollowed && (
+          {!isGroupChat && !isFollowed && (
             <View className='follow-btn' onClick={handleToggleFollow}>
               <Text className='follow-text'>关注</Text>
             </View>
           )}
         </View>
+        {/* 创建群聊入口暂不开放 */}
+        {isGroupChat && (
+          <View className='nav-right' onClick={handleOpenGroupMembers}>
+            <View className='nav-right-btn'>
+              <AtIcon value='list' size='18' color='#fff' />
+            </View>
+          </View>
+        )}
       </View>
 
       <ScrollView
         scrollY
         className='chat-scroll'
-        style={{ top: `${statusBarHeight + navBarHeight}px`, bottom: `${keyboardHeight > 0 ? keyboardHeight + 60 : 80}px`, opacity: firstLoaded ? 1 : 0 }}
+        style={{ top: `${statusBarHeight + navBarHeight + navBarGap}px`, bottom: `${keyboardHeight > 0 ? keyboardHeight + 60 : 80}px`, opacity: firstLoaded ? 1 : 0 }}
         scrollIntoView={scrollId}
         upperThreshold={80}
         onScrollToUpper={() => { fetchMessages(false) }}
@@ -536,24 +676,31 @@ export default function ChatPage() {
 
           {msgList.map((msg, index) => {
             const isSelf = msg.is_self
+            const showName = isGroupChat && !isSelf && msg.nickname
+            const leftAvatar = isGroupChat ? (msg.avatar || peerAvatar) : peerAvatar
+            const rightAvatar = msg.avatar || selfAvatar
+            const leftPlaceholder = msg.nickname ? msg.nickname[0] : (safeTitle ? safeTitle[0] : 'U')
             return (
               <View key={msg.id} id={`msg-${msg.id}`} className={`msg-row ${isSelf ? 'msg-right' : 'msg-left'}`}>
                 {(index === 0 || index % 10 === 0) && (<View className='time-stamp'>{formatTime(msg.time)}</View>)}
                 <View className='msg-body'>
                   {!isSelf && (
                     <View className='avatar' onClick={handleOpenPeerProfile}>
-                      {peerAvatar ? (
-                        <Image src={peerAvatar} className='avatar-img' mode='aspectFill' />
+                      {leftAvatar ? (
+                        <Image src={leftAvatar} className='avatar-img' mode='aspectFill' />
                       ) : (
-                        <View className='avatar-placeholder'>{safeTitle ? safeTitle[0] : 'U'}</View>
+                        <View className='avatar-placeholder'>{leftPlaceholder}</View>
                       )}
                     </View>
                   )}
-                  <View className='bubble'><Text className='text'>{msg.content}</Text></View>
+                  <View className='bubble-group'>
+                    {showName && <Text className='msg-name'>{msg.nickname}</Text>}
+                    <View className='bubble'><Text className='text'>{msg.content}</Text></View>
+                  </View>
                   {isSelf && (
                     <View className='avatar my-avatar'>
-                      {selfAvatar ? (
-                        <Image src={selfAvatar} className='avatar-img' mode='aspectFill' />
+                      {rightAvatar ? (
+                        <Image src={rightAvatar} className='avatar-img' mode='aspectFill' />
                       ) : (
                         <View className='avatar-placeholder'>我</View>
                       )}

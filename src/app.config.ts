@@ -44,7 +44,7 @@ export default defineAppConfig({
     },
     {
       root: 'pages/chat',
-      pages: ['index']
+      pages: ['index', 'group-create/index', 'group-members/index', 'group-select/index']
     },
     {
       root: 'pages/my-tickets',

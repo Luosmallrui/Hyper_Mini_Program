@@ -11,6 +11,7 @@ import './index.less'
 // --- 静态筛选配置 ---
 const CATEGORIES = ['全部分类', '滑板', '派对', '汽车', '纹身', '体育运动', '活动', '露营', '酒吧/场地', '篮球']
 const AREA_LEVEL1 = [{ key: 'dist', name: '距离' }, { key: 'region', name: '行政区/商圈' }]
+const MAP_KEY = 'Y7YBZ-3UUEN-Z3KFC-SH4QG-LH5RT-IAB4S'
 const AREA_LEVEL2 = ['不限', '热门商圈', '高新区', '锦江区']
 const AREA_LEVEL3 = ['春熙路', '宽窄巷子', '兰桂坊', '铁像寺', 'SKP', '玉林', '望平街']
 const MORE_TAGS = ['积分立减', '买单立减', '新人优惠']
@@ -259,6 +260,7 @@ export default function IndexPage() {
         scale={13}
         markers={markers}
         showLocation
+        subkey={MAP_KEY}
         setting={{ enableSatellite: false, enableTraffic: false }}
         onError={(e) => {
           console.error('Map error:', e)

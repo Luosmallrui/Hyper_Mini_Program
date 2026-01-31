@@ -2,12 +2,13 @@ import { View, Text, Image, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { AtIcon } from 'taro-ui'
+import { setTabBarIndex } from '@/store/tabbar'
+import { request } from '@/utils/request'
+import { getCustomTabBarHeight } from '@/utils/layout'
 import 'taro-ui/dist/style/components/icon.scss'
 import './index.scss'
-import { setTabBarIndex } from '../../store/tabbar'
-import { getCustomTabBarHeight } from '../../utils/layout'
-// 引入封装好的请求工具
-import { request } from '../../utils/request'
+
+const BASE_URL = 'https://www.hypercn.cn'
 
 // 1. 接口数据类型定义
 interface SessionItem {
@@ -29,14 +30,12 @@ export default function MessagePage() {
   // 布局适配状态
   const [navBarPaddingTop, setNavBarPaddingTop] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
+  const [tabBarHeight, setTabBarHeight] = useState(0)
   const [scrollHeight, setScrollHeight] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [tabBarHeight, setTabBarHeight] = useState(0)
-  const [scrollIntoView, setScrollIntoView] = useState('')
-  const [currentScrollTop, setCurrentScrollTop] = useState(0)
 
   Taro.useDidShow(() => {
-    setTabBarIndex(3)
+    setTabBarIndex(3) // 确保 TabBar 索引正确 (消息页通常是 index 2 或 3，请根据你的配置调整)
     fetchSessionList()
   })
 
@@ -45,22 +44,22 @@ export default function MessagePage() {
     const sysInfo = Taro.getWindowInfo()
     const menuInfo = Taro.getMenuButtonBoundingClientRect()
     const sbHeight = sysInfo.statusBarHeight || 20
-    const nbHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
     const windowHeight = sysInfo.windowHeight || sysInfo.screenHeight || 0
-    const customTabBarHeight = getCustomTabBarHeight()
-
+    
+    // 计算导航栏高度 (胶囊高度 + 上下间距)
+    const nbHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
+    
     setNavBarPaddingTop(sbHeight)
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
-    setTabBarHeight(customTabBarHeight)
-    const contentHeight = windowHeight - sbHeight - (nbHeight > 0 ? nbHeight : 44) - customTabBarHeight
-    setScrollHeight(contentHeight > 0 ? contentHeight : windowHeight)
+    setScrollHeight(windowHeight)
+    setTabBarHeight(getCustomTabBarHeight())
   }, [])
 
   // 2. 监听 sessionList 变化，自动计算未读数和红点
   useEffect(() => {
     const total = sessionList.reduce((acc, curr) => acc + curr.unread, 0)
     setTotalUnread(total)
-
+    
     if (total > 0) {
       Taro.setTabBarBadge({ index: 2, text: total > 99 ? '99+' : String(total) }).catch(() => {})
     } else {
@@ -78,8 +77,8 @@ export default function MessagePage() {
       if (res.event && res.event !== 'chat') return
 
       // 确定会话 ID
-      const isGroup = newMsg.session_type === 2
-      const targetPeerId = isGroup ? newMsg.group_id : newMsg.sender_id
+      const isGroup = Number(newMsg.session_type) === 2
+      const targetPeerId = isGroup ? (newMsg.target_id || newMsg.group_id) : newMsg.sender_id
 
       setSessionList(prevList => {
         const index = prevList.findIndex(item => item.peer_id === Number(targetPeerId))
@@ -95,7 +94,7 @@ export default function MessagePage() {
           const newList = [...prevList]
           newList.splice(index, 1) // 删除旧位置
           newList.unshift(updatedItem) // 置顶
-
+          
           return newList
         } else {
           // --- 场景 B：新会话，重新拉取 ---
@@ -113,53 +112,25 @@ export default function MessagePage() {
     }
   }, [])
 
-  // --- 核心修改：获取会话列表 ---
+  // 获取会话列表
   const fetchSessionList = async () => {
     try {
-      // 1. 检查 access_token (适配双token改动)
-      const token = Taro.getStorageSync('access_token')
-
-      if (!token) {
-        console.warn('[MessagePage] 未登录(无access_token)，跳过请求')
-        return
-      }
-
-      console.log('[MessagePage] 开始请求会话列表...')
-
-      // 2. 使用 request 工具
-      // 不需要手动写 header: Authorization，工具会自动加
       const res = await request({
         url: '/api/v1/session/',
         method: 'GET'
       })
 
-      // 3. 打印原始返回，方便定位
-      console.log('[MessagePage] 接口原始返回 res:', res)
-
-      // 4. 获取业务数据 (res.data)
-      // request 返回的是 { statusCode: 200, header: {...}, data: {code: 200, ...} }
-      // 所以我们要取 res.data
       let resBody: any = res.data
-
-      console.log('[MessagePage] 业务数据 resBody:', resBody)
-
-      // 5. 防御性解析 (防止 request 工具解析遗漏或后端返回特殊格式)
       if (typeof resBody === 'string') {
-        try { resBody = JSON.parse(resBody) } catch (e) {
-            console.error('[MessagePage] JSON解析失败', e)
-        }
+        try { resBody = JSON.parse(resBody) } catch (e) {}
       }
 
-      // 6. 适配接口结构 { code: 200, data: { list: [] } }
       if (resBody && resBody.code === 200 && resBody.data) {
         const dataList = resBody.data.list || []
         if (Array.isArray(dataList)) {
             setSessionList(dataList)
-            console.log('[MessagePage] 列表更新成功，长度:', dataList.length)
         }
       } else {
-        // 如果 code 不是 200 (例如 401)，request 工具可能已经拦截并处理了刷新/登出
-        // 这里只需要记录一下日志
         console.warn('[MessagePage] 获取会话列表失败或非200:', resBody)
       }
     } catch (err) {
@@ -168,18 +139,14 @@ export default function MessagePage() {
   }
 
   const handlePullDownRefresh = async () => {
-    if (currentScrollTop > 20) {
-      setIsRefreshing(false)
-      return
-    }
+    if (isRefreshing) return
     setIsRefreshing(true)
-    setScrollIntoView('scroll-top-anchor')
-    await fetchSessionList()
-    setTimeout(() => {
-      setIsRefreshing(false)
-      setScrollIntoView('')
+    try {
+      await fetchSessionList()
       Taro.showToast({ title: '刷新成功', icon: 'success' })
-    }, 1200)
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 300)
+    }
   }
 
   const handleChat = (item: SessionItem) => {
@@ -188,7 +155,7 @@ export default function MessagePage() {
       return
     }
 
-    // Clear unread locally for better UX.
+    // 本地清零未读数
     setSessionList(prev => prev.map(s => {
       if (s.peer_id === item.peer_id) {
         return { ...s, unread: 0 }
@@ -197,24 +164,19 @@ export default function MessagePage() {
     }))
 
     Taro.navigateTo({
-      url: `/pages/chat/index?peer_id=${item.peer_id}&title=${encodeURIComponent(item.peer_name || '')}&type=${item.session_type}`,
-      fail: (err) => {
-        console.error('[MessagePage] 进入聊天失败:', err)
-      }
+      url: `/pages/chat/index?peer_id=${item.peer_id}&title=${encodeURIComponent(item.peer_name || '')}&type=${item.session_type}`
     })
   }
 
   const formatTime = (timestamp: number) => {
     if (!timestamp) return ''
-    // 兼容 10 位和 13 位时间戳
     const timeMs = timestamp.toString().length === 10 ? timestamp * 1000 : timestamp
     const date = new Date(timeMs)
     const now = new Date()
-
+    
     const z = (n: number) => (n < 10 ? `0${n}` : n)
-
-    const isToday = date.getDate() === now.getDate() &&
-                    date.getMonth() === now.getMonth() &&
+    const isToday = date.getDate() === now.getDate() && 
+                    date.getMonth() === now.getMonth() && 
                     date.getFullYear() === now.getFullYear()
 
     if (isToday) {
@@ -225,17 +187,18 @@ export default function MessagePage() {
   }
 
   const systemNotices = [
-    { id: 'sys_1', title: '系统消息', desc: '你的身份认证审核已通过', time: '14:32', iconColor: '#8B7CFF', icon: 'bell', unread: 1 },
-    { id: 'sys_2', title: '互动通知', desc: '刚刚有人关注了你，快去看看吧！', time: '13:22', iconColor: '#FF6B6B', icon: 'heart', unread: 0 },
-    { id: 'sys_3', title: 'HYPER小助手', desc: '今日三倍积分返利快来参加心仪的活动吧！', time: '昨天', iconColor: '#FFB74D', icon: 'star', unread: 0 },
-    { id: 'sys_4', title: '积分账户', desc: '已支付 300 积分', time: '昨天', iconColor: '#4ECDC4', icon: 'file-text', unread: 0 },
-    { id: 'sys_5', title: '支付消息', desc: '成功支付¥300元', time: '06-17', iconColor: '#34C759', icon: 'credit-card', unread: 0 },
-    { id: 'sys_6', title: '客服消息', desc: '客服月月：亲让您久等了，问题已经帮您反…', time: '06-17', iconColor: '#5AC8FA', icon: 'message', unread: 0 },
+    { id: 'sys_1', title: '系统消息', desc: '暂无系统消息', time: '', iconColor: '#8B7CFF', icon: 'bell', unread: 0 },
+    { id: 'sys_2', title: '互动通知', desc: '暂无互动', time: '', iconColor: '#FF6B6B', icon: 'heart', unread: 0 },
+    { id: 'sys_3', title: 'HYPER小助手', desc: '欢迎来到 HyperFun', time: '', iconColor: '#FFB74D', icon: 'star', unread: 0 },
+    { id: 'sys_4', title: '积分账户', desc: '当前积分 0', time: '', iconColor: '#4ECDC4', icon: 'file-text', unread: 0 },
+    { id: 'sys_5', title: '支付消息', desc: '暂无支付记录', time: '', iconColor: '#34C759', icon: 'credit-card', unread: 0 },
+    { id: 'sys_6', title: '客服消息', desc: '遇到问题请联系客服', time: '', iconColor: '#5AC8FA', icon: 'message', unread: 0 },
   ]
 
   return (
     <View className='message-page'>
-      <View
+      {/* 顶部 Header (Fixed) */}
+      <View 
         className='page-header'
         style={{
           paddingTop: `${navBarPaddingTop}px`,
@@ -248,31 +211,30 @@ export default function MessagePage() {
         </View>
       </View>
 
-      <ScrollView
-        scrollY
+      {/* 滚动区域 */}
+      <ScrollView 
+        scrollY 
         className='message-scroll'
         style={{
-          paddingTop: `${navBarPaddingTop + navBarHeight}px`,
-          paddingBottom: '20px',
-          height: scrollHeight ? `${scrollHeight}px` : '100vh'
+            height: scrollHeight ? `${scrollHeight}px` : '100vh'
         }}
-        scrollIntoView={scrollIntoView}
         refresherEnabled
         refresherTriggered={isRefreshing}
         onRefresherRefresh={handlePullDownRefresh}
+        onRefresherRestore={() => setIsRefreshing(false)}
+        onRefresherAbort={() => setIsRefreshing(false)}
         refresherBackground="#000000"
         refresherDefaultStyle="white"
-        onScroll={e => {
-          const top = e.detail?.scrollTop || 0
-          setCurrentScrollTop(top)
-        }}
       >
-        <View id='scroll-top-anchor' />
+        <View style={{ height: `${navBarPaddingTop + navBarHeight}px` }} />
+        {/* ?????? */}
+        
+        {/* 系统通知 */}
         <View className='system-list'>
           {systemNotices.map(item => (
             <View key={item.id} className='msg-item system-item'>
               <View className='avatar-box' style={{ backgroundColor: item.iconColor }}>
-                <AtIcon value={item.icon} size='24' color='#fff' />
+                 <AtIcon value={item.icon} size='24' color='#fff' />
               </View>
               <View className='content-box'>
                 <View className='top-row'>
@@ -290,6 +252,7 @@ export default function MessagePage() {
           ))}
         </View>
 
+        {/* 聊天列表 */}
         <View className='chat-list'>
           {sessionList.map(item => (
             <View key={item.peer_id} className='msg-item' onClick={() => handleChat(item)}>
@@ -302,7 +265,7 @@ export default function MessagePage() {
                   </View>
                 )}
               </View>
-
+              
               <View className='content-box'>
                 <View className='top-row'>
                   <Text className='title'>{item.peer_name}</Text>
@@ -319,15 +282,14 @@ export default function MessagePage() {
               </View>
             </View>
           ))}
-
+          
           {sessionList.length === 0 && (
              <View className='empty-state'>
                 <Text>暂无聊天消息</Text>
              </View>
           )}
         </View>
-        <View style={{ height: `${tabBarHeight + 24}px` }} />
-
+        <View style={{ height: `${tabBarHeight + 20}px` }} />
       </ScrollView>
     </View>
   )

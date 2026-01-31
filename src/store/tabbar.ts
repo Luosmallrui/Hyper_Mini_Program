@@ -38,12 +38,12 @@ class TabBarStore {
 
   // 根据当前路由自动设置选中状态
   updateByCurrentRoute() {
-    const routes = [
-      '/pages/index/index',
-      '/pages/square/index',
-      '/pages/message/index',
-      '/pages/user/index',
-    ]
+    const routeIndexMap: Record<string, number> = {
+      '/pages/index/index': 0,
+      '/pages/square/index': 1,
+      '/pages/message/index': 3,
+      '/pages/user/index': 4,
+    }
 
     try {
       // 使用类型断言避免 Taro 类型问题
@@ -51,8 +51,8 @@ class TabBarStore {
       if (pages && pages.length > 0) {
         const currentPage = pages[pages.length - 1]
         const currentRoute = '/' + currentPage.route
-        const index = routes.indexOf(currentRoute)
-        if (index !== -1) {
+        const index = routeIndexMap[currentRoute]
+        if (typeof index === 'number') {
           this.setSelected(index)
         }
       }

@@ -1,4 +1,3 @@
-/* 1. 外部容器 */
 .custom-tab-bar {
   position: fixed;
   bottom: 0;
@@ -15,19 +14,16 @@
   );
 
   pointer-events: none;
-
-  /* 底部安全区 */
   padding-bottom: calc(30px + env(safe-area-inset-bottom));
 }
 
-/* 2. 内容容器 */
 .tab-bar-container {
-  pointer-events: auto; 
+  pointer-events: auto;
   width: 100%;
   height: 80px;
   display: flex;
   justify-content: space-around;
-  align-items: center; 
+  align-items: center;
   padding: 0 20px;
   box-sizing: border-box;
   position: relative;
@@ -35,15 +31,16 @@
 
 .tab-active-pill {
   position: absolute;
-  left: 0;
   top: 50%;
   width: 100px;
   height: 64px;
   background: #a7a7a7;
   border-radius: 32px;
   pointer-events: none;
-  transition: transform 0.3s ease;
+  transition: left 0.25s ease;
   z-index: 0;
+  will-change: left;
+  backface-visibility: hidden;
 }
 
 .tab-item {
@@ -51,10 +48,10 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100%; 
+  height: 100%;
   position: relative;
   z-index: 1;
-  
+
   .icon-wrapper {
     width: 44px;
     height: 44px;
@@ -70,14 +67,13 @@
     height: 44px;
     display: block;
     transition: all 0.3s ease;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
   }
 }
 
-/* 4.  中间特殊按钮 (红色圆角矩形 + 纯文本加号) */
 .tab-item.special-item {
-  flex: 1.5; 
-  
+  flex: 1.5;
+
   .icon-wrapper {
     width: 56px;
     height: 56px;
@@ -90,7 +86,7 @@
     width: 51px;
     height: 75px;
   }
-  
+
   &:active .icon-wrapper {
     transform: scale(0.95);
   }

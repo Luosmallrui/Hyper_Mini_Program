@@ -15,7 +15,6 @@ interface TabItem {
 interface State {
   selected: number
   list: TabItem[]
-  indicatorOffset: number
 }
 
 export default class CustomTabBar extends Component<{}, State> {
@@ -28,7 +27,6 @@ export default class CustomTabBar extends Component<{}, State> {
     super(props)
     this.state = {
       selected: tabBarStore.getSelected(),
-      indicatorOffset: this.getIndicatorOffset(tabBarStore.getSelected()),
       list: [
         {
           pagePath: '/pages/index/index',
@@ -36,17 +34,16 @@ export default class CustomTabBar extends Component<{}, State> {
           selectedIconPath: require('../assets/icons/home-active.svg'),
         },
         {
-          pagePath: "/pages/square/index",
+          pagePath: '/pages/square/index',
           iconPath: require('../assets/icons/stream.svg'),
           selectedIconPath: require('../assets/icons/stream-active.svg'),
         },
         {
-          // 中间特殊按钮
-          pagePath: "/pages/square-sub/post-create/index",
+          pagePath: '/pages/square-sub/post-create/index',
           isSpecial: true
         },
         {
-          pagePath: "/pages/message/index",
+          pagePath: '/pages/message/index',
           iconPath: require('../assets/icons/message.svg'),
           selectedIconPath: require('../assets/icons/message-active.svg'),
         },
@@ -62,8 +59,7 @@ export default class CustomTabBar extends Component<{}, State> {
   componentDidMount() {
     this.unsubscribe = tabBarStore.subscribe((selectedIndex) => {
       this.setState({
-        selected: selectedIndex,
-        indicatorOffset: this.getIndicatorOffset(selectedIndex),
+        selected: selectedIndex
       })
     })
     tabBarStore.updateByCurrentRoute()
@@ -121,14 +117,15 @@ export default class CustomTabBar extends Component<{}, State> {
   }
 
   render() {
-    const { selected, list, indicatorOffset } = this.state
+    const { selected, list } = this.state
+    const indicatorOffset = this.getIndicatorOffset(selected)
 
     return (
       <View className='custom-tab-bar'>
         <View className='tab-bar-container'>
           <View
             className='tab-active-pill'
-            style={{ transform: `translate3d(${indicatorOffset}rpx, -50%, 0)` }}
+            style={{ left: `${indicatorOffset}rpx`, transform: 'translate3d(0, -50%, 0)' }}
           />
           {list.map((item, index) => {
             const isSelected = selected === index

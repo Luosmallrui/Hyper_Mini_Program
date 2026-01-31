@@ -121,7 +121,7 @@ export default class IMService {
       const msg = typeof dataStr === 'string' ? JSON.parse(dataStr) : dataStr
       // 心跳响应不打印日志，避免刷屏
       if (msg.type !== 'pong' && msg.event !== 'pong') {
-          console.log('[IM] 收到消息:', msg)
+          console.log('[IM] 收到消息:', JSON.stringify(msg))
       }
       if (msg.type === 'pong' || msg.event === 'pong') return
 
@@ -131,6 +131,7 @@ export default class IMService {
     }
   }
 
+  
   send(data: object) {
     if (this.isConnected && this.socketTask) {
       this.socketTask.send({
