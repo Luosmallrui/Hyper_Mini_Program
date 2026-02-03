@@ -98,11 +98,16 @@ export default class CustomTabBar extends Component<{}, State> {
     if (index === this.state.selected) return
 
     tabBarStore.setSelected(index)
+    Taro.eventCenter.trigger('TAB_SWITCH_LOADING', true)
+    setTimeout(() => {
+      Taro.eventCenter.trigger('TAB_SWITCH_LOADING', false)
+    }, 2000)
     Taro.switchTab({
       url: item.pagePath,
       fail: (err) => {
         console.error('页面跳转失败:', err)
         tabBarStore.updateByCurrentRoute()
+        Taro.eventCenter.trigger('TAB_SWITCH_LOADING', false)
       }
     })
   }

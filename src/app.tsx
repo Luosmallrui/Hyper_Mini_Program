@@ -1,4 +1,5 @@
-import { PropsWithChildren, useEffect } from 'react'
+import { PropsWithChildren, useEffect, useState } from 'react'
+import { View, Text } from '@tarojs/components'
 import Taro, { useLaunch } from '@tarojs/taro'
 import { appUpdate } from './utils'
 import IMService from './utils/im'
@@ -25,6 +26,7 @@ if (typeof console.time !== 'function') {
 }
 
 function App({ children }: PropsWithChildren<any>) {
+  const [isSwitching, setIsSwitching] = useState(false)
 
   useLaunch(() => {
     // 小程序更新
@@ -91,7 +93,28 @@ function App({ children }: PropsWithChildren<any>) {
   }, [])
 
   // children 是将要会渲染的页面
-  return children
+
+  useEffect(() => {
+    const handleSwitchLoading = (flag: boolean) => {
+      setIsSwitching(Boolean(flag))
+    }
+    Taro.eventCenter.on('TAB_SWITCH_LOADING', handleSwitchLoading)
+    return () => {
+      Taro.eventCenter.off('TAB_SWITCH_LOADING', handleSwitchLoading)
+    }
+  }, [])
+
+  return (
+    <View className='app-root'>
+      {children}
+      {isSwitching && (
+        <View className='global-loading-mask'>
+          <View className='global-loading-spinner' />
+          <Text className='global-loading-text'>???</Text>
+        </View>
+      )}
+    </View>
+  )
 }
 
 export default App

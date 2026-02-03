@@ -35,7 +35,8 @@ export default function MessagePage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   Taro.useDidShow(() => {
-    setTabBarIndex(3) // 确保 TabBar 索引正确 (消息页通常是 index 2 或 3，请根据你的配置调整)
+    setTabBarIndex(3)
+    Taro.eventCenter.trigger('TAB_SWITCH_LOADING', false) // 确保 TabBar 索引正确 (消息页通常是 index 2 或 3，请根据你的配置调整)
     fetchSessionList()
   })
 

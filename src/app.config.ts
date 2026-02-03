@@ -21,6 +21,10 @@ export default defineAppConfig({
       pages: ['index']
     },
     {
+      root: 'pages/venue',
+      pages: ['index']
+    },
+    {
       root: 'pages/order-sub',
       pages: [
         'order-detail/index',

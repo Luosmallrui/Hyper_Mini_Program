@@ -1,8 +1,9 @@
-﻿import {View, Text, Image, ScrollView} from '@tarojs/components'
-import Taro from '@tarojs/taro'
-import {useEffect, useMemo, useState} from 'react'
-import {AtIcon} from 'taro-ui'
+import { View, Text, Image, ScrollView } from '@tarojs/components'
+import Taro, { useRouter } from '@tarojs/taro'
+import { useEffect, useMemo, useState } from 'react'
+import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
+import { request } from '@/utils/request'
 import './index.scss'
 
 const heroBg = 'https://lanhu-oss-proxy.lanhuapp.com/SketchPnge4e991c6f61fa48db35927fda9571879ac78f39401f34fee7331ac1ede4da3ae'
@@ -11,20 +12,49 @@ const organizerAvatar = 'https://lanhu-dds-backend.oss-cn-beijing.aliyuncs.com/m
 const posterImage = 'https://lanhu-oss-proxy.lanhuapp.com/SketchPng2bf1bf8518557130955cbc32c3282e36ea04ef334da2542d1f7c5fa5e83bac69'
 const BASE_URL = 'https://www.hypercn.cn'
 
+interface PartyItem {
+  id: string
+  title: string
+  type: string
+  location: string
+  distance: string
+  price: string
+  lat: number
+  lng: number
+  tags: string[]
+  tag: string
+  user: string
+  userAvatar: string
+  fans: string
+  isVerified: boolean
+  time: string
+  dynamicCount: number
+  attendees: number
+  isFull: boolean
+  rank: string
+  image: string
+  isLiked: boolean
+  isAttending: boolean
+}
+
 const ticketTypes = [
-  {id: 'single', label: '单人票（赠啤酒1瓶）', price: 120},
-  {id: 'double', label: '双人票（赠啤酒2瓶）', price: 220},
-  {id: 'vip', label: '畅饮票（酒水畅饮）', price: 360},
+  { id: 'single', label: '单人票（赠啤酒1瓶）', price: 120 },
+  { id: 'double', label: '双人票（赠啤酒2瓶）', price: 220 },
+  { id: 'vip', label: '畅饮票（酒水畅饮）', price: 360 }
 ]
 
 export default function ActivityPage() {
+  const router = useRouter()
+  const activityId = router.params?.id || ''
+  const [activity, setActivity] = useState<PartyItem | null>(null)
+
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
   const [menuButtonWidth, setMenuButtonWidth] = useState(0)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState(ticketTypes[0])
   const [ticketCount, setTicketCount] = useState(1)
-  const [isPaying, setIsPaying] = useState(false);
+  const [isPaying, setIsPaying] = useState(false)
 
   useEffect(() => {
     const sysInfo = Taro.getWindowInfo()
@@ -36,33 +66,55 @@ export default function ActivityPage() {
     const rightPadding = sysInfo.screenWidth - menuInfo.left
     setMenuButtonWidth(rightPadding)
   }, [])
+
+  useEffect(() => {
+    const fetchActivity = async () => {
+      if (!activityId) return
+      try {
+        const res = await request({
+          url: '/api/v1/party/list',
+          method: 'GET'
+        })
+        const list = res?.data?.data?.list || []
+        const target = Array.isArray(list)
+          ? list.find((item: PartyItem) => String(item.id) === String(activityId))
+          : null
+        setActivity(target || null)
+      } catch (error) {
+        console.error('Activity detail load failed:', error)
+      }
+    }
+
+    fetchActivity()
+  }, [activityId])
+
   const token = Taro.getStorageSync('access_token')
   const totalPrice = useMemo(() => selectedTicket.price * ticketCount, [selectedTicket, ticketCount])
+
   const handlePay = async () => {
-    if (isPaying) return;
+    if (isPaying) return
 
     try {
-      setIsPaying(true);
-      Taro.showLoading({title: '准备支付...', mask: true});
-      const {data: res} = await Taro.request({
+      setIsPaying(true)
+      Taro.showLoading({ title: '准备支付...', mask: true })
+      const { data: res } = await Taro.request({
         url: `${BASE_URL}/api/v1/pay/prepay`,
         method: 'POST',
-        header: {'Authorization': `Bearer ${token}`},
+        header: { Authorization: `Bearer ${token}` },
         data: {
-          openid: "o9Xlk14wugzLZOdwWQ5FwtQOjhxs",
+          openid: 'o9Xlk14wugzLZOdwWQ5FwtQOjhxs',
           amount: 1,
-          description: "测试商品支付",
-          out_trade_no: "test_order_20240124011"
+          description: '测试商品支付',
+          out_trade_no: 'test_order_20240124011'
         }
-      });
+      })
 
       if (res.code !== 200) {
-        throw new Error(res.msg || '获取预支付信息失败');
+        throw new Error(res.msg || '获取预支付信息失败')
       }
 
-      const payParams = res.data;
+      const payParams = res.data
 
-      // 调用微信支付
       await Taro.requestPayment({
         timeStamp: payParams.timeStamp,
         nonceStr: payParams.nonceStr,
@@ -70,65 +122,75 @@ export default function ActivityPage() {
         signType: payParams.signType as any,
         paySign: payParams.paySign,
         success: () => {
-          Taro.showToast({title: '支付成功', icon: 'success'});
-          // 支付成功后的跳转
+          Taro.showToast({ title: '支付成功', icon: 'success' })
           setTimeout(() => {
-            Taro.navigateTo({url: `/pages/order-sub/order-pay-success/index`});
-          }, 1000);
+            Taro.navigateTo({ url: `/pages/order-sub/order-pay-success/index` })
+          }, 1000)
         },
         fail: (err) => {
           if (err.errMsg.includes('cancel')) {
-            Taro.showToast({title: '支付已取消', icon: 'none'});
+            Taro.showToast({ title: '支付已取消', icon: 'none' })
           } else {
-            Taro.showModal({title: '支付失败', content: err.errMsg, showCancel: false});
+            Taro.showModal({ title: '支付失败', content: err.errMsg, showCancel: false })
           }
         }
-      });
-
-    } catch (error) {
-      console.error('支付流程出错:', error);
-      Taro.showToast({title: error.message || '系统错误', icon: 'none'});
+      })
+    } catch (error: any) {
+      console.error('支付流程出错:', error)
+      Taro.showToast({ title: error.message || '系统错误', icon: 'none' })
     } finally {
-      setIsPaying(false);
-      Taro.hideLoading();
+      setIsPaying(false)
+      Taro.hideLoading()
     }
-  };
+  }
+
+  const heroImage = activity?.image || heroBg
+  const organizerName = activity?.user || 'Pure Loop'
+  const organizerFans = activity?.fans || '5245'
+  const titleText = activity?.title || 'POWER FLOW成都站'
+  const timeText = activity?.time || '2025.01.03-04 星期五 21:30-02:30'
+  const locationText = activity?.location || '高新区盛园街道保利星荟5栋1楼'
+  const priceText = activity?.price ? `¥${activity.price}` : '65¥—128¥'
+
   return (
     <View className='activity-page'>
-      <View className='hero' style={{backgroundImage: `url(${heroBg})`}}>
-        <Image className='status-bar-image' src={posterImage} mode='widthFix'/>
-        <View className='custom-nav' style={{
-          paddingTop: `${statusBarHeight}px`,
-          height: `${navBarHeight}px`,
-          paddingRight: `${menuButtonWidth}px`
-        }}
+      <View className='hero' style={{ backgroundImage: `url(${heroImage})` }}>
+        <Image className='status-bar-image' src={activity?.image || posterImage} mode='widthFix' />
+        <View
+          className='custom-nav'
+          style={{
+            paddingTop: `${statusBarHeight}px`,
+            height: `${navBarHeight}px`,
+            paddingRight: `${menuButtonWidth}px`
+          }}
         >
           <View className='nav-left' onClick={() => Taro.navigateBack()}>
-            <AtIcon value='chevron-left' size='24' color='#fff'/>
+            <AtIcon value='chevron-left' size='24' color='#fff' />
           </View>
           <View className='nav-right'>
-            <AtIcon value='more' size='18' color='#fff'/>
+            <AtIcon value='more' size='18' color='#fff' />
           </View>
         </View>
       </View>
 
       <ScrollView className='content-scroll' scrollY>
-        <View className='info-panel' style={{backgroundImage: `url(${panelBg})`}}>
+        <View className='info-panel' style={{ backgroundImage: `url(${panelBg})` }}>
           <View className='title-block'>
-            <Text className='title'>POWER FLOW成都站</Text>
-            <Text className='subtitle'>活动时间：2025.01.03-04 星期五 21:30-02:30</Text>
+            <Text className='title'>{titleText}</Text>
+            <Text className='subtitle'>活动时间：{timeText}</Text>
           </View>
 
           <View className='location-row'>
-            <Text className='location-text'>高新区盛园街道保利星荟5栋1楼</Text>
-            <Image className='location-icon'
-                   src='https://lanhu-oss-proxy.lanhuapp.com/SketchPng316000f2c1e243cb13f8f16f4b0e0f5612aad100fd961d8166c868613af34ece'
-                   mode='aspectFit'
+            <Text className='location-text'>{locationText}</Text>
+            <Image
+              className='location-icon'
+              src='https://lanhu-oss-proxy.lanhuapp.com/SketchPng316000f2c1e243cb13f8f16f4b0e0f5612aad100fd961d8166c868613af34ece'
+              mode='aspectFit'
             />
           </View>
 
           <View className='price-row'>
-            <Text className='price'>65¥—128¥</Text>
+            <Text className='price'>{priceText}</Text>
             <View className='pill muted'>
               <Text>订阅活动</Text>
             </View>
@@ -138,10 +200,10 @@ export default function ActivityPage() {
           </View>
 
           <View className='organizer-card'>
-            <Image className='organizer-avatar' src={organizerAvatar} mode='aspectFill'/>
+            <Image className='organizer-avatar' src={activity?.userAvatar || organizerAvatar} mode='aspectFill' />
             <View className='organizer-info'>
-              <Text className='organizer-name'>Pure Loop</Text>
-              <Text className='organizer-fans'>5245 粉丝</Text>
+              <Text className='organizer-name'>{organizerName}</Text>
+              <Text className='organizer-fans'>{organizerFans} 粉丝</Text>
             </View>
             <View className='organizer-follow'>
               <Text>已关注</Text>
@@ -160,7 +222,7 @@ export default function ActivityPage() {
             也不屈服于主流的浮华。它站在电流与街头的交汇处，构建一个节奏更凶猛、旋律更迷幻、能量更密集的新现实。
           </Text>
 
-          <View className='spacer'/>
+          <View className='spacer' />
         </View>
       </ScrollView>
 
@@ -175,17 +237,17 @@ export default function ActivityPage() {
           <View className='drawer-panel open' onClick={(e) => e.stopPropagation()}>
             <View className='drawer-header'>
               <View className='drawer-title'>
-                <Image className='drawer-poster' src={posterImage} mode='aspectFill'/>
+                <Image className='drawer-poster' src={activity?.image || posterImage} mode='aspectFill' />
                 <View className='drawer-info'>
-                  <Text className='drawer-name'>POWER FLOW成都站</Text>
+                  <Text className='drawer-name'>{titleText}</Text>
                   <Text className='drawer-tag'>有条件退票</Text>
-                  <Text className='drawer-time'>时间：2025.01.03-04 星期五 21:30-02:30</Text>
-                  <Text className='drawer-place'>地点：高新区盛园街道保利星荟云谷5栋23楼49...</Text>
-                  <Text className='drawer-price'>65¥</Text>
+                  <Text className='drawer-time'>时间：{timeText}</Text>
+                  <Text className='drawer-place'>地点：{locationText}</Text>
+                  <Text className='drawer-price'>{priceText}</Text>
                 </View>
               </View>
               <View className='drawer-close' onClick={() => setDrawerOpen(false)}>
-                <AtIcon value='close' size='16' color='#bbb'/>
+                <AtIcon value='close' size='16' color='#bbb' />
               </View>
             </View>
 
@@ -213,9 +275,13 @@ export default function ActivityPage() {
                 <Text className='section-sub'>（单人最多限购3张）</Text>
               </View>
               <View className='count-actions'>
-                <View className='count-btn' onClick={() => setTicketCount(Math.max(1, ticketCount - 1))}>-</View>
+                <View className='count-btn' onClick={() => setTicketCount(Math.max(1, ticketCount - 1))}>
+                  -
+                </View>
                 <View className='count-value'>{ticketCount}</View>
-                <View className='count-btn' onClick={() => setTicketCount(ticketCount + 1)}>+</View>
+                <View className='count-btn' onClick={() => setTicketCount(ticketCount + 1)}>
+                  +
+                </View>
               </View>
             </View>
 
@@ -223,9 +289,9 @@ export default function ActivityPage() {
               <Text className='section-title'>观演人信息</Text>
               <View className='viewer-item'>
                 <Text className='viewer-name'>刘*山 221***********2524</Text>
-                <View className='viewer-radio'/>
+                <View className='viewer-radio' />
               </View>
-              <View className='viewer-add' onClick={() => Taro.navigateTo({url: '/pages/activity-attendee/index'})}>
+              <View className='viewer-add' onClick={() => Taro.navigateTo({ url: '/pages/activity-attendee/index' })}>
                 新增观演人
               </View>
             </View>
@@ -235,7 +301,9 @@ export default function ActivityPage() {
                 <Text className='total-label'>合计 ¥{totalPrice}</Text>
                 <Text className='total-sub'>共 {ticketCount} 项</Text>
               </View>
-              <View className='pay-btn' onClick={handlePay}>立即支付</View>
+              <View className='pay-btn' onClick={handlePay}>
+                立即支付
+              </View>
             </View>
           </View>
         </View>

@@ -16,29 +16,39 @@ const AREA_LEVEL2 = ['不限', '热门商圈', '高新区', '锦江区']
 const AREA_LEVEL3 = ['春熙路', '宽窄巷子', '兰桂坊', '铁像寺', 'SKP', '玉林', '望平街']
 const MORE_TAGS = ['积分立减', '买单立减', '新人优惠']
 
-interface PartyItem {
-  id: string
+interface MerchantItem {
+  id: number
   title: string
   type: string
   location: string
-  distance: string
-  price: string
   lat: number
   lng: number
-  tags: string[]
-  tag: string
+  username: string
+  user_avatar: string
+  cover_image: string
+  created_at: string
+  avg_price: number
+  current_count: number
+  post_count: number
+}
+
+interface PartyItem {
+  id: string | number
+  title: string
+  type: string
+  location: string
+  lat: number
+  lng: number
   user: string
   userAvatar: string
-  fans: string
-  isVerified: boolean
   time: string
-  dynamicCount: number
+  price: string
   attendees: number
-  isFull: boolean
-  rank: string
+  dynamicCount: number
   image: string
-  isLiked: boolean
-  isAttending: boolean
+  rank?: string
+  fans?: string
+  isVerified?: boolean
 }
 
 
@@ -46,6 +56,7 @@ export default function IndexPage() {
   const [current, setCurrent] = useState(0)
   const [markers, setMarkers] = useState<any[]>([])
   const [partyList, setPartyList] = useState<PartyItem[]>([])
+  const isEmpty = partyList.length === 0
   
   // 筛选状态
   const [filterOpen, setFilterOpen] = useState<'none' | 'all' | 'area' | 'more'>('none')
@@ -63,7 +74,10 @@ export default function IndexPage() {
   const [initialCenter, setInitialCenter] = useState({ lng: 104.066, lat: 30.657 })
   const mapCtx = useRef<any>(null)
 
-  Taro.useDidShow(() => { setTabBarIndex(0) })
+  Taro.useDidShow(() => {
+    setTabBarIndex(0)
+    Taro.eventCenter.trigger('TAB_SWITCH_LOADING', false)
+  })
 
   useEffect(() => {
     const sysInfo = Taro.getWindowInfo()
@@ -80,15 +94,42 @@ export default function IndexPage() {
     const fetchPartyList = async () => {
       try {
         const res = await request({
-          url: '/api/v1/party/list',
+          url: '/api/v1/merchant/list',
           method: 'GET',
         })
         const list = res?.data?.data?.list || []
-        setPartyList(list)
-        if (list.length > 0) {
+        const mappedList: PartyItem[] = Array.isArray(list)
+          ? list.map((item: MerchantItem) => {
+              const createdAt = item.created_at ? new Date(item.created_at) : null
+              const formattedTime = createdAt && !Number.isNaN(createdAt.getTime())
+                ? createdAt.toISOString().slice(0, 10)
+                : item.created_at || ''
+              return {
+                id: item.id,
+                title: item.title,
+                type: item.type,
+                location: item.location,
+                lat: item.lat,
+                lng: item.lng,
+                user: item.username,
+                userAvatar: item.user_avatar,
+                image: item.cover_image,
+                time: formattedTime,
+                price: typeof item.avg_price === 'number' ? (item.avg_price / 100).toFixed(0) : '0',
+                attendees: item.current_count,
+                dynamicCount: item.post_count,
+                fans: String(item.current_count ?? ''),
+                isVerified: false,
+                rank: ''
+              }
+            })
+          : []
+
+        setPartyList(mappedList)
+        if (mappedList.length > 0) {
           setCurrent(0)
-          setInitialCenter({ lng: list[0].lng, lat: list[0].lat })
-          updateMarkers(list, 0)
+          setInitialCenter({ lng: mappedList[0].lng, lat: mappedList[0].lat })
+          updateMarkers(mappedList, 0)
         } else {
           setMarkers([])
         }
@@ -102,7 +143,7 @@ export default function IndexPage() {
 
   const updateMarkers = (list: PartyItem[], activeIndex: number) => {
     const newMarkers = list.map((item, index) => ({
-      id: item.id,
+      id: Number(item.id),
       latitude: item.lat,
       longitude: item.lng,
       width: index === activeIndex ? 50 : 32,
@@ -147,6 +188,12 @@ export default function IndexPage() {
   }
 
   const navigateTo = (path: string) => Taro.navigateTo({ url: path })
+  const getDetailPath = (item: PartyItem) => {
+    if (item?.type === '场地') {
+      return `/pages/venue/index?id=${item.id}&tag=${encodeURIComponent(item.type || '')}`
+    }
+    return `/pages/activity/index?id=${item.id}&tag=${encodeURIComponent(item.type || '')}`
+  }
 
   // 样式计算
   const topHeaderStyle = { top: `${statusBarHeight}px`, height: `${navBarHeight}px` }
@@ -334,7 +381,7 @@ export default function IndexPage() {
       </View>
 
       {/* 右侧悬浮按钮组 */}
-      <View className='floating-group'>
+      <View className={`floating-group${isEmpty ? ' empty' : ''}`}>
         <View className='circle-btn locate-btn' onClick={handleLocate}>
           <Image className='map-pin' src={require('../../assets/icons/map-pin.svg')} mode='aspectFit' />
         </View>
@@ -344,91 +391,100 @@ export default function IndexPage() {
         </View>
       </View>
 
-      {/* 底部卡片 Swiper (保持不变) */}
-      <View className='bottom-card-container'>
-        <Swiper
-          className='card-swiper'
-          current={current}
-          onChange={handleSwiperChange}
-          onAnimationFinish={handleSwiperAnimationFinish}
-          previousMargin='20px'
-          nextMargin='20px'
-          circular={false}
-        >
-          {partyList.map((item) => (
-            <SwiperItem key={item.id} className='card-item-wrapper'>
-              <View 
-                className='party-card-pro'
-                onClick={() => navigateTo(`/pages/activity/index?id=${item.id}`)}
-              >
-                <View className='fake-glass-layer' />
-                <View
-                  className='card-header-bg'
-                  style={item.image ? {
-                    backgroundImage: `url(${item.image})`,
-                  } : undefined}
-                >
-                   {item.rank && (
-                     <View className='rank-badge'>
-                        <AtIcon value='fire' size='12' color='#fff' />
-                        <Text className='txt'>{item.rank}</Text>
-                     </View>
-                   )}
-                   <View className='attendees-capsule'>
-                      <View className='avatars'>
-                         <View className='av' style={{zIndex:3}} />
-                         <View className='av' style={{zIndex:2, left: '14px'}} />
-                         <View className='av' style={{zIndex:1, left: '28px'}} />
-                      </View>
-                      <View className='count-info'>
-                        <Text className='num-italic'>{item.attendees}</Text>
-                        <Text className='label'>人报名</Text>
-                      </View>
-                   </View>
-                </View>
+      {partyList.length === 0 && (
+        <View className='empty-result'>
+          <View className='empty-icon'>!</View>
+          <Text className='empty-text'>没有找到相关结果</Text>
+        </View>
+      )}
 
-                <View className='card-body'>
-                   <View className='title-row'>
-                      <Text className='title'>{item.title}</Text>
-                      <Text className='type-tag'>{item.type}</Text>
-                   </View>
-                   <View className='info-row'>
-                      <AtIcon value='clock' size='14' color='#999' />
-                      <Text className='info-txt'>{item.time}</Text>
-                      <Text className='info-txt gap'>|</Text>
-                      <Text className='info-txt'>{item.dynamicCount}条动态</Text>
-                      <Text className='price'>¥{item.price}/人</Text>
-                   </View>
-                <View className='card-footer'>
-                  <View className='user-info'>
-                         <View className='avatar'>
-                           {item.userAvatar && (
-                             <Image
-                               src={item.userAvatar}
-                               className='avatar-img'
-                               mode='aspectFill'
-                             />
-                           )}
-                         </View>
-                         <View className='meta'>
-                            <View className='name-row'>
-                               <Text className='name'>{item.user}</Text>
-                               {item.isVerified && <AtIcon value='check-circle' size='12' color='#007AFF' />}
-                            </View>
-                            <Text className='fans'>{item.fans} 粉丝</Text>
-                         </View>
-                      </View>
-                      <View className='action-btns'>
-                         <View className='card-action-btn outline'>关注</View>
-                         <View className='card-action-btn primary'>订阅活动</View>
-                      </View>
-                   </View>
+      {/* 底部卡片 Swiper (保持不变) */}
+      {partyList.length > 0 && (
+        <View className='bottom-card-container'>
+          <Swiper
+            className='card-swiper'
+            current={current}
+            onChange={handleSwiperChange}
+            onAnimationFinish={handleSwiperAnimationFinish}
+            previousMargin='20px'
+            nextMargin='20px'
+            circular={false}
+          >
+            {partyList.map((item) => (
+              <SwiperItem key={item.id} className='card-item-wrapper'>
+                <View 
+                  className='party-card-pro'
+                  onClick={() => navigateTo(getDetailPath(item))}
+                >
+                  <View className='fake-glass-layer' />
+                  <View
+                    className='card-header-bg'
+                    style={item.image ? {
+                      backgroundImage: `url(${item.image})`,
+                    } : undefined}
+                  >
+                     {item.rank && (
+                       <View className='rank-badge'>
+                          <AtIcon value='fire' size='12' color='#fff' />
+                          <Text className='txt'>{item.rank}</Text>
+                       </View>
+                     )}
+                     <View className='attendees-capsule'>
+                        <View className='avatars'>
+                           <View className='av' style={{zIndex:3}} />
+                           <View className='av' style={{zIndex:2, left: '14px'}} />
+                           <View className='av' style={{zIndex:1, left: '28px'}} />
+                        </View>
+                        <View className='count-info'>
+                          <Text className='num-italic'>{item.attendees}</Text>
+                          <Text className='label'>人报名</Text>
+                        </View>
+                     </View>
+                  </View>
+
+                  <View className='card-body'>
+                     <View className='title-row'>
+                        <Text className='title'>{item.title}</Text>
+                        <Text className='type-tag'>{item.type}</Text>
+                     </View>
+                     <View className='info-row'>
+                        <AtIcon value='clock' size='14' color='#999' />
+                        <Text className='info-txt'>{item.time}</Text>
+                        <Text className='info-txt gap'>|</Text>
+                        <Text className='info-txt'>{item.dynamicCount}条动态</Text>
+                        <Text className='price'>¥{item.price}/人</Text>
+                     </View>
+                  <View className='card-footer'>
+                    <View className='user-info'>
+                           <View className='avatar'>
+                             {item.userAvatar && (
+                               <Image
+                                 src={item.userAvatar}
+                                 className='avatar-img'
+                                 mode='aspectFill'
+                               />
+                             )}
+                           </View>
+                           <View className='meta'>
+                              <View className='name-row'>
+                                 <Text className='name'>{item.user}</Text>
+                                 {item.isVerified && <AtIcon value='check-circle' size='12' color='#007AFF' />}
+                              </View>
+                              <Text className='fans'>{item.fans} 粉丝</Text>
+                           </View>
+                        </View>
+                        <View className='action-btns'>
+                           <View className='card-action-btn outline'>关注</View>
+                           <View className='card-action-btn primary'>订阅活动</View>
+                        </View>
+                     </View>
+                  </View>
                 </View>
-              </View>
-            </SwiperItem>
-          ))}
-        </Swiper>
-      </View>
+              </SwiperItem>
+            ))}
+          </Swiper>
+        </View>
+      )}
     </View>
   )
 }

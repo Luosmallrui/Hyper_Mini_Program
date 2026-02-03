@@ -56,6 +56,7 @@ export default function UserPage() {
 
   useEffect(() => {
     setTabBarIndex(4);
+    Taro.eventCenter.trigger('TAB_SWITCH_LOADING', false);
 
     const sysInfo = Taro.getWindowInfo();
     const menuInfo = Taro.getMenuButtonBoundingClientRect();
@@ -484,6 +485,13 @@ export default function UserPage() {
 
   return (
     <ScrollView className="user-page" scrollY>
+      <View className="top-bg">
+        <Image
+          className="top-bg-img"
+          src={require('../../assets/images/backgound.png')}
+          mode="scaleToFill"
+        />
+      </View>
       <View className="custom-nav-bar" style={{ height: `${statusBarHeight + navBarHeight}px` }}>
         <View style={{ height: `${statusBarHeight}px` }} />
         <View className="nav-bar-content" style={{ height: `${navBarHeight}px` }}>
@@ -502,8 +510,7 @@ export default function UserPage() {
       <View
         className="header-section"
         style={{
-          marginTop: `${statusBarHeight + navBarHeight}px`,
-          backgroundImage: `url(${require('../../assets/images/background.webp')})`
+          marginTop: `${statusBarHeight + navBarHeight}px`
         }}
       >
         <View className="profile-card">

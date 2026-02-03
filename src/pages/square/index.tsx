@@ -228,7 +228,10 @@ export default function SquarePage() {
     }
   }, [])
 
-  Taro.useDidShow(() => { setTabBarIndex(1) })
+  Taro.useDidShow(() => {
+    setTabBarIndex(1)
+    Taro.eventCenter.trigger('TAB_SWITCH_LOADING', false)
+  })
 
   // 拉取帖子列表（支持刷新/切换）
   const fetchNotes = async (isRefresh = false, targetIndex?: number, isUserRefresh = false) => {
