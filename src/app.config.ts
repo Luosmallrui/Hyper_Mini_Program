@@ -22,7 +22,7 @@ export default defineAppConfig({
     },
     {
       root: 'pages/venue',
-      pages: ['index']
+      pages: ['index', 'product/index']
     },
     {
       root: 'pages/order-sub',

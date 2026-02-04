@@ -110,7 +110,7 @@ function App({ children }: PropsWithChildren<any>) {
       {isSwitching && (
         <View className='global-loading-mask'>
           <View className='global-loading-spinner' />
-          <Text className='global-loading-text'>???</Text>
+          <Text className='global-loading-text'>加载中</Text>
         </View>
       )}
     </View>
