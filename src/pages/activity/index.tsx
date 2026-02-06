@@ -4,13 +4,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import { request } from '@/utils/request'
+import backgroundWebp from '../../assets/images/background.webp'
 import './index.scss'
 
-const heroBg = 'https://lanhu-oss-proxy.lanhuapp.com/SketchPnge4e991c6f61fa48db35927fda9571879ac78f39401f34fee7331ac1ede4da3ae'
-const panelBg = 'https://lanhu-oss-proxy.lanhuapp.com/SketchPngeacf5a43f8e5e61293dc16058b03d49843b2a61d439c03d6cbb6a2a8fedac815'
+const heroBg = backgroundWebp
 const organizerAvatar = 'https://lanhu-dds-backend.oss-cn-beijing.aliyuncs.com/merge_image/imgs/6c2cc88a7b944eb3b55c66ee51532f72_mergeImage.png'
-const posterImage = 'https://lanhu-oss-proxy.lanhuapp.com/SketchPng2bf1bf8518557130955cbc32c3282e36ea04ef334da2542d1f7c5fa5e83bac69'
-const BASE_URL = 'https://www.hypercn.cn'
+const posterImage = backgroundWebp
 
 interface MerchantGood {
   id: string
@@ -117,27 +116,32 @@ export default function ActivityPage() {
 
   const handlePay = async () => {
     if (isPaying) return
+    if (!token) {
+      Taro.showToast({ title: '请先登录', icon: 'none' })
+      return
+    }
 
     try {
       setIsPaying(true)
       Taro.showLoading({ title: '准备支付...', mask: true })
-      const { data: res } = await Taro.request({
-        url: `${BASE_URL}/api/v1/pay/prepay`,
+      const res = await request({
+        url: '/api/v1/pay/prepay',
         method: 'POST',
-        header: { Authorization: `Bearer ${token}` },
         data: {
           openid: 'o9Xlk14wugzLZOdwWQ5FwtQOjhxs',
           amount: 1,
+          product_id: selectedTicket?.id,
           description: '测试商品支付',
           out_trade_no: 'test_order_20240124011'
         }
       })
 
-      if (res.code !== 200) {
-        throw new Error(res.msg || '获取预支付信息失败')
+      const payload = res.data
+      if (payload.code !== 200) {
+        throw new Error(payload.msg || '获取预支付信息失败')
       }
 
-      const payParams = res.data
+      const payParams = payload.data
 
       await Taro.requestPayment({
         timeStamp: payParams.timeStamp,
@@ -192,89 +196,84 @@ export default function ActivityPage() {
   return (
     <View className='activity-page'>
       <View
-        className='block_1'
+        className='activity-hero'
         style={{
           backgroundImage: `url(${heroImage || posterImage})`
         }}
       >
         <View
-          className='image-wrapper_1'
+          className='activity-nav'
           style={{
             height: `${navBarHeight}px`,
             paddingRight: `${menuButtonWidth}px`,
             marginTop: `${statusBarHeight}px`
           }}
         >
-          <View className='nav-left' onClick={() => Taro.navigateBack()}>
+          <View className='nav-back' onClick={() => Taro.navigateBack()}>
             <AtIcon value='chevron-left' size='24' color='#fff' />
           </View>
         </View>
 
-        <View className='section_1'>
-          <View className='text-group_1'>
-            <Text className='text_1'>{titleText}</Text>
-            <Text className='text_2'>活动时间：{timeText}</Text>
+        <View className='activity-panel'>
+          <View className='title-group'>
+            <Text className='title'>{titleText}</Text>
+            <Text className='time'>活动时间：{timeText}</Text>
           </View>
 
-          <View className='image-text_1'>
-            <Text className='text-group_2'>{locationText}</Text>
-            <Image
-              className='thumbnail_1'
-              src='https://lanhu-oss-proxy.lanhuapp.com/SketchPng316000f2c1e243cb13f8f16f4b0e0f5612aad100fd961d8166c868613af34ece'
-              mode='aspectFit'
+          <View className='location-row'>
+            <Text className='location-text'>{locationText}</Text>
+            <AtIcon
+              className='location-icon'
+              value='chevron-right'
+              size='16'
+              color='#fff'
             />
           </View>
 
-          <View className='box_1'>
-            <Text className='text_3'>{priceRange}</Text>
-            <View className='text-wrapper_1'>
-              <Text className='text_4'>订阅活动</Text>
+          <View className='price-row'>
+            <Text className='price-range'>{priceRange}</Text>
+            <View className='subscribe-pill'>
+              <Text className='subscribe-text'>订阅活动</Text>
             </View>
-            <View className='text-wrapper_2'>
-              <Text className='text_5'>分享活动</Text>
+            <View className='share-pill'>
+              <Text className='share-text'>分享活动</Text>
             </View>
           </View>
 
-          <View className='box_2'>
-            <Image className='group_1' src={activity?.user_avatar || organizerAvatar} mode='aspectFill' />
-            <View className='image-text_2'>
-              <View className='text-group_3'>
-                <Text className='text_6'>{organizerName}</Text>
-                <Text className='text_7'>{organizerFans} 粉丝</Text>
+          <View className='host-card'>
+            <Image className='host-avatar' src={activity?.user_avatar || organizerAvatar} mode='aspectFill' />
+            <View className='host-info'>
+              <View className='host-meta'>
+                <Text className='host-name'>{organizerName}</Text>
+                <Text className='host-fans'>{organizerFans} 粉丝</Text>
               </View>
-              <Image
-                className='thumbnail_2'
-                src='https://lanhu-oss-proxy.lanhuapp.com/SketchPng9f81a5ba47be5e8b065e9a3fd0be38708ae275b42eedf14faa0cf0e1ab793c76'
-                mode='aspectFit'
+              <AtIcon
+                className='verify-icon'
+                value='check-circle'
+                size='14'
+                color='#2e6bff'
               />
             </View>
-            <View className='text-wrapper_3'>
-              <Text className='text_8'>已关注</Text>
+            <View className='host-follow'>
+              <Text className='host-follow-text'>已关注</Text>
             </View>
           </View>
 
-          <View className='text-wrapper_4'>
-            <Text className='text_9'>活动详情</Text>
-            <Text className='text_10'>相关活动</Text>
-            <Text className='text_11'>相关动态</Text>
+          <View className='section-tabs'>
+            <Text className='tab-active'>活动详情</Text>
+            <Text className='tab'>相关活动</Text>
+            <Text className='tab'>相关动态</Text>
           </View>
 
-          <Text className='paragraph_1'>
+          <Text className='activity-desc'>
             想象一下，嘻哈最根源的韵律之力，接通了电子乐最前沿的高压电流，这就是 Power Flow。{'\\n'}
             当这两种力量在同一轨道上交汇、加速、碰撞，便诞生了 Power Flow。它既不属于地下的昏暗，也不屈服于主流的浮华。{'\\n'}
             它站在电流与街头的交汇处，构建一个节奏更凶猛、旋律更迷幻、能量更密集的新现实。
           </Text>
 
-          <View className='box_3' onClick={() => setDrawerOpen(true)}>
-            <View className='text-wrapper_5'>
-              <Text className='text_12'>立即购票</Text>
-            </View>
-            <View className='image-wrapper_2'>
-              <Image
-                className='image_3'
-                src='https://lanhu-oss-proxy.lanhuapp.com/SketchPng5576d66f766d92263b636bb81afaf3421ac5f6ddab8bf5cdbf131c5c2b7c50db'
-                mode='widthFix'
-              />
+          <View className='ticket-bar' onClick={() => setDrawerOpen(true)}>
+            <View className='ticket-pill'>
+              <Text className='ticket-text'>立即购票</Text>
             </View>
           </View>
         </View>
@@ -359,5 +358,4 @@ export default function ActivityPage() {
     </View>
   )
 }
-
 

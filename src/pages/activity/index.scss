@@ -4,14 +4,14 @@
   color: #fff;
 }
 
-.block_1 {
+.activity-hero {
   position: relative;
   background: #000 no-repeat center -60px / cover;
   padding-bottom: 1040px;
   min-height: 100vh;
 }
 
-.image-wrapper_1 {
+.activity-nav {
   width: 690px;
   margin: 12px auto 0;
   display: flex;
@@ -20,7 +20,7 @@
   box-sizing: border-box;
 }
 
-.nav-left {
+.nav-back {
   width: 32px;
   height: 32px;
   display: flex;
@@ -28,7 +28,7 @@
   justify-content: center;
 }
 
-.nav-right {
+.nav-actions {
   width: 174px;
   height: 64px;
   border-radius: 32px;
@@ -38,7 +38,7 @@
   justify-content: center;
 }
 
-.section_1 {
+.activity-panel {
   position: absolute;
   left: 0;
   top: 537px;
@@ -55,11 +55,11 @@
   box-sizing: border-box;
 }
 
-.text-group_1 {
+.title-group {
   margin-right: 266px;
 }
 
-.text_1 {
+.title {
   color: #f3f3f4;
   font-size: 40px;
   font-weight: 600;
@@ -67,7 +67,7 @@
   white-space: nowrap;
 }
 
-.text_2 {
+.time {
   color: #fff;
   font-size: 20px;
   line-height: 28px;
@@ -75,7 +75,7 @@
   white-space: nowrap;
 }
 
-.image-text_1 {
+.location-row {
   width: 309px;
   display: flex;
   justify-content: space-between;
@@ -83,54 +83,54 @@
   margin-top: 20px;
 }
 
-.text-group_2 {
+.location-text {
   color: #fff;
   font-size: 20px;
   line-height: 28px;
   white-space: nowrap;
 }
 
-.thumbnail_1 {
+.location-icon {
   width: 18px;
   height: 18px;
 }
 
-.box_1 {
+.price-row {
   display: flex;
   align-items: center;
   margin-top: 40px;
 }
 
-.text_3 {
+.price-range {
   color: #fff;
   font-size: 50px;
   line-height: 60px;
   white-space: nowrap;
 }
 
-.text-wrapper_1,
-.text-wrapper_2 {
+.subscribe-pill,
+.share-pill {
   border-radius: 25px;
   border: 1px solid #747474;
   padding: 10px 27px;
 }
 
-.text-wrapper_1 {
+.subscribe-pill {
   margin-left: 131px;
 }
 
-.text-wrapper_2 {
+.share-pill {
   margin-left: 20px;
 }
 
-.text_4,
-.text_5 {
+.subscribe-text,
+.share-text {
   color: #fff;
   font-size: 20px;
   line-height: 28px;
 }
 
-.box_2 {
+.host-card {
   background-color: #161616;
   border-radius: 12px;
   width: 690px;
@@ -141,13 +141,13 @@
   box-sizing: border-box;
 }
 
-.group_1 {
+.host-avatar {
   width: 66px;
   height: 66px;
   border-radius: 50%;
 }
 
-.image-text_2 {
+.host-info {
   width: 138px;
   margin-left: 10px;
   display: flex;
@@ -155,60 +155,59 @@
   align-items: flex-start;
 }
 
-.text_6 {
+.host-name {
   color: #b7b7b7;
   font-size: 22px;
   line-height: 30px;
 }
 
-.text_7 {
+.host-fans {
   color: #8e8e8e;
   font-size: 18px;
   line-height: 25px;
   margin-top: 2px;
 }
 
-.thumbnail_2 {
+.verify-icon {
   width: 20px;
   height: 20px;
   margin-top: 5px;
 }
 
-.text-wrapper_3 {
+.host-follow {
   margin-left: auto;
   border-radius: 30px;
   border: 1px solid #555;
   padding: 10px 37px 10px 38px;
 }
 
-.text_8 {
+.host-follow-text {
   color: #747474;
   font-size: 20px;
   line-height: 28px;
 }
 
-.text-wrapper_4 {
+.section-tabs {
   display: flex;
   justify-content: space-between;
   width: 407px;
   margin-top: 60px;
 }
 
-.text_9 {
+.tab-active {
   color: #fff;
   font-size: 26px;
   font-weight: 500;
   line-height: 37px;
 }
 
-.text_10,
-.text_11 {
+.tab {
   color: #b7b7b7;
   font-size: 26px;
   line-height: 37px;
 }
 
-.paragraph_1 {
+.activity-desc {
   width: 690px;
   color: #747474;
   font-size: 22px;
@@ -216,7 +215,7 @@
   margin-top: 40px;
 }
 
-.box_3 {
+.ticket-bar {
   position: fixed;
   left: 35px;
   right: 35px;
@@ -230,7 +229,7 @@
   align-items: center;
 }
 
-.text-wrapper_5 {
+.ticket-pill {
   align-self: center;
   width: 100%;
   height: 64px;
@@ -242,19 +241,11 @@
   align-items: center;
 }
 
-.text_12 {
+.ticket-text {
   color: #000;
   font-size: 26px;
   line-height: 37px;
   font-weight: 500;
-}
-
-.image-wrapper_2 {
-  display: none;
-}
-
-.image_3 {
-  width: 100%;
 }
 
 .drawer-mask {
