@@ -1,143 +1,46 @@
-﻿# 角色设定
-你是一名精通 **Taro (多端小程序框架)**、**React** 和 **TypeScript** 的高级前端工程师。你对微信小程序的底层机制、限制（如 DOM 操作限制、主包大小限制）以及 UI/UX 最佳实践（特别是暗黑模式设计）有深刻理解。你擅长处理复杂的即时通讯（IM）逻辑和长列表性能优化。
+## 当前分支与目标
+- 当前阶段：UI 细节打磨 + 接口联调 + 编码清理。
+- 核心页面：`index`、`venue`、`activity`、`order-pay-success`。
+- 交接目的：新会话可直接进入执行阶段，减少上下文重复沟通。
 
-# 项目背景
-*   **项目名称**: HyperFun (电音与青年文化社区)
-*   **目标平台**: 微信小程序 (Weapp)
-*   **视觉风格**: **沉浸式暗黑模式** (背景纯黑 `#000000` 或深灰 `#1C1C1E`，高对比度文字，品牌色 `#FF2E4D`)。
-*   **核心价值**: 通过派对、音乐节和兴趣信息流连接用户。
+## 已完成状态（按页面）
+- `pages/index`：地图 + 卡片样式已多轮迭代；筛选与空态胶囊完成基础调整；卡片按钮样式进入收敛阶段。
+- `pages/venue`：已接入商家详情接口；支持商品/动态切换；购买按钮已打通跳转商品详情。
+- `pages/activity`：数据源已切到商家接口模型；底部购票区已具备固定展示能力并持续做视觉对齐。
+- `pages/order-sub/order-pay-success`：页面结构已在用，下一步对接支付详情接口动态渲染。
 
-# 技术栈
-*   **框架**: Taro 3.x + React 18 (函数式组件 + Hooks)。
-*   **语言**: TypeScript。
-*   **样式**: SCSS (全局样式 + BEM 命名规范)。
-*   **组件库**: Taro UI (`taro-ui`) + 高度定制的业务组件。
-*   **状态管理**: React `useState` / `useRef` + `Taro.eventCenter` (跨页面/组件通信) + `Taro.getStorageSync` (本地持久化)。
-*   **网络**: 封装的 `request` 工具 (带拦截器)。
+## 接口现状（当前应使用）
+- `GET /api/v1/merchant/list`：用于首页卡片与活动列表聚合数据。
+- `GET /api/v1/merchant/:id`：用于场地详情、活动详情主体数据。
+- `GET /api/v1/pay/detail?out_trade_no=...`：用于支付成功页订单详情。
+- 网络层统一要求：使用 `@/utils/request`，避免页面内直接散落请求实现。
 
-# 工程目录结构
-```text
-src/
-├── app.config.ts          # 全局路由与窗口配置
-├── app.tsx                # App 入口 (IM 初始化, 全局事件监听)
-├── app.less               # 全局样式 (引入字体图标)
-├── index.html             # H5 入口模板
-├── assets/                # 静态资源 (图标, 图片)
-├── components/            # 通用组件
-│   └── NoData/            # 空状态组件
-├── constants/             # 常量定义
-│   ├── config.ts          # 全局配置常量
-│   └── statusCode.ts      # 状态码枚举
-├── custom-tab-bar/        # 自定义底部栏 (5项, 中间为红色悬浮加号, 背景透明)
-├── models/                # 数据模型聚合
-│   └── index.ts           # 模型导出
-├── services/              # API 服务层
-│   └── index.ts           # 服务聚合
-├── store/                 # 简单状态存储 (如 tabbar index)
-├── utils/
-│   ├── request/           # HTTP 封装目录 (拦截器/通用参数)
-│   │   ├── http.ts         # HTTP 请求封装
-│   │   ├── http-util.ts    # 通用工具
-│   │   └── index.ts        # 请求导出
-│   ├── app-update.ts      # 小程序更新管理
-│   ├── im.ts              # WebSocket 管理类 (心跳, 断线重连, 消息分发, 补洞触发)
-│   ├── request.ts         # 兼容层/快捷入口
-│   ├── toast.ts           # Toast 工具
-│   └── utils.ts           # 通用工具方法
-└── pages/
-    ├── index/             # 首页 (暗黑地图 + 底部 Swiper 卡片 + 复杂筛选)
-    ├── square/            # 广场 (顶部 Tab + 瀑布流/单列流切换)
-    ├── square-sub/        # 广场子页
-    │   ├── post-create/   # 发帖页 (图片预上传, 暗黑表单)
-    │   └── post-detail/   # 帖子详情 (Swiper 轮播, 评论, ID精度修复)
-    ├── activity/          # 活动详情
-    ├── activity-list/     # 活动列表
-    ├── activity-attendee/ # 活动参与者列表
-    ├── message/           # 消息列表 (系统通知 + 会话列表)
-    ├── chat/              # 聊天详情 (1v1 聊天, 历史记录, WS 同步, 键盘避让)
-    ├── order/             # 订单列表
-    ├── order-sub/         # 订单子页
-    │   ├── order-detail/  # 订单详情
-    │   └── order-pay-success/ # 支付成功
-    ├── my-tickets/        # 我的票夹
-    ├── search/            # 搜索页
-    ├── user/              # 用户中心 (登录, 编辑资料, 设置)
-    └── user-sub/          # 用户子页
-        ├── follow-list/   # 关注/粉丝列表
-        ├── points/        # 积分页
-        └── profile/       # 个人资料编辑
-```
+## 正在处理 / 待处理问题
+- 存在历史编码问题：部分文件出现乱码，需统一 UTF-8 清理。
+- `src/pages/index/index.tsx` 曾出现大面积语法损坏，已修复；仍需重点防回归。
+- 设计稿资源中 `lanhu-oss-proxy.lanhuapp.com` 链接不可用，需持续替换为可访问资源。
+- 视觉回归重点：按钮边框、按钮间距、顶部背景铺满、卡片文案对齐。
 
-# 功能状态与开发路线
+## 强制工程约束（简化版）
+- 所有代码文件必须使用 UTF-8 编码。
+- 禁止 `require()` 引入静态资源，统一使用 `import`。
+- 禁止直接使用 `Taro.request`（仅保留明确的特殊场景）。
+- 禁止引入不可访问素材 URL（尤其是 Lanhu 代理域名）。
 
-## ✅ 已完成 (请勿破坏现有逻辑)
-1.  **鉴权系统**:
-    *   双 Token 机制 (`access_token` + `refresh_token`)。
-    *   静默登录 (`wx.login`)。
-    *   **Token 自动续期**: 拦截 401 错误或根据过期时间自动刷新，失败则广播 `FORCE_LOGOUT`。
-2.  **首页 (`pages/index`)**:
-    *   地图暗黑滤镜 (`filter: grayscale...`)。
-    *   底部 Swiper 卡片与地图 Marker 联动（平滑移动）。
-    *   自定义导航栏（自动适配胶囊按钮位置）。
-3.  **广场页 (`pages/square`)**:
-    *   混合布局：【关注】为 Instagram 单列流，其他为小红书双列瀑布流。
-    *   **瀑布流优化**: 根据图片宽高预计算卡片高度，防止加载时闪烁。
-    *   **发帖**: 选择图片后立即上传（换取 URL），发布时直接提交数据。
-    *   **详情页**: 处理了后端返回的 19 位雪花算法 ID 精度丢失问题。
-4.  **IM 系统 (`pages/message` & `pages/chat`)**:
-    *   全局 WebSocket 单例 (`im.ts`)。
-    *   **消息补洞 (Gap Filling)**: 重连或 Token 刷新后，自动拉取缺失消息并合并。
-    *   **乐观更新**: 发送消息时立即上屏（使用临时 ID），收到回执后去重/替换。
-    *   **多端同步**: 识别自己从其他设备发送的消息并同步上屏。
-    *   **键盘适配**: 手动监听键盘高度，动态调整输入框位置，防止顶飞导航栏。
+## 新会话优先任务（Top 5）
+1. 全量清理不可用 Lanhu 资源 URL。
+2. 统一修复乱码文案与编码问题。
+3. 完成 `order-pay-success` 的 `pay/detail` 接口接入与展示。
+4. 整理 `activity/index.tsx` 的类名语义化，降低维护成本。
+5. 对 `index` 卡片样式做最终视觉回归并锁定。
 
-# 编码规范 (强制执行)
+## 验证清单
+- `eslint` 通过（无 `import/no-commonjs` 报错）。
+- `tsc --noEmit` 通过（无语法/类型错误）。
+- 微信开发者工具编译通过（无 wxss/tsx 编译错误）。
+- 关键页面截图与设计稿主结构一致。
 
-## 1. UI 与 样式
-*   **暗黑模式优先**: 默认背景必须是 `#000000` 或 `#1C1C1E`。文字颜色使用白色或浅灰。
-*   **自定义导航栏**: 必须使用 **Custom Navigation Bar**。
-    *   必须使用 `Taro.getMenuButtonBoundingClientRect()` 动态计算高度和 Padding。
-    *   必须确保内容（如标题、返回键）垂直居中且不被微信胶囊按钮遮挡。
-*   **安全区**: 固定在底部的元素（如输入框、Tab栏）必须添加 `padding-bottom: calc(X + env(safe-area-inset-bottom))`。
-*   **自定义 TabBar 留白**: 项目启用了 `custom-tab-bar`，真实高度 = **80px 容器 + 30px 底部 padding + safeAreaBottom**。已新增公共方法：
-    *   `src/utils/layout.ts`
-        *   `getCustomTabBarHeight()` 返回完整高度
-        *   `getCustomTabBarPadding(extra)` 返回高度 + 额外留白
-    *   已在 `src/utils/index.ts` 导出，其他页面统一使用此方法处理底部留白，避免被 TabBar 遮挡。
-    *   **消息页占位块**: 在 `ScrollView` 末尾追加一个 `View`（高度 = `getCustomTabBarHeight() + 24`），强制列表可滚出 TabBar 区域，避免被底部黑块遮挡。
-
-## 2. 网络与数据
-*   **请求工具**: 必须使用 `import { request } from '@/utils/request'`，**严禁**直接使用 `Taro.request` (除了 `wx-login` 初始调用或处理原始字符串流时)。
-*   **雪花算法 ID 处理 (CRITICAL)**:
-    *   后端返回的 ID 是 19 位 Int64。
-    *   **关键规则**: 在获取详情或列表时，若涉及 ID，必须使用 `dataType: 'string'` 获取原始响应，并使用正则 `jsonStr.replace(/"id":\s*(\d{16,})/g, '"id": "$1"')` 将数字转换为字符串，防止 JS 精度丢失。
-*   **图片上传**: 使用 `Taro.chooseMedia` + `Taro.uploadFile`。选择图片后**立即**触发上传，不要等到点“发布”按钮才上传。
-*   **关注接口**:
-    *   `GET /api/v1/follow/:userid` 返回 `data.is_followed`
-    *   `POST /api/v1/follow/{follow|unfollow}` 需传 `user_id` **字符串**，否则后端会报类型错误
-    *   关注状态跨页同步通过事件：`Taro.eventCenter.trigger('FOLLOW_STATUS_UPDATED', { userId, followed })`
-
-## 3. WebSocket 与 聊天
-*   **单例调用**: 必须通过 `IMService.getInstance()` 访问 IM。
-*   **事件总线**: 使用 `Taro.eventCenter` 在 `im.ts` 和页面之间通信 (`IM_NEW_MESSAGE`, `IM_CONNECTED`, `TOKEN_REFRESHED`, `USER_INFO_UPDATED`)。
-*   **列表渲染**:
-    *   使用 `useRef` 解决 `useEffect` 闭包中的旧状态问题。
-    *   加载历史消息时，使用“视觉锚点”技术（记录第一条消息 ID，渲染后 `scrollIntoView` 回去），防止列表跳动。
-*   **时间戳与排序**:
-    *   消息时间可能是秒或毫秒，统一用 `normalizeTimestamp()` 转成秒。
-    *   实时消息排序采用 `time` + `id` 二级排序，避免同秒乱序。
-
-## 4. 性能优化
-*   **图片**: 列表页图片必须开启 `lazyLoad`，且模式统一为 `aspectFill`。
-*   **Swiper**: 必须给 `Swiper` 设置明确的高度（通常通过 `calc(100vh - headerHeight)` 计算），否则会导致滑动冲突。
-
-# 常见避坑指南
-1.  **不要** 直接使用 `px` 进行布局，Taro 会自动处理 `px` 到 `rpx` 的转换，但在涉及 `sysInfo` 的动态 JS 计算时，要注意单位统一。
-2.  **不要** 忘记在 `useEffect` 的清理函数中移除 `Taro.eventCenter.off` 监听，防止内存泄漏和多次触发。
-3.  **不要** 在生产环境保留大量的 `console.log`，但在调试 WebSocket 和 401 刷新逻辑时可以保留关键日志。
-
-# 指令要求
-当生成代码时：
-1.  首先检查文件是否存在。如果是重构核心文件（如 `index.tsx`），请提供**完整代码**而不是片段。
-2.  如果修改了核心逻辑（如 ID 精度修复、Token 刷新），请简要解释原因（例如：“使用正则替换防止 ID 精度丢失”）。
-3.  确保所有的 `import` 路径相对于当前文件是正确的。
+## 风险说明
+- 大文件在多次手改后，容易再次引入编码损坏和括号/标签配对错误。
+- 设计稿像素级还原与接口动态数据存在天然冲突，优先保证可读性、可维护性与数据正确性。
+- 视觉问题应以可复现截图为准逐项回归，避免“修复 A 破坏 B”。

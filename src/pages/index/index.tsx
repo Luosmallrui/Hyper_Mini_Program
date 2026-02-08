@@ -8,7 +8,7 @@ import { request } from '@/utils/request'
 import { setTabBarIndex } from '../../store/tabbar'
 import './index.less'
 
-// --- 静态筛选配置 ---
+// 筛选配置
 const CATEGORIES = ['全部分类', '滑板', '派对', '汽车', '纹身', '体育运动', '活动', '露营', '酒吧/场地', '篮球']
 const AREA_LEVEL1 = [{ key: 'dist', name: '距离' }, { key: 'region', name: '行政区/商圈' }]
 const MAP_KEY = 'Y7YBZ-3UUEN-Z3KFC-SH4QG-LH5RT-IAB4S'
@@ -51,24 +51,23 @@ interface PartyItem {
   isVerified?: boolean
 }
 
-
 export default function IndexPage() {
   const [current, setCurrent] = useState(0)
   const [markers, setMarkers] = useState<any[]>([])
   const [partyList, setPartyList] = useState<PartyItem[]>([])
   const isEmpty = partyList.length === 0
-  
-  // 筛选状态
+
+  // filter state
   const [filterOpen, setFilterOpen] = useState<'none' | 'all' | 'area' | 'more'>('none')
-  
-  // 筛选选中项
+
+  // selected filters
   const [selectedCategory, setSelectedCategory] = useState('全部分类')
   const [areaL1, setAreaL1] = useState('region')
   const [areaL2, setAreaL2] = useState('热门商圈')
   const [selectedRegion, setSelectedRegion] = useState('')
   const [selectedTags] = useState<string[]>([])
 
-  // 布局状态
+  // layout state
   const [navBarHeight, setNavBarHeight] = useState(44)
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [initialCenter, setInitialCenter] = useState({ lng: 104.066, lat: 30.657 })
@@ -195,7 +194,7 @@ export default function IndexPage() {
     return `/pages/activity/index?id=${item.id}&tag=${encodeURIComponent(item.type || '')}`
   }
 
-  // 样式计算
+  // 顶部布局
   const topHeaderStyle = { top: `${statusBarHeight}px`, height: `${navBarHeight}px` }
   const filterContainerStyle = { top: `${statusBarHeight + navBarHeight + 10}px` }
 
@@ -203,7 +202,7 @@ export default function IndexPage() {
     setFilterOpen(filterOpen === type ? 'none' : type)
   }
 
-  // 判断高亮
+  // 高亮态判定
   const isHighlight = (type: string) => {
     if (type === 'all') return selectedCategory !== '全部分类'
     if (type === 'area') return selectedRegion !== ''
@@ -211,18 +210,18 @@ export default function IndexPage() {
     return false
   }
 
-  // 渲染下拉内容 (根据 filterOpen 渲染不同内容)
+  // 下拉面板内容（基于当前 filterOpen 渲染）
   const renderDropdownContent = () => {
     if (filterOpen === 'none') return null
 
     return (
       <View className='dropdown-content'>
-        {/* 1. 全部 - 单列列表 */}
+        {/* 1. 全部分类 */}
         {filterOpen === 'all' && (
           <ScrollView scrollY className='list-scroll'>
             {CATEGORIES.map(cat => (
-              <View 
-                key={cat} 
+              <View
+                key={cat}
                 className={`list-item ${selectedCategory === cat ? 'active' : ''}`}
                 onClick={() => { setSelectedCategory(cat); setFilterOpen('none'); }}
               >
@@ -233,14 +232,14 @@ export default function IndexPage() {
           </ScrollView>
         )}
 
-        {/* 2. 区域 - 三级联动 (仿链家/贝壳风格) */}
+        {/* 2. 区域筛选（三级联动） */}
         {filterOpen === 'area' && (
           <View className='split-view'>
-            {/* 一级：距离/商圈 */}
+            {/* 一级 */}
             <ScrollView scrollY className='col col-1'>
               {AREA_LEVEL1.map(item => (
-                <View 
-                  key={item.key} 
+                <View
+                  key={item.key}
                   className={`item ${areaL1 === item.key ? 'active' : ''}`}
                   onClick={() => setAreaL1(item.key)}
                 >
@@ -248,11 +247,11 @@ export default function IndexPage() {
                 </View>
               ))}
             </ScrollView>
-            {/* 二级：具体商圈分类 */}
+            {/* 二级 */}
             <ScrollView scrollY className='col col-2'>
               {AREA_LEVEL2.map(item => (
-                <View 
-                  key={item} 
+                <View
+                  key={item}
                   className={`item ${areaL2 === item ? 'active' : ''}`}
                   onClick={() => setAreaL2(item)}
                 >
@@ -260,11 +259,11 @@ export default function IndexPage() {
                 </View>
               ))}
             </ScrollView>
-            {/* 三级：具体地点 */}
+            {/* 三级 */}
             <ScrollView scrollY className='col col-3'>
               {AREA_LEVEL3.map(item => (
-                <View 
-                  key={item} 
+                <View
+                  key={item}
                   className={`item ${selectedRegion === item ? 'active' : ''}`}
                   onClick={() => { setSelectedRegion(item); setFilterOpen('none'); }}
                 >
@@ -276,20 +275,20 @@ export default function IndexPage() {
           </View>
         )}
 
-        {/* 3. 更多筛选 - 标签 */}
+        {/* 3. 更多筛选 */}
         {filterOpen === 'more' && (
           <View className='more-view'>
-            <Text className='label'>优惠</Text>
+            <Text className='label'>优惠标签</Text>
             <View className='tags'>
               {MORE_TAGS.map(tag => (
                 <View key={tag} className='tag'>
-                   {tag}
+                  {tag}
                 </View>
               ))}
             </View>
             <View className='btn-row'>
-               <View className='btn reset'>重置</View>
-               <View className='btn confirm' onClick={() => setFilterOpen('none')}>确定</View>
+              <View className='btn reset'>重置</View>
+              <View className='btn confirm' onClick={() => setFilterOpen('none')}>确定</View>
             </View>
           </View>
         )}
@@ -314,7 +313,7 @@ export default function IndexPage() {
         }}
       />
 
-      {/* 遮罩层 (放在地图之上，筛选器之下) */}
+      {/* 蒙层（下拉展开时显示） */}
       {filterOpen !== 'none' && (
         <View className='mask-layer' onClick={() => setFilterOpen('none')} />
       )}
@@ -329,20 +328,20 @@ export default function IndexPage() {
           </View>
         </View>
         <View className='center-logo-container'>
-           <Image src={require('../../assets/images/hyper-icon.png')} mode='heightFix' className='logo-img' />
+          <Image src={require('../../assets/images/hyper-icon.png')} mode='heightFix' className='logo-img' />
         </View>
       </View>
 
-      {/* 核心修改：一体化筛选容器 */}
-      <View 
-        className={`filter-container-wrapper ${filterOpen !== 'none' ? 'is-open' : ''}`} 
+      {/* 筛选栏容器 */}
+      <View
+        className={`filter-container-wrapper ${filterOpen !== 'none' ? 'is-open' : ''}`}
         style={filterContainerStyle}
       >
-        {/* 上部：筛选按钮条 (白色圆角背景) */}
+        {/* 筛选按钮行 */}
         <View className='filter-bar-header'>
-          {/* 灰色胶囊 1 */}
-          <View 
-            className={`capsule-item ${isHighlight('all') || filterOpen === 'all' ? 'highlight-bg' : ''}`} 
+          {/* 全部 */}
+          <View
+            className={`capsule-item ${isHighlight('all') || filterOpen === 'all' ? 'highlight-bg' : ''}`}
             onClick={() => toggleFilter('all')}
           >
             <Text className={isHighlight('all') || filterOpen === 'all' ? 'highlight-text' : ''}>
@@ -353,9 +352,9 @@ export default function IndexPage() {
             />
           </View>
 
-          {/* 灰色胶囊 2 */}
-          <View 
-            className={`capsule-item ${filterOpen === 'area' ? 'highlight-bg' : ''}`} 
+          {/* 区域 */}
+          <View
+            className={`capsule-item ${filterOpen === 'area' ? 'highlight-bg' : ''}`}
             onClick={() => toggleFilter('area')}
           >
             <Text className={isHighlight('area') || filterOpen === 'area' ? 'highlight-text' : ''}>区域</Text>
@@ -364,9 +363,9 @@ export default function IndexPage() {
             />
           </View>
 
-          {/* 灰色胶囊 3 */}
-          <View 
-            className={`capsule-item ${filterOpen === 'more' ? 'highlight-bg' : ''}`} 
+          {/* 更多筛选 */}
+          <View
+            className={`capsule-item ${filterOpen === 'more' ? 'highlight-bg' : ''}`}
             onClick={() => toggleFilter('more')}
           >
             <Text className={isHighlight('more') || filterOpen === 'more' ? 'highlight-text' : ''}>更多筛选</Text>
@@ -376,11 +375,11 @@ export default function IndexPage() {
           </View>
         </View>
 
-        {/* 下部：展开的内容 (直接衔接在 Header 下方) */}
+        {/* 下拉内容区 */}
         {renderDropdownContent()}
       </View>
 
-      {/* 右侧悬浮按钮组 */}
+      {/* 右侧浮动按钮 */}
       <View className={`floating-group${isEmpty ? ' empty' : ''}`}>
         <View className='circle-btn locate-btn' onClick={handleLocate}>
           <Image className='map-pin' src={require('../../assets/icons/map-pin.svg')} mode='aspectFit' />
@@ -398,7 +397,7 @@ export default function IndexPage() {
         </View>
       )}
 
-      {/* 底部卡片 Swiper (保持不变) */}
+      {/* 底部卡片 Swiper */}
       {partyList.length > 0 && (
         <View className='bottom-card-container'>
           <Swiper
@@ -412,7 +411,7 @@ export default function IndexPage() {
           >
             {partyList.map((item) => (
               <SwiperItem key={item.id} className='card-item-wrapper'>
-                <View 
+                <View
                   className='party-card-pro'
                   onClick={() => navigateTo(getDetailPath(item))}
                 >
@@ -423,61 +422,57 @@ export default function IndexPage() {
                       backgroundImage: `url(${item.image})`,
                     } : undefined}
                   >
-                     {item.rank && (
-                       <View className='rank-badge'>
-                          <AtIcon value='fire' size='12' color='#fff' />
-                          <Text className='txt'>{item.rank}</Text>
-                       </View>
-                     )}
-                     <View className='attendees-capsule'>
-                        <View className='avatars'>
-                           <View className='av' style={{zIndex:3}} />
-                           <View className='av' style={{zIndex:2, left: '14px'}} />
-                           <View className='av' style={{zIndex:1, left: '28px'}} />
-                        </View>
-                        <View className='count-info'>
-                          <Text className='num-italic'>{item.attendees}</Text>
-                          <Text className='label'>人报名</Text>
-                        </View>
-                     </View>
+                    {item.rank && (
+                      <View className='rank-badge'>
+                        <AtIcon value='fire' size='12' color='#fff' />
+                        <Text className='txt'>{item.rank}</Text>
+                      </View>
+                    )}
+                    <View className='attendees-capsule'>
+                      <Image
+                        className='run-icon'
+                        src={require('../../assets/icons/run.svg')}
+                        mode='aspectFit'
+                      />
+                      <Text className='num-italic'>{item.attendees || 0}</Text>
+                    </View>
                   </View>
 
                   <View className='card-body'>
-                     <View className='title-row'>
-                        <Text className='title'>{item.title}</Text>
-                        <Text className='type-tag'>{item.type}</Text>
-                     </View>
-                     <View className='info-row'>
-                        <AtIcon value='clock' size='14' color='#999' />
-                        <Text className='info-txt'>{item.time}</Text>
-                        <Text className='info-txt gap'>|</Text>
-                        <Text className='info-txt'>{item.dynamicCount}条动态</Text>
-                        <Text className='price'>¥{item.price}/人</Text>
-                     </View>
-                  <View className='card-footer'>
-                    <View className='user-info'>
-                           <View className='avatar'>
-                             {item.userAvatar && (
-                               <Image
-                                 src={item.userAvatar}
-                                 className='avatar-img'
-                                 mode='aspectFill'
-                               />
-                             )}
-                           </View>
-                           <View className='meta'>
-                              <View className='name-row'>
-                                 <Text className='name'>{item.user}</Text>
-                                 {item.isVerified && <AtIcon value='check-circle' size='12' color='#007AFF' />}
-                              </View>
-                              <Text className='fans'>{item.fans} 粉丝</Text>
-                           </View>
+                    <View className='title-row'>
+                      <Text className='title'>{item.title}</Text>
+                      <Text className='type-tag'>{item.type}</Text>
+                    </View>
+                    <View className='info-row'>
+                      <AtIcon value='clock' size='14' color='#999' />
+                      <Text className='info-txt info-first'>{item.time}</Text>
+                      <Text className='info-txt'>{item.dynamicCount}条动态</Text>
+                      <Text className='info-txt price'>¥{item.price}/人</Text>
+                    </View>
+                    <View className='card-footer'>
+                      <View className='user-info'>
+                        <View className='avatar'>
+                          {item.userAvatar && (
+                            <Image
+                              src={item.userAvatar}
+                              className='avatar-img'
+                              mode='aspectFill'
+                            />
+                          )}
                         </View>
-                        <View className='action-btns'>
-                           <View className='card-action-btn outline'>关注</View>
-                           <View className='card-action-btn primary'>订阅活动</View>
+                        <View className='meta'>
+                          <View className='name-row'>
+                            <Text className='name'>{item.user}</Text>
+                            {item.isVerified && <AtIcon className='verified-icon' value='check-circle' size='14' color='#3d8bff' />}
+                          </View>
+                          <Text className='fans'>{item.fans} 粉丝</Text>
                         </View>
-                     </View>
+                      </View>
+                      <View className='action-btns'>
+                        <View className='card-action-btn follow-btn'>关注</View>
+                        <View className='card-action-btn subscribe-btn'>订阅活动</View>
+                      </View>
+                    </View>
                   </View>
                 </View>
               </SwiperItem>

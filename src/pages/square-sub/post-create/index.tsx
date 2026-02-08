@@ -1,4 +1,4 @@
-﻿import { View, Text, Input, Textarea, Image, ScrollView } from '@tarojs/components'
+import { View, Text, Input, Textarea, Image, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { AtIcon } from 'taro-ui'

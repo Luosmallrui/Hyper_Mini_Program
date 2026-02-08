@@ -1,4 +1,4 @@
-/* src/pages/index/index.less */
+
 
 .index-page-map {
   width: 100vw;
@@ -19,9 +19,9 @@
   top: 0;
   left: 0;
   z-index: 1;
+  filter: grayscale(100%) invert(92%) contrast(110%);
 }
 
-/* 1. 顶部 Header */
 .custom-header {
   position: absolute;
   left: 0;
@@ -72,7 +72,6 @@
   }
 }
 
-/* 2. 筛选栏 */
 .filter-bar-unified {
   position: absolute;
   left: 24px;
@@ -95,6 +94,7 @@
     font-size: 28px;
     color: #333;
     font-weight: 600;
+    line-height: 1;
     height: 100%;
     
     &:active {
@@ -114,11 +114,10 @@
   }
 }
 
-/* 3. 悬浮按钮组 */
 .floating-group {
   position: absolute;
   right: 30px;
-  /* 修改点：向上推移，避开底部卡片 */
+  
   bottom: 626px; 
   z-index: 50;
   display: flex;
@@ -168,7 +167,6 @@
   }
 }
 
-/* 4. 底部卡片容器 */
 .bottom-card-container {
   position: absolute;
   bottom: 186px;
@@ -228,8 +226,9 @@
         box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.08);
       }
 
-      /* 图片区域 */
+      
       .card-header-bg {
+        flex: 0 0 200px;
         height: 200px; 
         background: linear-gradient(135deg, #2b2b2b 0%, #434343 100%);
         background-repeat: no-repeat;
@@ -267,82 +266,74 @@
           position: absolute;
           left: 20px;
           bottom: 20px;
-          width: 248px;
-          height: 42px;
+          height: 46px;
           z-index: 2;
-          display: flex;
+          display: inline-flex;
           align-items: center;
-          justify-content: space-between;
-          background: rgba(255, 255, 255, 0.22);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          padding: 6px 16px 6px 6px;
-          border-radius: 40px;
-          border: 1px solid rgba(255,255,255,0.1);
+          gap: 10px;
+          background: rgba(0, 0, 0, 0.74);
+          padding: 0 15px 0 10px;
+          border-radius: 23px;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 
-          .avatars {
-            position: relative;
-            width: 72px;
-            height: 36px;
-            
-            .av {
-              position: absolute;
-              top: 0;
-              width: 36px;
-              height: 36px;
-              border-radius: 50%;
-              background: #e0e0e0;
-              border: 2px solid #fff;
-            }
+          .run-icon {
+            width: 24px;
+            height: 24px;
+            filter: brightness(0) invert(1);
           }
-          
-          .count-info {
+
+          .num-italic {
+            font-size: 22px;
+            line-height: 1;
             color: #fff;
-            display: flex;
-            align-items: baseline;
-            
-            .num-italic {
-              font-size: 22px;
-              font-weight: 900;
-              font-style: italic; 
-              margin-right: 10px;
-              line-height: 1;
-              font-family: PingFangSC, PingFang SC; 
-            }
-            .label {
-              font-size: 22px;
-              opacity: 0.9;
-              font-weight: 400;
-              font-family: PingFangSC, PingFang SC;
-            }
+            font-weight: 800;
+            font-style: italic;
+            font-family: PingFangSC, PingFang SC;
+          }
+
+          .label {
+            font-size: 20px;
+            line-height: 1;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
           }
         }
       }
 
-      /* 内容区域 */
+      
       .card-body {
-        flex: 1; 
-        background: rgba(36, 36, 36, 0.9);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-        padding: 16px 20px;
+        flex: 0 0 calc(100% - 200px);
+        height: calc(100% - 200px);
+        box-sizing: border-box;
+        margin-top: 0;
+        background: rgba(0, 0, 0, 0.36);
+        backdrop-filter: blur(32px) saturate(165%);
+        -webkit-backdrop-filter: blur(32px) saturate(165%);
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        border-left: 1px solid rgba(255, 255, 255, 0.04);
+        border-right: 1px solid rgba(255, 255, 255, 0.04);
+        border-radius: 0;
+        padding: 20px 20px 30px;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
+        justify-content: center;
+        gap: 10px;
         position: relative;
         z-index: 2;
 
         .title-row {
+          position: relative;
+          z-index: 1;
           display: flex;
           justify-content: space-between;
-          align-items: flex-start;
+          align-items: center;
           
           .title {
             font-size: 29px;
-            font-weight: 900;
+            font-weight: 500;
             color: #ffffff;
-            line-height: 1.3;
-            max-width: 75%;
+            line-height: 41px;
             display: -webkit-box;
             -webkit-line-clamp: 1;
             line-clamp: 1;
@@ -350,45 +341,53 @@
             overflow: hidden;
           }
           .type-tag {
-            font-size: 18px;
-            color: #d0d0d0;
-            background: rgba(255, 255, 255, 0.18);
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-weight: 500;
+            font-size: 20px;
+            color: #8E8E8E;
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            font-weight: 400;
+            white-space: nowrap;
+            margin-left: 12px;
           }
         }
 
         .info-row {
+          position: relative;
+          z-index: 1;
           display: flex;
           align-items: center;
           color: #bcbcbc;
           font-size: 22px;
-          margin-top: 4px;
-          
-          .info-txt { margin-left: 20px; font-weight: 400; }
-          .info-first { margin-left: 10px; }
+          margin-top: 0;
+
+          .info-txt { margin-left: 14px; font-weight: 400; }
+          .info-first { margin-left: 8px; }
+          .price { color: #f2f2f2; font-weight: 500; }
         }
 
         .card-footer {
+          position: relative;
+          z-index: 1;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-top: 10px;
-          border-top: 1px solid rgba(255, 255, 255, 0.22);
-          padding-top: 12px;
+          margin-top: 0;
+          border-top: none;
+          padding-top: 0;
 
           .user-info {
             display: flex;
             align-items: center;
             
             .avatar {
-              width: 52px;
-              height: 52px;
+              width: 60px;
+              height: 60px;
               background: transparent;
               border-radius: 50%;
-              margin-right: 10px;
+              margin-right: 12px;
               overflow: hidden;
+              border: 1px solid rgba(255, 255, 255, 0.2);
 
               .avatar-img {
                 width: 100%;
@@ -405,45 +404,43 @@
               .name-row {
                  display: flex;
                  align-items: center;
-                 gap: 4px;
-                 .name { font-size: 22px; font-weight: 400; color: #ffffff;}
+                 gap: 6px;
+                 .name { font-size: 26px; font-weight: 500; line-height: 1.12; color: #ffffff;}
+                 .verified-icon { transform: translateY(1px); }
               }
-              .fans { font-size: 18px; color: #8f8f8f; margin-top: 2px;}
+              .fans { font-size: 22px; line-height: 1.05; color: #a8a8ad; margin-top: 4px;}
             }
           }
 
           .action-btns {
             display: flex;
-            gap: 12px;
+            align-items: center;
+            gap: 16px;
             
-            /* 使用具体的类名 */
+            
             .card-action-btn {
-              position: relative; /* 用于控制伪元素 */
-              padding: 10px 24px;
+              width: 156px;
+              height: 56px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
               border-radius: 36px;
               font-size: 22px;
-              font-weight: 600;
+              font-weight: 500;
+              line-height: 1;
               box-sizing: border-box;
-              
-              /* 强制清除任何默认边框和轮廓 */
-              outline: none !important;
-              box-shadow: none !important;
-              
-              /* 1. 关注按钮 (白底灰边) */
-              &.outline {
-                background: rgba(255, 255, 255, 0.18) !important;
-                color: #e6e6e6 !important;
-                border: 1px solid rgba(255, 255, 255, 0.22) !important; 
+              color: #e6e6e6;
+              border: 1px solid rgba(255, 255, 255, 0.26);
+              background: rgba(255, 255, 255, 0.04);
+
+              &.follow-btn {
+                color: #f0f0f0;
               }
 
-              /* 2. 订阅按钮 (白底灰边) */
-              &.primary {
-                background: rgba(255, 255, 255, 0.18) !important;
-                color: #ffffff !important;
-                border: 1px solid rgba(255, 255, 255, 0.22) !important;
+              &.subscribe-btn {
+                color: #f7f7f7;
               }
-              
-              /* 核心修复：强制隐藏所有可能产生黑框的伪元素 */
+
               &::after {
                 display: none !important;
                 content: none !important;
@@ -464,7 +461,6 @@
   }
 }
 
-/* 遮罩层 */
 .mask-layer {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -472,7 +468,6 @@
   z-index: 55;
 }
 
-/* 空结果提示 */
 .empty-result {
   position: absolute;
   left: 24px;
@@ -515,33 +510,30 @@
   gap: var(--empty-pill-gap);
 }
 
-/* =================================
-   一体化筛选容器 (核心修改)
-   ================================= */
 .filter-container-wrapper {
   position: absolute;
   left: 20px;
   right: 20px;
-  z-index: 60; /* 最高层级 */
+  z-index: 60; 
   background: rgba(160, 160, 160, 0.2);
-  border-radius: 16px; /* 默认全圆角 */
+  border-radius: 16px; 
   box-shadow: 0 10px 24px rgba(0,0,0,0.35);
   border: 1px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   transition: box-shadow 0.35s ease, border-color 0.35s ease, background 0.35s ease;
-  overflow: hidden; /* 裁剪圆角 */
+  overflow: hidden; 
 
-  /* 展开时的状态 */
+  
   &.is-open {
-    /* 展开时，只保留上部圆角，下部直角以衔接内容 */
+    
     border-radius: 16px 16px 16px 16px;
     box-shadow: 0 16px 32px rgba(0,0,0,0.45);
     border-color: rgba(255, 255, 255, 0.28); 
-    /* 或者如果你希望内容区很大，可以不做边框变化，直接让内容撑开容器 */
+    
   }
 
-  /* 上部：按钮条区域 */
+  
   .filter-bar-header {
     height: 80px;
     display: flex;
@@ -552,7 +544,7 @@
     position: relative;
     z-index: 2;
 
-    /* 灰色小胶囊 */
+    
     .capsule-item {
       flex: 1;
       width: 204px;
@@ -560,7 +552,7 @@
       margin: 0 6px;
       padding: 0 25px;
       background: rgba(255, 255, 255, 0.18);
-      border-radius: 30px; /* 胶囊圆角 */
+      border-radius: 30px; 
       display: flex;
       align-items: center;
       gap: 6px;
@@ -569,7 +561,7 @@
       color: #e6e6e6;
       font-weight: 500;
 
-      /* 选中/展开态 */
+      
       &.highlight-bg {
         background: rgba(255, 255, 255, 0.32);
       }
@@ -598,7 +590,7 @@
     }
   }
 
-  /* 下部：下拉内容区域 */
+  
   .dropdown-content {
     background: rgba(160, 160, 160, 0.2);
     border-top: 1px solid rgba(255, 255, 255, 0.22);
@@ -610,7 +602,7 @@
     transition: max-height 0.5s ease, opacity 0.35s ease, transform 0.45s ease, filter 0.35s ease;
     will-change: max-height, opacity, transform;
     
-    /* 1. 列表模式 */
+    
     .list-scroll {
       height: 500px;
       .list-item {
@@ -627,12 +619,12 @@
       }
     }
 
-    /* 2. 区域分栏模式 (三栏布局) */
+    
     .split-view {
       display: flex;
       height: 600px;
       
-      /* 第一栏：最深灰 */
+      
       .col-1 {
         width: 180px;
         background: transparent;
@@ -645,7 +637,7 @@
         }
       }
       
-      /* 第二栏：稍浅灰或白 */
+      
       .col-2 {
         width: 200px;
         background: transparent;
@@ -659,7 +651,7 @@
         }
       }
       
-      /* 第三栏：白色详情 */
+      
       .col-3 {
         flex: 1;
         background: transparent;
@@ -674,7 +666,7 @@
       }
     }
 
-    /* 3. 更多筛选 */
+    
     .more-view {
       padding: 30px;
       .label { font-size: 28px; font-weight: bold; margin-bottom: 20px; display: block; color: #e6e6e6;}

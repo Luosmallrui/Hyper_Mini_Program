@@ -1,4 +1,4 @@
-﻿import { View, Text, Image, Swiper, SwiperItem, ScrollView, Input } from '@tarojs/components'
+import { View, Text, Image, Swiper, SwiperItem, ScrollView, Input } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { AtIcon, AtActivityIndicator } from 'taro-ui'
