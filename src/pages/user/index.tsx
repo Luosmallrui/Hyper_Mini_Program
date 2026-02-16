@@ -32,6 +32,15 @@ interface UserStats {
   notes: number;
 }
 
+const normalizeUserInfo = (user: any) => {
+  if (!user || typeof user !== 'object') return {};
+  const avatarUrl = user.avatar_url || user.avatar || user.headimgurl || user.head_img || '';
+  return {
+    ...user,
+    avatar_url: avatarUrl
+  };
+};
+
 export default function UserPage() {
   const [isLogin, setIsLogin] = useState(false);
   const [userInfo, setUserInfo] = useState<any>({});
@@ -67,9 +76,10 @@ export default function UserPage() {
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44);
 
     const onUserUpdate = (u: any) => {
-      setUserInfo(u);
+      const normalized = normalizeUserInfo(u);
+      setUserInfo(normalized);
       setIsLogin(true);
-      setNeedPhoneAuth(!u.phone_number);
+      setNeedPhoneAuth(!normalized.phone_number);
     };
     Taro.eventCenter.on('USER_INFO_UPDATED', onUserUpdate);
 
@@ -100,9 +110,11 @@ export default function UserPage() {
 
     if (accessToken) {
       if (cachedUser) {
-        setUserInfo(cachedUser);
+        const normalizedCachedUser = normalizeUserInfo(cachedUser);
+        setUserInfo(normalizedCachedUser);
         setIsLogin(true);
-        setNeedPhoneAuth(!cachedUser.phone_number);
+        setNeedPhoneAuth(!normalizedCachedUser.phone_number);
+        Taro.setStorageSync('userInfo', normalizedCachedUser);
       }
       fetchLatestUserInfo();
     } else {
@@ -128,14 +140,15 @@ export default function UserPage() {
 
       if (resBody && resBody.code === 200 && resBody.data) {
         const { user, stats } = resBody.data;
-        setUserInfo(user);
+        const normalizedUser = normalizeUserInfo(user);
+        setUserInfo(normalizedUser);
         if (stats) {
           setUserStats(stats);
         }
-        Taro.setStorageSync('userInfo', user);
-        Taro.eventCenter.trigger('USER_INFO_UPDATED', user);
+        Taro.setStorageSync('userInfo', normalizedUser);
+        Taro.eventCenter.trigger('USER_INFO_UPDATED', normalizedUser);
         setIsLogin(true);
-        setNeedPhoneAuth(!user.phone_number);
+        setNeedPhoneAuth(!normalizedUser.phone_number);
       }
     } catch (error) {
       console.error('获取用户信息失败:', error);

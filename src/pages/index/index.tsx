@@ -8,7 +8,6 @@ import { request } from '@/utils/request'
 import { setTabBarIndex } from '../../store/tabbar'
 import './index.less'
 
-// 筛选配置
 const CATEGORIES = ['全部分类', '滑板', '派对', '汽车', '纹身', '体育运动', '活动', '露营', '酒吧/场地', '篮球']
 const AREA_LEVEL1 = [{ key: 'dist', name: '距离' }, { key: 'region', name: '行政区/商圈' }]
 const MAP_KEY = 'Y7YBZ-3UUEN-Z3KFC-SH4QG-LH5RT-IAB4S'
@@ -57,17 +56,13 @@ export default function IndexPage() {
   const [partyList, setPartyList] = useState<PartyItem[]>([])
   const isEmpty = partyList.length === 0
 
-  // filter state
   const [filterOpen, setFilterOpen] = useState<'none' | 'all' | 'area' | 'more'>('none')
-
-  // selected filters
   const [selectedCategory, setSelectedCategory] = useState('全部分类')
   const [areaL1, setAreaL1] = useState('region')
   const [areaL2, setAreaL2] = useState('热门商圈')
   const [selectedRegion, setSelectedRegion] = useState('')
   const [selectedTags] = useState<string[]>([])
 
-  // layout state
   const [navBarHeight, setNavBarHeight] = useState(44)
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [initialCenter, setInitialCenter] = useState({ lng: 104.066, lat: 30.657 })
@@ -119,7 +114,7 @@ export default function IndexPage() {
                 dynamicCount: item.post_count,
                 fans: String(item.current_count ?? ''),
                 isVerified: false,
-                rank: ''
+                rank: '',
               }
             })
           : []
@@ -157,8 +152,8 @@ export default function IndexPage() {
         bgColor: '#333333',
         color: '#ffffff',
         fontSize: 12,
-        textAlign: 'center'
-      }
+        textAlign: 'center',
+      },
     }))
     setMarkers(newMarkers)
   }
@@ -194,15 +189,14 @@ export default function IndexPage() {
     return `/pages/activity/index?id=${item.id}&tag=${encodeURIComponent(item.type || '')}`
   }
 
-  // 顶部布局
   const topHeaderStyle = { top: `${statusBarHeight}px`, height: `${navBarHeight}px` }
+  const topHeaderFadeStyle = { height: `${statusBarHeight + navBarHeight}px` }
   const filterContainerStyle = { top: `${statusBarHeight + navBarHeight + 10}px` }
 
   const toggleFilter = (type: 'all' | 'area' | 'more') => {
     setFilterOpen(filterOpen === type ? 'none' : type)
   }
 
-  // 高亮态判定
   const isHighlight = (type: string) => {
     if (type === 'all') return selectedCategory !== '全部分类'
     if (type === 'area') return selectedRegion !== ''
@@ -210,20 +204,18 @@ export default function IndexPage() {
     return false
   }
 
-  // 下拉面板内容（基于当前 filterOpen 渲染）
   const renderDropdownContent = () => {
     if (filterOpen === 'none') return null
 
     return (
       <View className='dropdown-content'>
-        {/* 1. 全部分类 */}
         {filterOpen === 'all' && (
           <ScrollView scrollY className='list-scroll'>
             {CATEGORIES.map(cat => (
               <View
                 key={cat}
                 className={`list-item ${selectedCategory === cat ? 'active' : ''}`}
-                onClick={() => { setSelectedCategory(cat); setFilterOpen('none'); }}
+                onClick={() => { setSelectedCategory(cat); setFilterOpen('none') }}
               >
                 <Text>{cat}</Text>
                 {selectedCategory === cat && <AtIcon value='check' size='16' color='#FF2E4D' />}
@@ -232,10 +224,8 @@ export default function IndexPage() {
           </ScrollView>
         )}
 
-        {/* 2. 区域筛选（三级联动） */}
         {filterOpen === 'area' && (
           <View className='split-view'>
-            {/* 一级 */}
             <ScrollView scrollY className='col col-1'>
               {AREA_LEVEL1.map(item => (
                 <View
@@ -247,7 +237,6 @@ export default function IndexPage() {
                 </View>
               ))}
             </ScrollView>
-            {/* 二级 */}
             <ScrollView scrollY className='col col-2'>
               {AREA_LEVEL2.map(item => (
                 <View
@@ -259,13 +248,12 @@ export default function IndexPage() {
                 </View>
               ))}
             </ScrollView>
-            {/* 三级 */}
             <ScrollView scrollY className='col col-3'>
               {AREA_LEVEL3.map(item => (
                 <View
                   key={item}
                   className={`item ${selectedRegion === item ? 'active' : ''}`}
-                  onClick={() => { setSelectedRegion(item); setFilterOpen('none'); }}
+                  onClick={() => { setSelectedRegion(item); setFilterOpen('none') }}
                 >
                   {item}
                   {selectedRegion === item && <AtIcon value='check' size='14' color='#FF2E4D' />}
@@ -275,7 +263,6 @@ export default function IndexPage() {
           </View>
         )}
 
-        {/* 3. 更多筛选 */}
         {filterOpen === 'more' && (
           <View className='more-view'>
             <Text className='label'>优惠标签</Text>
@@ -313,12 +300,12 @@ export default function IndexPage() {
         }}
       />
 
-      {/* 蒙层（下拉展开时显示） */}
+      <View className='top-header-fade' style={topHeaderFadeStyle} />
+
       {filterOpen !== 'none' && (
         <View className='mask-layer' onClick={() => setFilterOpen('none')} />
       )}
 
-      {/* Header */}
       <View className='custom-header' style={topHeaderStyle}>
         <View className='left-area'>
           <Text className='city-text'>成都</Text>
@@ -332,14 +319,11 @@ export default function IndexPage() {
         </View>
       </View>
 
-      {/* 筛选栏容器 */}
       <View
         className={`filter-container-wrapper ${filterOpen !== 'none' ? 'is-open' : ''}`}
         style={filterContainerStyle}
       >
-        {/* 筛选按钮行 */}
         <View className='filter-bar-header'>
-          {/* 全部 */}
           <View
             className={`capsule-item ${isHighlight('all') || filterOpen === 'all' ? 'highlight-bg' : ''}`}
             onClick={() => toggleFilter('all')}
@@ -352,7 +336,6 @@ export default function IndexPage() {
             />
           </View>
 
-          {/* 区域 */}
           <View
             className={`capsule-item ${filterOpen === 'area' ? 'highlight-bg' : ''}`}
             onClick={() => toggleFilter('area')}
@@ -363,7 +346,6 @@ export default function IndexPage() {
             />
           </View>
 
-          {/* 更多筛选 */}
           <View
             className={`capsule-item ${filterOpen === 'more' ? 'highlight-bg' : ''}`}
             onClick={() => toggleFilter('more')}
@@ -375,17 +357,15 @@ export default function IndexPage() {
           </View>
         </View>
 
-        {/* 下拉内容区 */}
         {renderDropdownContent()}
       </View>
 
-      {/* 右侧浮动按钮 */}
       <View className={`floating-group${isEmpty ? ' empty' : ''}`}>
         <View className='circle-btn locate-btn' onClick={handleLocate}>
           <Image className='map-pin' src={require('../../assets/icons/map-pin.svg')} mode='aspectFit' />
         </View>
         <View className='capsule-btn list-btn' onClick={() => navigateTo('/pages/activity-list/index')}>
-          <AtIcon value='list' size='16' color='#fff'/>
+          <AtIcon value='list' size='16' color='#fff' />
           <Text className='txt'>查看列表</Text>
         </View>
       </View>
@@ -397,7 +377,6 @@ export default function IndexPage() {
         </View>
       )}
 
-      {/* 底部卡片 Swiper */}
       {partyList.length > 0 && (
         <View className='bottom-card-container'>
           <Swiper

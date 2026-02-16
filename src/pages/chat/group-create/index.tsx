@@ -1,11 +1,11 @@
 import { View, Text, Input, Textarea, Image } from '@tarojs/components'
-import Taro from '@tarojs/taro'
-import { useEffect, useState } from 'react'
-import { AtIcon } from 'taro-ui'
-import { request } from '@/utils/request'
-import 'taro-ui/dist/style/components/icon.scss'
-import './index.scss'
-
+import Taro from '@tarojs/taro'
+import { useEffect, useState } from 'react'
+import { AtIcon } from 'taro-ui'
+import { request } from '@/utils/request'
+import 'taro-ui/dist/style/components/icon.scss'
+import './index.scss'
+
 export default function GroupCreatePage() {
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
@@ -17,19 +17,19 @@ export default function GroupCreatePage() {
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
-
-  useEffect(() => {
-    const sysInfo = Taro.getWindowInfo()
-    const menuInfo = Taro.getMenuButtonBoundingClientRect()
-    const sbHeight = sysInfo.statusBarHeight || 20
-    setStatusBarHeight(sbHeight)
-    const nbHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
-    setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
+
+  useEffect(() => {
+    const sysInfo = Taro.getWindowInfo()
+    const menuInfo = Taro.getMenuButtonBoundingClientRect()
+    const sbHeight = sysInfo.statusBarHeight || 20
+    setStatusBarHeight(sbHeight)
+    const nbHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
+    setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
     const rightPadding = sysInfo.screenWidth - menuInfo.left
     setMenuButtonWidth(rightPadding)
     setGroupId(Date.now())
   }, [])
-
+
   const canSubmit = name.trim().length > 0 && !submitting
 
   const parseResponse = (res: any) => {
@@ -88,10 +88,10 @@ export default function GroupCreatePage() {
       Taro.showToast({ title: '请输入群名称', icon: 'none' })
       return
     }
-
-    if (submitting) return
-    setSubmitting(true)
-
+
+    if (submitting) return
+    setSubmitting(true)
+
     try {
       const resBody = await createGroup({
         name: groupName,
@@ -104,33 +104,33 @@ export default function GroupCreatePage() {
         const groupData = resBody.data || {}
         const createdGroupId = groupData.id
         Taro.showToast({ title: '创建成功', icon: 'success' })
-
+
         if (createdGroupId) {
-          Taro.redirectTo({
+          Taro.redirectTo({
             url: `/pages/chat/group-members/index?group_id=${createdGroupId}&group_name=${encodeURIComponent(groupName)}`
-          })
-        } else {
-          Taro.navigateBack()
-        }
-      } else {
-        Taro.showToast({ title: resBody?.msg || '创建失败', icon: 'none' })
-      }
-    } catch (error: any) {
-      Taro.showToast({ title: error?.message || '创建失败', icon: 'none' })
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <View className='group-create-page'>
-      <View className='custom-nav' style={{ paddingTop: `${statusBarHeight}px`, height: `${navBarHeight}px`, paddingRight: `${menuButtonWidth}px` }}>
-        <View className='nav-left' onClick={() => Taro.navigateBack()}>
-          <AtIcon value='chevron-left' size='24' color='#fff' />
-        </View>
-        <View className='nav-title'>创建群聊</View>
-      </View>
-
+          })
+        } else {
+          Taro.navigateBack()
+        }
+      } else {
+        Taro.showToast({ title: resBody?.msg || '创建失败', icon: 'none' })
+      }
+    } catch (error: any) {
+      Taro.showToast({ title: error?.message || '创建失败', icon: 'none' })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <View className='group-create-page'>
+      <View className='custom-nav' style={{ paddingTop: `${statusBarHeight}px`, height: `${navBarHeight}px`, paddingRight: `${menuButtonWidth}px` }}>
+        <View className='nav-left' onClick={() => Taro.navigateBack()}>
+          <AtIcon value='chevron-left' size='24' color='#fff' />
+        </View>
+        <View className='nav-title'>创建群聊</View>
+      </View>
+
       <View className='form-body' style={{ paddingTop: `${statusBarHeight + navBarHeight}px` }}>
         <View className='field'>
           <Text className='label'>群头像</Text>
@@ -148,12 +148,12 @@ export default function GroupCreatePage() {
           <Input
             className='input'
             placeholder='请输入群名称'
-            value={name}
-            maxlength={100}
-            onInput={e => setName(e.detail.value)}
-          />
-        </View>
-
+            value={name}
+            maxlength={100}
+            onInput={e => setName(e.detail.value)}
+          />
+        </View>
+
         <View className='field'>
           <Text className='label'>群头像 URL（可选）</Text>
           <Input
@@ -163,26 +163,26 @@ export default function GroupCreatePage() {
             onInput={e => setAvatar(e.detail.value)}
           />
         </View>
-
-        <View className='field'>
-          <Text className='label'>群简介（可选）</Text>
-          <Textarea
-            className='textarea'
-            placeholder='简单介绍一下群聊'
-            value={description}
-            maxlength={500}
-            onInput={e => setDescription(e.detail.value)}
-          />
-        </View>
-
-        <Text className='hint'>创建后可在成员页邀请好友进群</Text>
-      </View>
-
-      <View className='bottom-bar'>
-        <View className={`submit-btn ${canSubmit ? 'active' : ''}`} onClick={handleCreate}>
-          <Text>{submitting ? '创建中...' : '创建并继续'}</Text>
-        </View>
-      </View>
-    </View>
-  )
-}
+
+        <View className='field'>
+          <Text className='label'>群简介（可选）</Text>
+          <Textarea
+            className='textarea'
+            placeholder='简单介绍一下群聊'
+            value={description}
+            maxlength={500}
+            onInput={e => setDescription(e.detail.value)}
+          />
+        </View>
+
+        <Text className='hint'>创建后可在成员页邀请好友进群</Text>
+      </View>
+
+      <View className='bottom-bar'>
+        <View className={`submit-btn ${canSubmit ? 'active' : ''}`} onClick={handleCreate}>
+          <Text>{submitting ? '创建中...' : '创建并继续'}</Text>
+        </View>
+      </View>
+    </View>
+  )
+}

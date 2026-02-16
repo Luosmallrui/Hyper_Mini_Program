@@ -1,6 +1,6 @@
-import { View, Text, Image, Swiper, SwiperItem } from '@tarojs/components'
+﻿import { View, Text, Image, Swiper, SwiperItem } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import { request } from '@/utils/request'
@@ -50,6 +50,8 @@ interface MerchantGood {
     name: string
     avg_price: number
     location_name: string
+    lat?: number
+    lng?: number
     images: string[]
     goods: MerchantGood[]
     notes: MerchantNote[]
@@ -77,9 +79,10 @@ export default function VenuePage() {
   const [navBarHeight, setNavBarHeight] = useState(44)
   const [menuButtonWidth, setMenuButtonWidth] = useState(0)
   const [currentHero, setCurrentHero] = useState<string>(fallbackGallery[0])
+  const [heroIndex, setHeroIndex] = useState(0)
   const [activeTab, setActiveTab] = useState<'goods' | 'notes'>('goods')
-  const [tabIndex, setTabIndex] = useState(0)
-  const [swiperHeight, setSwiperHeight] = useState(0)
+  const fallbackMapCenter = { latitude: 30.657, longitude: 104.066 }
+  const tabTouchStartXRef = useRef(0)
 
   useEffect(() => {
     const sysInfo = Taro.getWindowInfo()
@@ -119,23 +122,22 @@ export default function VenuePage() {
   useEffect(() => {
     if (galleryImages.length > 0) {
       setCurrentHero(galleryImages[0])
+      setHeroIndex(0)
     }
   }, [galleryImages])
 
-  useEffect(() => {
-    Taro.nextTick(() => {
-      const query = Taro.createSelectorQuery()
-      query.select('.tab-panel.active').boundingClientRect((rect) => {
-        if (!rect || Array.isArray(rect)) return
-        setSwiperHeight(rect.height || 0)
-      }).exec()
-    })
-  }, [venue, tabIndex, activeTab]) // 增加 activeTab 依赖
-
   const venueName = venue?.name || 'SWING鸡尾酒吧（大源店）'
-  const venueTime = venue?.business_hours ? `营业中 ${venue.business_hours}` : '营业中 19:30-次日02:30'
+  const venueTime = venue?.business_hours ? `营业中：${venue.business_hours}` : '营业中：19:30-次日02:30'
   const venuePrice = typeof venue?.avg_price === 'number' ? `¥${(venue.avg_price / 100).toFixed(0)}/人起` : '¥80/人起'
   const venueLocation = venue?.location_name || '高新区盛园街道保利星荟5栋1楼'
+  const parseCoordinate = (value: unknown): number | null => {
+    const num = Number(value)
+    return Number.isFinite(num) ? num : null
+  }
+  const venueLat = parseCoordinate(venue?.lat)
+  const venueLng = parseCoordinate(venue?.lng)
+  const routeLat = parseCoordinate(router.params?.lat)
+  const routeLng = parseCoordinate(router.params?.lng)
   const venueUser = venue?.user_name || 'SWING'
   const venueAvatar = venue?.user_avatar || fallbackAvatar
   const venueFans = String(venue?.notes?.length || '0')
@@ -160,18 +162,74 @@ export default function VenuePage() {
 
   const handleTabChange = (nextTab: 'goods' | 'notes') => {
     setActiveTab(nextTab)
-    setTabIndex(nextTab === 'goods' ? 0 : 1)
   }
 
-  const handleSwiperChange = (e: { detail: { current: number } }) => {
+  const handleTabTouchStart = (e: any) => {
+    const touch = e?.touches?.[0]
+    if (!touch) return
+    tabTouchStartXRef.current = touch.clientX
+  }
+
+  const handleTabTouchEnd = (e: any) => {
+    const touch = e?.changedTouches?.[0]
+    if (!touch) return
+    const deltaX = touch.clientX - tabTouchStartXRef.current
+    const threshold = 45
+    if (Math.abs(deltaX) < threshold) return
+
+    if (deltaX < 0 && activeTab === 'goods') {
+      setActiveTab('notes')
+      return
+    }
+    if (deltaX > 0 && activeTab === 'notes') {
+      setActiveTab('goods')
+    }
+  }
+
+  const handleHeroSwiperChange = (e: { detail: { current: number } }) => {
     const nextIndex = e.detail.current
-    setTabIndex(nextIndex)
-    setActiveTab(nextIndex === 0 ? 'goods' : 'notes')
+    setHeroIndex(nextIndex)
+    const nextHero = galleryImages[nextIndex]
+    if (nextHero) setCurrentHero(nextHero)
+  }
+
+  const handleHeroThumbClick = (img: string, idx: number) => {
+    setCurrentHero(img)
+    setHeroIndex(idx)
+  }
+
+  const handleOpenMap = async () => {
+    const latitude = venueLat ?? routeLat
+    const longitude = venueLng ?? routeLng
+
+    try {
+      if (latitude !== null && longitude !== null) {
+        await Taro.openLocation({
+          latitude,
+          longitude,
+          name: venueName,
+          address: venueLocation,
+          scale: 17
+        })
+        return
+      }
+
+      await Taro.openLocation({
+        latitude: fallbackMapCenter.latitude,
+        longitude: fallbackMapCenter.longitude,
+        name: venueName,
+        address: venueLocation,
+        scale: 14
+      })
+    } catch (error) {
+      console.warn('openLocation failed:', error)
+      Taro.showToast({ title: '无法打开地图', icon: 'none' })
+    }
   }
 
   return (
     <View className='venue-page'>
-      {/* 顶部导航 (Fixed，透明) */}
+      {/* 顶部导航（固定、透明） */}
       <View
         className='custom-nav'
         style={{ height: `${statusBarHeight + navBarHeight}px` }}
@@ -182,47 +240,61 @@ export default function VenuePage() {
             <AtIcon value='chevron-left' size='24' color='#fff' />
           </View>
           <View className='nav-center'>
-            {/* Logo 或 标题 */}
+            {/* Logo */}
              <Image className='nav-logo' src={require('../../assets/images/hyper-icon.png')} mode='aspectFit' />
           </View>
           <View className='nav-right' style={{ width: `${menuButtonWidth}px` }} />
         </View>
       </View>
 
-      {/* Hero 区域 (背景图 + 信息) */}
+      {/* Hero 区域（背景图 + 信息） */}
       <View className='hero-section'>
-        {/* 背景大图 */}
-        <Image src={currentHero} className='hero-bg-img' mode='aspectFill' />
+        {/* 背景图支持左右滑动 */}
+        <Swiper
+          className='hero-bg-swiper'
+          current={heroIndex}
+          circular
+          skipHiddenItemLayout
+          onChange={handleHeroSwiperChange}
+        >
+          {galleryImages.map((img, idx) => (
+            <SwiperItem key={`${img}-${idx}`}>
+              <Image src={img} className='hero-bg-img' mode='aspectFill' />
+            </SwiperItem>
+          ))}
+        </Swiper>
         <View className='hero-mask' /> {/* 渐变遮罩 */}
 
-        {/* 商家信息 */}
-        <View className='hero-content' style={{ paddingTop: `${statusBarHeight + navBarHeight + 20}px` }}>
-           <Text className='title'>{venueName}</Text>
-           <View className='meta-row'>
-             <Text className='meta'>{venueTime}</Text>
-             <Text className='meta price'>{venuePrice}</Text>
-           </View>
-           <View className='location-row'>
-             <Text className='location'>{venueLocation}</Text>
-             <AtIcon value='chevron-right' size='16' color='#fff' />
-           </View>
-        </View>
+        <View className='hero-info-block'>
+          {/* 商家信息 */}
+          <View className='hero-content' style={{ paddingTop: `${statusBarHeight + navBarHeight + 20}px` }}>
+             <Text className='title'>{venueName}</Text>
+             <View className='meta-row'>
+               <Text className='meta'>{venueTime}</Text>
+               <Text className='meta price'>{venuePrice}</Text>
+             </View>
+             <View className='location-row' onClick={handleOpenMap}>
+               <Text className='location'>{venueLocation}</Text>
+               <AtIcon value='chevron-right' size='16' color='#fff' />
+             </View>
+          </View>
 
-        {/* 缩略图画廊 (绝对定位在左下) */}
-        <View className='gallery-float'>
-          {galleryImages.map((img, idx) => (
-            <View
-              key={`${img}-${idx}`}
-              className={`gallery-item ${currentHero === img ? 'active' : ''}`}
-              onClick={() => setCurrentHero(img)}
-            >
-              <Image className='gallery-img' src={img} mode='aspectFill' />
-            </View>
-          ))}
+          {/* 缩略图画廊 */}
+          <View className='gallery-float'>
+            {galleryImages.map((img, idx) => (
+              <View
+                key={`${img}-${idx}`}
+                className={`gallery-item ${currentHero === img ? 'active' : ''}`}
+                onClick={() => handleHeroThumbClick(img, idx)}
+              >
+                <Image className='gallery-img' src={img} mode='aspectFill' />
+              </View>
+            ))}
+          </View>
         </View>
       </View>
 
-      {/* 下方内容区域 (白色卡片部分) */}
+      {/* 下方内容区域 */}
       <View className='content-scroll'>
         <View className='content-inner'>
           <View className='host-card'>
@@ -244,15 +316,9 @@ export default function VenuePage() {
             <Text className={`tab ${activeTab === 'notes' ? 'active' : ''}`} onClick={() => handleTabChange('notes')}>动态·{venue?.notes?.length || 0}</Text>
           </View>
 
-          <Swiper
-            className='venue-tab-swiper'
-            current={tabIndex}
-            onChange={handleSwiperChange}
-            style={{ height: swiperHeight ? `${swiperHeight}px` : 'auto' }}
-          >
-            <SwiperItem>
-              <View className={`tab-panel ${activeTab === 'goods' ? 'active' : ''}`}>
-                <View className='product-grid'>
+          {activeTab === 'goods' ? (
+            <View className='tab-panel active' onTouchStart={handleTabTouchStart} onTouchEnd={handleTabTouchEnd}>
+              <View className='product-grid'>
                 {(venue?.goods || []).map(item => (
                   <View key={item.id} className='product-card'>
                     <Image className='product-img' src={item.cover_image?.trim()} mode='aspectFill' />
@@ -276,11 +342,10 @@ export default function VenuePage() {
                   </View>
                 ))}
               </View>
-              </View>
-            </SwiperItem>
-            <SwiperItem>
-              <View className={`tab-panel ${activeTab === 'notes' ? 'active' : ''}`}>
-                <View className='notes-section'>
+            </View>
+          ) : (
+            <View className='tab-panel active' onTouchStart={handleTabTouchStart} onTouchEnd={handleTabTouchEnd}>
+              <View className='notes-section'>
                 {noteList.length > 0 ? (
                   <View className='waterfall-container'>
                     <View className='waterfall-column'>
@@ -337,9 +402,8 @@ export default function VenuePage() {
                   </View>
                 )}
               </View>
-              </View>
-             </SwiperItem>
-          </Swiper>
+            </View>
+          )}
 
           <View className='bottom-space' />
         </View>
@@ -347,3 +411,4 @@ export default function VenuePage() {
     </View>
   )
 }
+

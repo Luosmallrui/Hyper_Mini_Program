@@ -3,10 +3,10 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* 防止页面级滚动，完全依赖 ScrollView */
+  overflow: hidden; 
 }
 
-/* --- 固定头部容器 --- */
+
 .fixed-header-wrapper {
   position: fixed;
   top: 0;
@@ -16,7 +16,7 @@
   background-color: #000;
 }
 
-/* 1. 顶部导航栏 */
+
 .top-nav {
   display: flex;
   flex-direction: column;
@@ -29,7 +29,7 @@
     position: relative;
     box-sizing: border-box;
 
-    /* 左侧区域：位置 + 搜索 */
+    
     .left-area {
         display: flex; 
         align-items: center; 
@@ -58,7 +58,7 @@
         }
     }
 
-    /* 中间 Logo：绝对定位居中 */
+    
     .logo-container {
       position: absolute; 
       top: 0; 
@@ -78,7 +78,7 @@
   }
 }
 
-/* 2. 频道 Tab 栏 */
+
 .channel-tabs-row {
   display: flex;
   align-items: center;
@@ -89,7 +89,7 @@
   .channel-scroll-view {
     flex: 1; 
     height: 100%; 
-    /* 【优化 1】大幅增加右侧内边距 (大于按钮宽度)，防止最后一个Tab被遮挡 */
+    
     padding-right: 100px; 
     box-sizing: border-box; 
     white-space: nowrap;
@@ -98,13 +98,13 @@
       display: flex; 
       align-items: center; 
       height: 100%; 
-      padding-left: 10px; 
+      padding-left: 24px; 
     }
 
     .tab-item {
-      padding: 0 15px; /* 稍微增加 Tab 间距 */
+      padding: 0 15px; 
       height: 100%; 
-      display: inline-flex; /* 改为 inline-flex 保证不换行 */
+      display: inline-flex; 
       align-items: center; 
       justify-content: center; 
       position: relative; 
@@ -136,24 +136,33 @@
         }
       }
     }
+
+    .tab-item:first-child {
+      padding-left: 0 !important;
+      margin-left: -2px;
+
+      .indicator {
+        left: calc(50% - 7px) !important;
+      }
+    }
   }
 
-  /* 右侧固定展开按钮 */
+  
   .expand-btn-side {
     position: absolute; 
     right: 0;
     top: 0;
     bottom: 0;
-    /* 【优化 2】定宽，给足空间 */
+    
     width: 70px; 
-    z-index: 102; /* 确保最高层级 */
+    z-index: 102; 
     display: flex; 
     align-items: center; 
     justify-content: flex-end; 
     pointer-events: auto;
     overflow: visible;
 
-    /* 【优化 3】更宽更柔和的渐变遮罩 */
+    
     .gradient-mask {
       position: absolute;
       left: -80px;
@@ -170,7 +179,7 @@
       z-index: 2;
       height: 100%; 
       width: 100%;
-      background: transparent; /* 纯黑底色，遮住背后的 Tab */
+      background: transparent; 
       display: flex; 
       align-items: center; 
 
@@ -183,20 +192,36 @@
       }
     }
   }
+
+  .empty-tab-tip {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    padding-left: 20px;
+    color: #8f8f8f;
+    font-size: 24px;
+    letter-spacing: 0.5px;
+  }
 }
 
-/* --- 内容 Swiper 样式 --- */
+
 .content-swiper {
   width: 100%;
   background-color: #000;
 
+  .tab-swiper-item {
+    background-color: #000;
+  }
+
   .tab-scroll-view {
     height: 100%;
     width: 100%;
+    background-color: #000;
   }
 }
 
-/* --- 列表样式 A: Instagram 单列流 --- */
+
 .single-flow-list {
   padding-top: 10px;
 
@@ -213,7 +238,7 @@
       .user-info {
         display: flex; 
         align-items: center;
-        flex: 1; /* 让用户信息占据剩余空间 */
+        flex: 1; 
         overflow: hidden;
 
         .avatar { 
@@ -224,11 +249,11 @@
           margin-right: 12px; 
           border: 1px solid #333; 
 
-          /* 【核心修复】防止被压缩，强制圆形裁剪 */
+          
           flex-shrink: 0; 
           overflow: hidden;
 
-          /* 确保内部图片填充 */
+          
           .avatar-img {
             width: 100%;
             height: 100%;
@@ -242,7 +267,7 @@
           font-weight: 500; 
           margin-right: 12px;
           
-          /* 防止名字过长把时间挤出去 */
+          
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -252,7 +277,7 @@
         .time { 
           color: #666; 
           font-size: 22px;
-          flex-shrink: 0; /* 时间不许被压缩 */
+          flex-shrink: 0; 
         }
       }
     }
@@ -266,7 +291,7 @@
       .media-img { width: 100%; height: 100%; }
       .media-placeholder { width: 100%; height: 100%; background: #222; }
 
-      /* 图片数量角标 */
+      
       .count-badge {
         position: absolute;
         top: 20px;
@@ -294,28 +319,30 @@
   }
 }
 
-/* --- 列表样式 B: 瀑布流 (双列) --- */
+
 .waterfall-flow {
   display: flex; 
   width: 100%;
+  background-color: #000;
   box-sizing: border-box;
   padding: 0 10px; 
   gap: 10px;
-  margin-top: 40px;
-  flex-wrap: wrap; /* 关键：允许换行，这样 footer 才能独占一行 */
+  margin-top: 24px;
+  flex-wrap: wrap; 
   
   .col {
      flex: 1; 
      display: flex; 
      flex-direction: column; 
      gap: 10px; 
-     min-width: 0; /* 防止内容撑开 flex item */
+     min-width: 0; 
   }
 
-  /* 底部加载更多容器，占据 100% 宽度 */
+  
   .footer-loader-wrap {
       width: 100%;
       padding: 10px 0;
+      background-color: #000;
   }
 
   .waterfall-card {
@@ -342,6 +369,7 @@
         .title { 
            color: #b7b7b7; font-size: 26px; line-height: 40px;
            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+           line-clamp: 2;
            margin-bottom: 10px;
         }
 
@@ -353,21 +381,21 @@
            .user {
               display: flex; 
               align-items: center;
-              flex: 1; /* 让用户区域占据剩余空间 */
-              overflow: hidden; /* 防止文字过长溢出容器 */
+              flex: 1; 
+              overflow: hidden; 
 
               .avatar-mini { 
                 width: 36px; 
                 height: 36px; 
                 border-radius: 50%; 
                 background: #555; 
-                margin-right: 8px; /* 稍微增加间距 */
+                margin-right: 8px; 
                 
-                /* 【核心修复】防止头像被挤压，并裁剪图片为圆形 */
+                
                 flex-shrink: 0; 
                 overflow: hidden;
                 
-                /* 确保内部图片充满容器 */
+                
                 .avatar-img {
                   width: 100%;
                   height: 100%;
@@ -379,7 +407,7 @@
                 color: #656565; 
                 font-size: 22px; 
                 line-height: 30px; 
-                /* 确保名字不溢出 */
+                
                 flex: 1; 
                 overflow: hidden; 
                 white-space: nowrap; 
@@ -391,8 +419,14 @@
               display: flex; 
               align-items: center; 
               gap: 4px;
-              flex-shrink: 0; /* 防止点赞数被挤压 */
-              margin-left: 8px; /* 与名字保持距离 */
+              flex-shrink: 0; 
+              margin-left: 8px; 
+              cursor: pointer;
+              transition: opacity 0.2s ease;
+
+              &:active {
+                opacity: 0.75;
+              }
               
               .num { color: #656565; font-size: 24px; line-height: 33px;}
            }
@@ -401,12 +435,13 @@
   }
 }
 
-/* --- 加载更多提示 --- */
+
 .load-more {
     padding: 30px 0;
     display: flex;
     justify-content: center;
     align-items: center;
+    background-color: #000;
     
     .no-more {
         color: #444;
@@ -414,7 +449,7 @@
     }
 }
 
-/* --- 频道编辑浮层 --- */
+
 .channel-edit-overlay {
    position: fixed; 
    left: 0; right: 0; bottom: 0;
@@ -426,7 +461,18 @@
    .channel-header {
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;
       .title { color: #fff; font-size: 28px; font-weight: 500;}
-      .actions { display: flex; gap: 24px; font-size: 26px; color: #999;}
+      .actions {
+        display: flex;
+        gap: 24px;
+        font-size: 26px;
+        color: #999;
+
+        .btn-edit,
+        .btn-finish,
+        .btn-close {
+          color: #bfbfbf;
+        }
+      }
    }
    
    .sub-title { color: #fff; font-size: 28px; margin: 40px 0 20px; display: block;}
@@ -445,17 +491,68 @@
          &.active { color: #fff; background: #333; font-weight: 500;}
          
          .del-icon {
-            position: absolute; top: -6px; right: -6px;
-            width: 24px; height: 24px; background: #666; color: #fff;
-            border-radius: 50%; text-align: center; line-height: 22px; font-size: 18px;
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 28px;
+            height: 28px;
+            background: #666;
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            line-height: 1;
          }
+      }
+
+      .channel-chip.add-chip {
+        background: #262626;
+        color: #c8c8c8;
+      }
+
+      .channel-chip.add-chip.disabled {
+        opacity: 0.45;
       }
    }
 }
 
+.channel-edit-overlay.editing {
+  .channel-header {
+    .btn-finish {
+      color: #ffffff;
+      font-weight: 500;
+    }
+  }
+}
+
+.empty-channel-content {
+  min-height: 50vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+
+  .empty-title {
+    font-size: 30px;
+    color: #d0d0d0;
+    margin-bottom: 24px;
+  }
+
+  .empty-action {
+    padding: 12px 30px;
+    font-size: 24px;
+    color: #fff;
+    border: 1px solid #5a5a5a;
+    border-radius: 28px;
+  }
+}
+
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* --- Skeleton --- */
+
 .skeleton-list,
 .skeleton-waterfall {
   padding: 0 16px;
@@ -515,4 +612,19 @@
   100% {
     transform: translateX(240px);
   }
+}
+
+@keyframes likeBounce {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.35); }
+  60% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+.liked-anim {
+  display: inline-block;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  animation: likeBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }

@@ -1,9 +1,11 @@
-import { View, Text, Image, ScrollView } from '@tarojs/components'
+﻿import { View, Text, Image, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import { request } from '@/utils/request'
+import CommonHeader from '@/components/CommonHeader'
+import { useNavBarMetrics } from '@/hooks/useNavBarMetrics'
 import './index.less'
 
 interface MerchantItem {
@@ -42,154 +44,192 @@ interface PartyItem {
   isSubscribed?: boolean
 }
 
-// 筛选配置
 const FILTER_CATS = ['全部', '滑板', '派对', '汽车', '纹身', '体育运动', '活动', '露营', '酒吧/场地', '篮球']
 const FILTER_SORTS = ['智能推荐', '距离优先', '人气优先', '高分优先']
 
 export default function ActivityListPage() {
   const [list, setList] = useState<PartyItem[]>([])
-
-  // 筛选状态
+  const isFetchingRef = useRef(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [filterOpen, setFilterOpen] = useState<'none' | 'cat' | 'sort'>('none')
   const [selectedCat, setSelectedCat] = useState('全部')
   const [selectedSort, setSelectedSort] = useState('智能推荐')
+  const refreshStartRef = useRef(0)
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // 导航栏适配
-  const [statusBarHeight, setStatusBarHeight] = useState(20)
-  const [navBarHeight, setNavBarHeight] = useState(44)
-
-  useEffect(() => {
-    const sysInfo = Taro.getWindowInfo()
-    const menuInfo = Taro.getMenuButtonBoundingClientRect()
-    const sbHeight = sysInfo.statusBarHeight || 20
-    setStatusBarHeight(sbHeight)
-    const contentHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
-    setNavBarHeight(contentHeight > 0 ? contentHeight : 44)
+  const { statusBarHeight, navBarHeight } = useNavBarMetrics()
+  const filterBarGap = 14
+  const filterBarHeight = 40
+  const listTopGap = 0
+  const headerStyle = useMemo(
+    () => ({ top: `${statusBarHeight}px`, height: `${navBarHeight}px`, zIndex: 100 }),
+    [navBarHeight, statusBarHeight],
+  )
+  const filterBarTop = statusBarHeight + navBarHeight + filterBarGap
+  const listTop = filterBarTop + filterBarHeight + listTopGap
+  const handleSearchClick = useCallback(() => {
+    Taro.navigateTo({ url: '/pages/search/index' })
   }, [])
 
-  useEffect(() => {
-    const fetchList = async () => {
-      try {
-        const res = await request({
-          url: '/api/v1/merchant/list',
-          method: 'GET'
-        })
-        const dataList = res?.data?.data?.list || []
-        const mapped = Array.isArray(dataList)
-          ? dataList.map((item: MerchantItem) => {
-              const createdAt = item.created_at ? new Date(item.created_at) : null
-              const formattedTime = createdAt && !Number.isNaN(createdAt.getTime())
-                ? createdAt.toISOString().slice(0, 10)
-                : item.created_at || ''
-              return {
-                id: item.id,
-                title: item.title,
-                type: item.type,
-                location: item.location,
-                lat: item.lat,
-                lng: item.lng,
-                user: item.username,
-                userAvatar: item.user_avatar,
-                image: item.cover_image,
-                time: formattedTime,
-                price: typeof item.avg_price === 'number' ? (item.avg_price / 100).toFixed(0) : '0',
-                attendees: item.current_count,
-                dynamicCount: item.post_count,
-                fans: String(item.current_count ?? ''),
-                isVerified: false,
-                isFollowed: false,
-                isSubscribed: false
-              }
-            })
-          : []
-        setList(mapped)
-      } catch (error) {
-        console.error('Activity list load failed:', error)
+  const fetchList = useCallback(async (options?: { isRefresh?: boolean; silentError?: boolean }) => {
+    const { isRefresh = false, silentError = false } = options || {}
+    if (isFetchingRef.current) return false
+    isFetchingRef.current = true
+    try {
+      const res = await request({
+        url: '/api/v1/merchant/list',
+        method: 'GET',
+      })
+      const dataList = res?.data?.data?.list || []
+      const mapped: PartyItem[] = Array.isArray(dataList)
+        ? dataList.map((item: MerchantItem) => {
+            const createdAt = item.created_at ? new Date(item.created_at) : null
+            const formattedTime =
+              createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt.toISOString().slice(0, 10) : item.created_at || ''
+            return {
+              id: item.id,
+              title: item.title,
+              type: item.type,
+              location: item.location,
+              lat: item.lat,
+              lng: item.lng,
+              user: item.username,
+              userAvatar: item.user_avatar,
+              image: item.cover_image,
+              time: formattedTime,
+              price: typeof item.avg_price === 'number' ? (item.avg_price / 100).toFixed(0) : '0',
+              attendees: item.current_count,
+              dynamicCount: item.post_count,
+              fans: String(item.current_count ?? ''),
+              isVerified: false,
+              isFollowed: false,
+              isSubscribed: false,
+            }
+          })
+        : []
+
+      setList(mapped)
+      return true
+    } catch (error) {
+      console.error('Activity list load failed:', error)
+      if (isRefresh || !silentError) {
+        Taro.showToast({ title: '刷新失败', icon: 'none' })
+      }
+      return false
+    } finally {
+      isFetchingRef.current = false
+    }
+  }, [])
+
+  const handleRefresh = useCallback(async () => {
+    if (isFetchingRef.current) return
+
+    refreshStartRef.current = Date.now()
+    setIsRefreshing(true)
+
+    const succeeded = await fetchList({ isRefresh: true })
+    const elapsed = Date.now() - refreshStartRef.current
+    const remain = Math.max(600 - elapsed, 0)
+
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current)
+      refreshTimerRef.current = null
+    }
+
+    const finish = () => {
+      setIsRefreshing(false)
+      if (succeeded) {
+        Taro.showToast({ title: '刷新成功', icon: 'success' })
       }
     }
 
-    fetchList()
+    if (remain > 0) {
+      refreshTimerRef.current = setTimeout(() => {
+        finish()
+        refreshTimerRef.current = null
+      }, remain)
+    } else {
+      finish()
+    }
+  }, [fetchList])
+
+  useEffect(() => {
+    fetchList({ silentError: true })
+  }, [fetchList])
+
+  useEffect(() => () => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current)
+      refreshTimerRef.current = null
+    }
   }, [])
 
   const toggleFollow = (id: string | number) => {
-    setList(prev =>
-      prev.map(item => (item.id === id ? { ...item, isFollowed: !item.isFollowed } : item))
-    )
+    setList((prev) => prev.map((item) => (item.id === id ? { ...item, isFollowed: !item.isFollowed } : item)))
   }
 
   const toggleSubscribe = (id: string | number) => {
-    setList(prev =>
-      prev.map(item => (item.id === id ? { ...item, isSubscribed: !item.isSubscribed } : item))
-    )
+    setList((prev) => prev.map((item) => (item.id === id ? { ...item, isSubscribed: !item.isSubscribed } : item)))
   }
 
   const handleFilterClick = (type: 'cat' | 'sort') => {
     setFilterOpen(filterOpen === type ? 'none' : type)
   }
 
+  const handleBackToMap = async () => {
+    const pageStack = Taro.getCurrentPages()
+    if (pageStack.length > 1) {
+      try {
+        await Taro.navigateBack({ delta: 1 })
+        return
+      } catch (error) {
+        console.warn('navigateBack failed, fallback to switchTab:', error)
+      }
+    }
+    Taro.switchTab({ url: '/pages/index/index' })
+  }
+
   const handleGoDetail = (item: PartyItem) => {
+    const extParams = `&lat=${encodeURIComponent(String(item.lat ?? ''))}&lng=${encodeURIComponent(String(item.lng ?? ''))}&location=${encodeURIComponent(item.location || '')}`
     const path =
       item?.type === '场地'
-        ? `/pages/venue/index?id=${item.id}&tag=${encodeURIComponent(item.type || '')}`
-        : `/pages/activity/index?id=${item.id}&tag=${encodeURIComponent(item.type || '')}`
+        ? `/pages/venue/index?id=${item.id}&tag=${encodeURIComponent(item.type || '')}${extParams}`
+        : `/pages/activity/index?id=${item.id}&tag=${encodeURIComponent(item.type || '')}${extParams}`
     Taro.navigateTo({ url: path })
   }
 
   return (
     <View className='activity-list-page'>
-      {/* 1. 顶部 Header */}
-      <View
-        className='custom-header'
-        style={{ top: `${statusBarHeight}px`, height: `${navBarHeight}px` }}
-      >
-        <View className='left-area'>
-          <Text className='city-text'>成都</Text>
-          <AtIcon value='chevron-right' size='16' color='#fff' />
-          <View
-            className='search-icon-btn'
-            onClick={() => Taro.navigateTo({ url: '/pages/search/index' })}
-          >
-            <AtIcon value='search' size='20' color='#fff' />
+      <CommonHeader
+        className='activity-list-header'
+        positionMode='fixed'
+        style={headerStyle}
+        onSearchClick={handleSearchClick}
+      />
+
+      <View className='filter-bar' style={{ top: `${filterBarTop}px` }}>
+        <View className='filter-actions'>
+          <View className={`filter-item ${filterOpen === 'cat' ? 'active' : ''}`} onClick={() => handleFilterClick('cat')}>
+            <Text className='txt'>{selectedCat === '全部' ? '全部' : selectedCat}</Text>
+            <AtIcon value={filterOpen === 'cat' ? 'chevron-up' : 'chevron-down'} size='10' color={filterOpen === 'cat' ? '#FF2E4D' : '#999'} />
+          </View>
+          <View className={`filter-item ${filterOpen === 'sort' ? 'active' : ''}`} onClick={() => handleFilterClick('sort')}>
+            <Text className='txt'>{selectedSort}</Text>
+            <AtIcon value={filterOpen === 'sort' ? 'chevron-up' : 'chevron-down'} size='10' color={filterOpen === 'sort' ? '#FF2E4D' : '#999'} />
           </View>
         </View>
-        <View className='center-logo-container'>
-          <Image src={require('../../assets/images/hyper-icon.png')} mode='heightFix' className='logo-img' />
+
+        <View className='back-map-btn' onClick={handleBackToMap}>
+          <Image className='back-map-icon' src={require('../../assets/icons/back-to-map.svg')} mode='aspectFit' />
         </View>
       </View>
 
-      {/* 2. 筛选栏 */}
-      <View className='filter-bar' style={{ top: `${statusBarHeight + navBarHeight}px` }}>
-        <View
-          className={`filter-item ${filterOpen === 'cat' ? 'active' : ''}`}
-          onClick={() => handleFilterClick('cat')}
-        >
-          <Text className='txt'>{selectedCat === '全部' ? '全部' : selectedCat}</Text>
-          <AtIcon
-            value={filterOpen === 'cat' ? 'chevron-up' : 'chevron-down'}
-            size='10'
-            color={filterOpen === 'cat' ? '#FF2E4D' : '#999'}
-          />
-        </View>
-        <View
-          className={`filter-item ${filterOpen === 'sort' ? 'active' : ''}`}
-          onClick={() => handleFilterClick('sort')}
-        >
-          <Text className='txt'>{selectedSort}</Text>
-          <AtIcon
-            value={filterOpen === 'sort' ? 'chevron-up' : 'chevron-down'}
-            size='10'
-            color={filterOpen === 'sort' ? '#FF2E4D' : '#999'}
-          />
-        </View>
-      </View>
-
-      {/* 3. 筛选下拉 */}
       {filterOpen !== 'none' && (
-        <View className='filter-dropdown-overlay' style={{ top: `${statusBarHeight + navBarHeight + 40}px` }}>
+        <View className='filter-dropdown-overlay' style={{ top: `${filterBarTop + filterBarHeight}px` }}>
           <View className='mask' onClick={() => setFilterOpen('none')} />
           <View className='dropdown-content'>
             {filterOpen === 'cat' &&
-              FILTER_CATS.map(cat => (
+              FILTER_CATS.map((cat) => (
                 <View
                   key={cat}
                   className={`dd-item ${selectedCat === cat ? 'selected' : ''}`}
@@ -202,7 +242,7 @@ export default function ActivityListPage() {
                 </View>
               ))}
             {filterOpen === 'sort' &&
-              FILTER_SORTS.map(sort => (
+              FILTER_SORTS.map((sort) => (
                 <View
                   key={sort}
                   className={`dd-item ${selectedSort === sort ? 'selected' : ''}`}
@@ -218,30 +258,41 @@ export default function ActivityListPage() {
         </View>
       )}
 
-      {/* 4. 列表区域 */}
-      <ScrollView scrollY className='list-scroll' style={{ paddingTop: `${statusBarHeight + navBarHeight + 50}px` }}>
-        {list.map(item => (
+      <ScrollView
+        scrollY
+        refresherEnabled
+        refresherTriggered={isRefreshing}
+        onRefresherRefresh={handleRefresh}
+        onRefresherRestore={() => {
+          if (refreshTimerRef.current) {
+            clearTimeout(refreshTimerRef.current)
+            refreshTimerRef.current = null
+          }
+          setIsRefreshing(false)
+        }}
+        onRefresherAbort={() => {
+          if (refreshTimerRef.current) {
+            clearTimeout(refreshTimerRef.current)
+            refreshTimerRef.current = null
+          }
+          setIsRefreshing(false)
+        }}
+        refresherBackground='#000000'
+        refresherDefaultStyle='white'
+        showScrollbar={false}
+        className='list-scroll'
+        style={{ top: `${listTop}px`, height: `calc(100vh - ${listTop}px)` }}
+      >
+        {list.map((item) => (
           <View key={item.id} className='activity-card' onClick={() => handleGoDetail(item)}>
-            {/* 海报区域 */}
             <View className='poster-area'>
-              {item.image ? (
-                <Image src={item.image} mode='aspectFill' className='cover-img' />
-              ) : (
-                <View className='cover-placeholder' />
-              )}
-              {/* 左下角报名人数 */}
-              <View className='attendees-pill'>
-                <View className='avatars'>
-                  <View className='av' style={{ zIndex: 3 }} />
-                  <View className='av' style={{ zIndex: 2, left: '12px' }} />
-                </View>
-                <Text className='count-text'>
-                  <Text className='bold'>{item.attendees}</Text> 人报名
-                </Text>
+              {item.image ? <Image src={item.image} mode='aspectFill' className='cover-img' /> : <View className='cover-placeholder' />}
+              <View className='attendees-capsule'>
+                <Image className='run-icon' src={require('../../assets/icons/run.svg')} mode='aspectFit' />
+                <Text className='num-italic'>{item.attendees || 0}</Text>
               </View>
             </View>
 
-            {/* 信息区域 */}
             <View className='info-area'>
               <View className='title-row'>
                 <Text className='title'>{item.title}</Text>
@@ -249,25 +300,24 @@ export default function ActivityListPage() {
               </View>
 
               <View className='meta-row'>
-                <AtIcon value='clock' size='12' color='#666' />
-                <Text className='txt'>{item.time}</Text>
-                <Text className='txt split'>|</Text>
-                <Text className='txt'>{item.dynamicCount}条动态</Text>
-                <Text className='price'>¥{item.price}/人</Text>
+                <View className='meta-left'>
+                  <Image className='time-icon' src={require('../../assets/icons/time.svg')} mode='aspectFit' />
+                  <Text className='txt txt-first'>{item.time}</Text>
+                  <Text className='txt'>{item.dynamicCount}条动态</Text>
+                  <Text className='txt price'>¥{item.price}/人</Text>
+                </View>
                 <Text className='location'>{item.location}</Text>
               </View>
 
               <View className='action-row'>
                 <View className='user-box'>
                   <View className='avatar'>
-                    {item.userAvatar && (
-                      <Image src={item.userAvatar} mode='aspectFill' className='avatar-img' />
-                    )}
+                    {item.userAvatar && <Image src={item.userAvatar} mode='aspectFill' className='avatar-img' />}
                   </View>
                   <View className='user-text'>
                     <View className='name-line'>
                       <Text className='name'>{item.user}</Text>
-                      {item.isVerified && <AtIcon value='check-circle' size='10' color='#007AFF' />}
+                      {item.isVerified && <AtIcon value='check-circle' size='14' color='#3d8bff' />}
                     </View>
                     <Text className='fans'>{item.fans} 粉丝</Text>
                   </View>
@@ -276,22 +326,24 @@ export default function ActivityListPage() {
                 <View className='btn-group'>
                   <View
                     className={`btn outline ${item.isFollowed ? 'disabled' : ''}`}
-                    onClick={e => {
+                    onClick={(e) => {
                       e.stopPropagation()
                       toggleFollow(item.id)
                     }}
                   >
                     {item.isFollowed ? '已关注' : '关注'}
                   </View>
-                  <View
-                    className={`btn outline ${item.isSubscribed ? 'disabled' : ''}`}
-                    onClick={e => {
-                      e.stopPropagation()
-                      toggleSubscribe(item.id)
-                    }}
-                  >
-                    {item.isSubscribed ? '已订阅' : '订阅活动'}
-                  </View>
+                  {item.type !== '场地' && (
+                    <View
+                      className={`btn outline ${item.isSubscribed ? 'disabled' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleSubscribe(item.id)
+                      }}
+                    >
+                      {item.isSubscribed ? '已订阅' : '订阅活动'}
+                    </View>
+                  )}
                 </View>
               </View>
             </View>

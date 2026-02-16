@@ -133,6 +133,8 @@ export default function VenueProductDetail() {
         <Swiper
           className='hero-swiper'
           current={swiperIndex}
+          circular
+          skipHiddenItemLayout
           onChange={(e) => setSwiperIndex(e.detail.current)}
         >
           {galleryImages.map((img, index) => (

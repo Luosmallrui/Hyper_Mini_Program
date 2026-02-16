@@ -8,9 +8,14 @@ export interface MarkerType {
   id: number;
   latitude: number;
   longitude: number;
-  width: number;
-  height: number;
+  width: number | string;
+  height: number | string;
   iconPath: string;
+  zIndex?: number;
+  anchor?: {
+    x: number;
+    y: number;
+  };
   callout?: {
     content: string;
     color: string;
@@ -18,6 +23,10 @@ export interface MarkerType {
     bgColor: string;
     display: 'BYCLICK' | 'ALWAYS';
     textAlign: 'left' | 'right' | 'center';
+    anchorX: number;
+    anchorY: number;
+    borderWidth: number;
+    borderColor: string;
     padding?: number;
     borderRadius?: number;
   };
@@ -25,8 +34,14 @@ export interface MarkerType {
     content: string;
     color: string;
     fontSize: number;
-    x: number;
-    y: number;
+    anchorX: number;
+    anchorY: number;
+    borderWidth: number;
+    borderColor: string;
+    borderRadius: number;
+    bgColor: string;
+    padding: number;
+    textAlign: 'left' | 'right' | 'center';
   };
 }
 

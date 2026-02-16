@@ -6,14 +6,17 @@
 
 .activity-hero {
   position: relative;
-  background: #000 no-repeat center -60px / cover;
-  padding-bottom: 1040px;
+  background: #000 no-repeat center top / 100% auto;
+  padding-bottom: 980px;
   min-height: 100vh;
 }
 
 .activity-nav {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 120;
   width: 690px;
-  margin: 12px auto 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -41,17 +44,17 @@
 .activity-panel {
   position: absolute;
   left: 0;
-  top: 537px;
+  top: 430px;
   width: 750px;
   min-height: 1087px;
   background: linear-gradient(
     180deg,
     rgba(0, 0, 0, 0) 0px,
-    rgba(0, 0, 0, 0) 300px,
-    rgba(0, 0, 0, 0.8) 360px,
-    #000 420px
+    rgba(0, 0, 0, 0.4) 180px,
+    rgba(0, 0, 0, 0.86) 320px,
+    #000 430px
   );
-  padding: 30px 30px 180px;
+  padding: 34px 30px 190px;
   box-sizing: border-box;
 }
 
@@ -60,63 +63,87 @@
 }
 
 .title {
-  color: #f3f3f4;
-  font-size: 40px;
   font-weight: 600;
+  font-size: 40px;
+  color: #F3F3F4;
   line-height: 56px;
-  white-space: nowrap;
 }
 
 .time {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  column-gap: 6px;
+}
+
+.time-label,
+.time-value {
   color: #fff;
-  font-size: 20px;
-  line-height: 28px;
-  margin-top: 20px;
-  white-space: nowrap;
+  font-size: 22px;
+  line-height: 30px;
 }
 
 .location-row {
-  width: 309px;
+  width: 100%;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
-  margin-top: 20px;
+  margin-top: 12px;
+  min-height: 32px;
+  cursor: pointer;
 }
 
 .location-text {
   color: #fff;
   font-size: 20px;
-  line-height: 28px;
-  white-space: nowrap;
+  line-height: 30px;
+  max-width: 650px;
+  display: flex;
+  align-items: center;
+  min-height: 30px;
 }
 
 .location-icon {
   width: 18px;
   height: 18px;
+  margin-left: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-1px);
 }
 
 .price-row {
   display: flex;
   align-items: center;
-  margin-top: 40px;
+  margin-top: 32px;
 }
 
 .price-range {
   color: #fff;
+  font-weight: 400;
   font-size: 50px;
   line-height: 60px;
   white-space: nowrap;
+  font-style: italic;
 }
 
 .subscribe-pill,
 .share-pill {
+  width: 140px;
+  height: 50px;
   border-radius: 25px;
   border: 1px solid #747474;
-  padding: 10px 27px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .subscribe-pill {
-  margin-left: 131px;
+  margin-left: auto;
 }
 
 .share-pill {
@@ -127,14 +154,16 @@
 .share-text {
   color: #fff;
   font-size: 20px;
-  line-height: 28px;
+  line-height: 50px;
+  text-align: center;
 }
 
 .host-card {
   background-color: #161616;
   border-radius: 12px;
   width: 690px;
-  margin-top: 60px;
+  height: 108px;
+  margin-top: 44px;
   padding: 20px 20px 22px;
   display: flex;
   align-items: center;
@@ -176,34 +205,41 @@
 
 .host-follow {
   margin-left: auto;
+  width: 140px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   border-radius: 30px;
   border: 1px solid #555;
-  padding: 10px 37px 10px 38px;
 }
 
 .host-follow-text {
   color: #747474;
   font-size: 20px;
-  line-height: 28px;
+  line-height: 50px;
+  text-align: center;
 }
 
 .section-tabs {
   display: flex;
-  justify-content: space-between;
-  width: 407px;
-  margin-top: 60px;
+  align-items: center;
+  gap: 40px;
+  margin-top: 44px;
 }
 
 .tab-active {
-  color: #fff;
-  font-size: 26px;
   font-weight: 500;
+  font-size: 26px;
+  color: #FFFFFF;
   line-height: 37px;
 }
 
 .tab {
-  color: #b7b7b7;
+  font-weight: 400;
   font-size: 26px;
+  color: #FFFFFF;
   line-height: 37px;
 }
 
@@ -211,16 +247,62 @@
   width: 690px;
   color: #747474;
   font-size: 22px;
-  line-height: 40px;
-  margin-top: 40px;
+  line-height: 38px;
+}
+
+.section-swiper {
+  width: 690px;
+  min-height: 210px;
+  margin-top: 24px;
+}
+
+.section-pane {
+  width: 690px;
+  min-height: 210px;
+}
+
+.related-item {
+  height: 58px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.related-title {
+  color: #cfcfcf;
+  font-size: 22px;
+  line-height: 30px;
+  max-width: 520px;
+}
+
+.related-price {
+  color: #fff;
+  font-size: 22px;
+  line-height: 30px;
+}
+
+.dynamic-item {
+  display: block;
+  color: #888;
+  font-size: 22px;
+  line-height: 36px;
+  margin-bottom: 8px;
+}
+
+.empty-tip {
+  color: #707070;
+  font-size: 22px;
+  line-height: 32px;
 }
 
 .ticket-bar {
   position: fixed;
-  left: 35px;
-  right: 35px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 620px;
   bottom: calc(16px + env(safe-area-inset-bottom));
-  height: 94px;
+  height: 100px;
   border: none;
   background: transparent;
   padding: 0;
@@ -231,10 +313,10 @@
 
 .ticket-pill {
   align-self: center;
-  width: 100%;
-  height: 64px;
+  width: 620px;
+  height: 100px;
   background: #fff;
-  border-radius: 32px;
+  border-radius: 50px;
   margin: 0 auto;
   display: flex;
   justify-content: center;
