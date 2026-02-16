@@ -7,13 +7,26 @@ import 'taro-ui/dist/style/components/activity-indicator.scss'
 import { request } from '../../utils/request'
 import './index.scss'
 
+interface NoteCardExt {
+  card_type: 'note_forward'
+  note_id: string
+  note: {
+    author_avatar: string
+    author_id: number
+    author_nickname: string
+    cover: string
+    id: number
+    title: string
+  }
+}
+
 interface MessageItem {
   id: string
   sender_id: number
   content: string
   msg_type: number
   time: number
-  ext: any
+  ext: NoteCardExt | any
   is_self: boolean
   nickname?: string
   avatar?: string
@@ -595,18 +608,65 @@ export default function ChatPage() {
     Taro.navigateTo({ url: `/pages/user-sub/profile/index?userId=${peer_id}` })
   }
 
-  // 创建群聊暂缓，后续开启时再恢复
-  // const handleOpenGroupCreate = () => {
-  //   if (!peer_id || isGroupChat) return
-  //   const params = `peer_id=${peer_id}&peer_name=${encodeURIComponent(safeTitle)}&peer_avatar=${encodeURIComponent(peerAvatar || '')}`
-  //   Taro.navigateTo({ url: `/pages/chat/group-select/index?${params}` })
-  // }
-
   const handleOpenGroupMembers = () => {
     if (!peer_id || !isGroupChat) return
     Taro.navigateTo({
       url: `/pages/chat/group-members/index?group_id=${peer_id}&group_name=${encodeURIComponent(safeTitle)}`
     })
+  }
+
+  // 处理卡片点击
+  const handleCardClick = (msg: MessageItem) => {
+    if (msg.msg_type === 8 && msg.ext?.card_type === 'note_forward') {
+      const noteId = String(msg.ext.note_id || msg.ext.note?.id)
+      if (noteId) {
+        Taro.navigateTo({ url: `/pages/square-sub/post-detail/index?id=${noteId}` })
+      }
+    }
+  }
+
+  // 渲染消息内容
+  const renderMessageContent = (msg: MessageItem) => {
+    // 卡片消息 (msg_type: 8)
+    if (msg.msg_type === 8) {
+      // 帖子转发卡片
+      if (msg.ext?.card_type === 'note_forward' && msg.ext.note) {
+        const note = msg.ext.note
+        return (
+          <View className='card-bubble' onClick={() => handleCardClick(msg)}>
+            <View className='card-header'>
+              <Image src={note.author_avatar} className='card-author-avatar' mode='aspectFill' />
+              <Text className='card-author-name'>{note.author_nickname}</Text>
+            </View>
+            <View className='card-body'>
+              <View className='card-content'>
+                <Text className='card-title'>{note.title}</Text>
+                {msg.content && <Text className='card-desc'>{msg.content}</Text>}
+              </View>
+              {note.cover && (
+                <Image src={note.cover} className='card-cover' mode='aspectFill' />
+              )}
+            </View>
+            <View className='card-footer'>
+              <Text className='card-tag'>帖子</Text>
+            </View>
+          </View>
+        )
+      }
+      // 其他类型卡片可以在这里扩展
+      return (
+        <View className='bubble'>
+          <Text className='text'>[卡片消息]</Text>
+        </View>
+      )
+    }
+
+    // 普通文本消息 (msg_type: 1)
+    return (
+      <View className='bubble'>
+        <Text className='text'>{msg.content}</Text>
+      </View>
+    )
   }
 
   const safeDecode = (value?: string) => {
@@ -639,7 +699,6 @@ export default function ChatPage() {
             </View>
           )}
         </View>
-        {/* 创建群聊入口暂不开放 */}
         {isGroupChat && (
           <View className='nav-right' onClick={handleOpenGroupMembers}>
             <View className='nav-right-btn'>
@@ -695,7 +754,7 @@ export default function ChatPage() {
                   )}
                   <View className='bubble-group'>
                     {showName && <Text className='msg-name'>{msg.nickname}</Text>}
-                    <View className='bubble'><Text className='text'>{msg.content}</Text></View>
+                    {renderMessageContent(msg)}
                   </View>
                   {isSelf && (
                     <View className='avatar my-avatar'>

@@ -1,7 +1,7 @@
 import { View, Text, Image, Swiper, SwiperItem, ScrollView, Input } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
-import { AtIcon, AtActivityIndicator } from 'taro-ui'
+import { AtIcon, AtActivityIndicator, AtFloatLayout } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import 'taro-ui/dist/style/components/activity-indicator.scss'
 import 'taro-ui/dist/style/components/float-layout.scss'
@@ -44,6 +44,18 @@ interface ReplyTarget {
   id: string; root_id: string; parent_id: string; user: UserInfo;
 }
 
+interface SessionItem {
+  session_type: number;
+  peer_id: number;
+  last_msg: string;
+  last_msg_time: number;
+  unread: number;
+  is_top: number;
+  is_mute: number;
+  peer_avatar: string;
+  peer_name: string;
+}
+
 export default function PostDetailPage() {
   const router = useRouter()
   const { id } = router.params
@@ -65,7 +77,11 @@ export default function PostDetailPage() {
   const [inputFocus, setInputFocus] = useState(false)
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null)
 
-
+  // 分享功能相关状态
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [sessionList, setSessionList] = useState<SessionItem[]>([])
+  const [loadingSession, setLoadingSession] = useState(false)
+  const [shareMsg, setShareMsg] = useState('')
 
   useEffect(() => {
     const sysInfo = Taro.getWindowInfo()
@@ -86,7 +102,7 @@ export default function PostDetailPage() {
   const parseJSONWithBigInt = (jsonStr: string) => {
     if (typeof jsonStr !== 'string') return jsonStr
     try {
-      let fixedStr = jsonStr.replace(/"(id|user_id|note_id|root_id|parent_id|next_cursor|reply_to_user_id)":\s*(\d{16,})/g, '"$1": "$2"')
+      let fixedStr = jsonStr.replace(/"(id|user_id|note_id|root_id|parent_id|next_cursor|reply_to_user_id|peer_id)":\s*(\d{16,})/g, '"$1": "$2"')
       return JSON.parse(fixedStr)
     } catch (e) { return {} }
   }
@@ -105,8 +121,8 @@ export default function PostDetailPage() {
         const data = resBody.data
         let mediaList: NoteMedia[] = []
         if (data.media_data) {
-             if (Array.isArray(data.media_data)) mediaList = data.media_data
-             else if (typeof data.media_data === 'object') mediaList = [data.media_data]
+          if (Array.isArray(data.media_data)) mediaList = data.media_data
+          else if (typeof data.media_data === 'object') mediaList = [data.media_data]
         }
         setNote({ ...data, id: String(data.id), media_data: mediaList, topic_ids: data.topic_ids || [] })
       }
@@ -124,25 +140,25 @@ export default function PostDetailPage() {
       const cursor = isRefresh ? '0' : commentCursor
       const token = Taro.getStorageSync('access_token')
       const res = await Taro.request({
-         url: `${BASE_URL}/api/v1/comments/list/${noteId}`,
-         method: 'GET',
-         data: { cursor, page_size: 20 },
-         header: { 'Authorization': `Bearer ${token}` },
-         dataType: 'string', responseType: 'text'
+        url: `${BASE_URL}/api/v1/comments/list/${noteId}`,
+        method: 'GET',
+        data: { cursor, page_size: 20 },
+        header: { 'Authorization': `Bearer ${token}` },
+        dataType: 'string', responseType: 'text'
       })
       const resBody = parseJSONWithBigInt(res.data as string)
       if (resBody.code === 200 && resBody.data) {
-          const { comments, next_cursor, has_more } = resBody.data
-          const newComments = (comments || []).map((item: CommentItem) => ({
-              ...item,
-              reply_has_more: item.reply_count > (item.latest_replies?.length || 0),
-              reply_cursor: '0',
-              reply_loading: false
-          }))
-          if (isRefresh) setCommentList(newComments)
-          else setCommentList(prev => [...prev, ...newComments])
-          setCommentCursor(String(next_cursor))
-          setHasMoreComments(has_more)
+        const { comments, next_cursor, has_more } = resBody.data
+        const newComments = (comments || []).map((item: CommentItem) => ({
+          ...item,
+          reply_has_more: item.reply_count > (item.latest_replies?.length || 0),
+          reply_cursor: '0',
+          reply_loading: false
+        }))
+        if (isRefresh) setCommentList(newComments)
+        else setCommentList(prev => [...prev, ...newComments])
+        setCommentCursor(String(next_cursor))
+        setHasMoreComments(has_more)
       }
     } catch (e) {
       console.error('获取评论失败', e)
@@ -157,97 +173,96 @@ export default function PostDetailPage() {
     const comment = commentList[commentIndex]
     if (!isRefresh && !comment.reply_has_more) return
 
-    // Set local loading
     setCommentList(prev => {
-        const newList = [...prev]
-        newList[commentIndex] = { ...newList[commentIndex], reply_loading: true }
-        return newList
+      const newList = [...prev]
+      newList[commentIndex] = { ...newList[commentIndex], reply_loading: true }
+      return newList
     })
 
     try {
       const cursor = isRefresh ? '0' : comment.reply_cursor || '0'
       const token = Taro.getStorageSync('access_token')
       const res = await Taro.request({
-         url: `${BASE_URL}/api/v1/comments/replies/${rootId}`,
-         method: 'GET',
-         data: { cursor, page_size: 10 },
-         header: { 'Authorization': `Bearer ${token}` },
-         dataType: 'string', responseType: 'text'
+        url: `${BASE_URL}/api/v1/comments/replies/${rootId}`,
+        method: 'GET',
+        data: { cursor, page_size: 10 },
+        header: { 'Authorization': `Bearer ${token}` },
+        dataType: 'string', responseType: 'text'
       })
       const resBody = parseJSONWithBigInt(res.data as string)
       if (resBody.code === 200 && resBody.data) {
-          const { replies, next_cursor, has_more } = resBody.data
-          const newReplies = replies || []
-          setCommentList(prev => {
-              const newList = [...prev]
-              const target = newList[commentIndex]
-              // De-duplicate replies by id.
-              const existingIds = new Set(target.latest_replies.map(r => r.id))
-              const uniqueNewReplies = newReplies.filter((r: ReplyItem) => !existingIds.has(r.id))
+        const { replies, next_cursor, has_more } = resBody.data
+        const newReplies = replies || []
+        setCommentList(prev => {
+          const newList = [...prev]
+          const target = newList[commentIndex]
+          const existingIds = new Set(target.latest_replies.map(r => r.id))
+          const uniqueNewReplies = newReplies.filter((r: ReplyItem) => !existingIds.has(r.id))
 
-              newList[commentIndex] = {
-                  ...target,
-                  latest_replies: isRefresh ? newReplies : [...target.latest_replies, ...uniqueNewReplies],
-                  reply_cursor: String(next_cursor),
-                  reply_has_more: has_more,
-                  reply_loading: false
-              }
-              return newList
-          })
+          newList[commentIndex] = {
+            ...target,
+            latest_replies: isRefresh ? newReplies : [...target.latest_replies, ...uniqueNewReplies],
+            reply_cursor: String(next_cursor),
+            reply_has_more: has_more,
+            reply_loading: false
+          }
+          return newList
+        })
       } else {
-          setCommentList(prev => {
-             const newList = [...prev]
-             newList[commentIndex] = { ...newList[commentIndex], reply_loading: false }
-             return newList
-          })
+        setCommentList(prev => {
+          const newList = [...prev]
+          newList[commentIndex] = { ...newList[commentIndex], reply_loading: false }
+          return newList
+        })
       }
     } catch(e) {
-        setCommentList(prev => {
-            const newList = [...prev]
-            newList[commentIndex] = { ...newList[commentIndex], reply_loading: false }
-            return newList
-        })
+      setCommentList(prev => {
+        const newList = [...prev]
+        newList[commentIndex] = { ...newList[commentIndex], reply_loading: false }
+        return newList
+      })
     }
   }
+
   const onClickReply = (type: 'note'|'comment'|'reply', item: any, rootId: string = '0') => {
-      setReplyTarget({
-          type,
-          id: item.id,
-          root_id: rootId,
-          parent_id: type === 'note' ? '0' : item.id,
-          user: type === 'note' ? { nickname: note?.nickname || '' } as any : item.user
-      })
-      setInputFocus(true)
+    setReplyTarget({
+      type,
+      id: item.id,
+      root_id: rootId,
+      parent_id: type === 'note' ? '0' : item.id,
+      user: type === 'note' ? { nickname: note?.nickname || '' } as any : item.user
+    })
+    setInputFocus(true)
   }
 
   const handleSend = async () => {
-      if (!inputText.trim()) { Taro.showToast({ title: '说点什么吧', icon: 'none' }); return }
-      if (!note) return
-      Taro.showLoading({ title: '发送中' })
-      try {
-          const target = replyTarget || { type: 'note', id: note.id, root_id: '0', parent_id: '0', user: null }
-          const payload = {
-              note_id: note.id, content: inputText, root_id: target.root_id, parent_id: target.parent_id,
-              reply_to_user_id: target.user ? target.user.user_id : '0'
-          }
-          const res = await request({ url: '/api/v1/comments/create', method: 'POST', data: payload })
-          Taro.hideLoading()
-          const resData: any = res.data
-          if (resData && resData.code === 200) {
-              Taro.showToast({ title: '评论成功', icon: 'success' })
-              setInputText('')
-              setInputFocus(false)
-              setReplyTarget(null)
-              if (target.root_id === '0') fetchComments(note.id, true)
-              else fetchReplies(target.root_id, true)
-          } else {
-              Taro.showToast({ title: resData?.msg || '失败', icon: 'none' })
-          }
-      } catch (e) {
-          Taro.hideLoading()
-          console.error('发送评论失败', e)
-          Taro.showToast({ title: '失败', icon: 'none' })
+    if (!inputText.trim()) { Taro.showToast({ title: '说点什么吧', icon: 'none' }); return }
+    if (!note) return
+    Taro.showLoading({ title: '发送中' })
+    try {
+      const target = replyTarget || { type: 'note', id: note.id, root_id: '0', parent_id: '0', user: null }
+      const payload = {
+        note_id: note.id, content: inputText, root_id: target.root_id, parent_id: target.parent_id,
+        reply_to_user_id: target.user ? target.user.user_id : '0'
       }
+      const res = await request({ url: '/api/v1/comments/create', method: 'POST', data: payload })
+      Taro.hideLoading()
+      const resData: any = res.data
+      if (resData && resData.code === 200) {
+        Taro.showToast({ title: '评论成功', icon: 'success' })
+        setInputText('')
+        setInputFocus(false)
+        setReplyTarget(null)
+        if (target.root_id === '0') fetchComments(note.id, true)
+        else fetchReplies(target.root_id, true)
+      } else {
+        Taro.showToast({ title: resData?.msg || '失败', icon: 'none' })
+      }
+    } catch (e) {
+      Taro.hideLoading()
+      console.error('发送评论失败', e)
+      Taro.showToast({ title: '失败', icon: 'none' })
+    }
   }
 
   const handleLikeItem = async (
@@ -271,13 +286,13 @@ export default function PostDetailPage() {
         prev.map(c =>
           c.id === parentCommentId
             ? {
-                ...c,
-                latest_replies: c.latest_replies.map(r =>
-                  r.id === commentId
-                    ? { ...r, is_liked: !isLiked, like_count: isLiked ? r.like_count - 1 : r.like_count + 1 }
-                    : r
-                )
-              }
+              ...c,
+              latest_replies: c.latest_replies.map(r =>
+                r.id === commentId
+                  ? { ...r, is_liked: !isLiked, like_count: isLiked ? r.like_count - 1 : r.like_count + 1 }
+                  : r
+              )
+            }
             : c
         )
       )
@@ -300,51 +315,126 @@ export default function PostDetailPage() {
     setNote(prev => prev ? ({ ...prev, is_liked: newIsLiked, like_count: newLikeCount }) : null)
 
     try {
-        const method = newIsLiked ? 'POST' : 'DELETE'
-        await request({ url: `/api/v1/note/${note.id}/like`, method: method })
+      const method = newIsLiked ? 'POST' : 'DELETE'
+      await request({ url: `/api/v1/note/${note.id}/like`, method: method })
     } catch (e) {
-        setNote(prev => prev ? ({ ...prev, is_liked: oldIsLiked, like_count: oldLikeCount }) : null)
+      setNote(prev => prev ? ({ ...prev, is_liked: oldIsLiked, like_count: oldLikeCount }) : null)
     }
   }
 
   const formatTime = (timeStr: string) => {
-      if (!timeStr) return ''
-      const date = new Date(timeStr)
-      return `${date.getMonth()+1}-${date.getDate()}`
+    if (!timeStr) return ''
+    const date = new Date(timeStr)
+    return `${date.getMonth()+1}-${date.getDate()}`
   }
 
   const handlePreviewImage = (url) => {
-      Taro.previewImage({ current: url, urls: note?.media_data.map(m=>m.url)||[] })
+    Taro.previewImage({ current: url, urls: note?.media_data.map(m=>m.url)||[] })
   }
 
   const handleOpenUserProfile = (e) => {
-      e?.stopPropagation?.()
-      if (!note?.user_id) return
-      Taro.navigateTo({ url: `/pages/user-sub/profile/index?userId=${note.user_id}` })
+    e?.stopPropagation?.()
+    if (!note?.user_id) return
+    Taro.navigateTo({ url: `/pages/user-sub/profile/index?userId=${note.user_id}` })
   }
 
   const handleToggleFollow = async (e) => {
-      e?.stopPropagation?.()
-      if (!note) return
+    e?.stopPropagation?.()
+    if (!note) return
 
-      const nextFollowed = !note.is_followed
-      const action = nextFollowed ? 'follow' : 'unfollow'
+    const nextFollowed = !note.is_followed
+    const action = nextFollowed ? 'follow' : 'unfollow'
 
-      setNote(prev => prev ? ({ ...prev, is_followed: nextFollowed }) : prev)
+    setNote(prev => prev ? ({ ...prev, is_followed: nextFollowed }) : prev)
 
-      try {
-          const res = await request({
-              url: `/api/v1/follow/${action}`,
-              method: 'POST',
-              data: { user_id: String(note.user_id) }
-          })
-          const resData: any = res.data
-          if (!resData || resData.code !== 200) throw new Error(resData?.msg || '操作失败')
-          Taro.showToast({ title: nextFollowed ? '已关注' : '已取消关注', icon: 'success' })
-      } catch (err) {
-          setNote(prev => prev ? ({ ...prev, is_followed: !nextFollowed }) : prev)
-          Taro.showToast({ title: '操作失败', icon: 'none' })
+    try {
+      const res = await request({
+        url: `/api/v1/follow/${action}`,
+        method: 'POST',
+        data: { user_id: String(note.user_id) }
+      })
+      const resData: any = res.data
+      if (!resData || resData.code !== 200) throw new Error(resData?.msg || '操作失败')
+      Taro.showToast({ title: nextFollowed ? '已关注' : '已取消关注', icon: 'success' })
+    } catch (err) {
+      setNote(prev => prev ? ({ ...prev, is_followed: !nextFollowed }) : prev)
+      Taro.showToast({ title: '操作失败', icon: 'none' })
+    }
+  }
+
+  // 获取会话列表
+  const fetchSessionList = async () => {
+    setLoadingSession(true)
+    try {
+      const res = await request({
+        url: '/api/v1/session/',
+        method: 'GET'
+      })
+
+      let resData: any = res.data
+      if (typeof resData === 'string') {
+        try { resData = parseJSONWithBigInt(resData) } catch (e) {}
       }
+
+      if (resData && resData.code === 200 && resData.data) {
+        setSessionList(resData.data.list || [])
+      }
+    } catch (e) {
+      console.error('获取会话列表失败', e)
+      Taro.showToast({ title: '获取会话列表失败', icon: 'none' })
+    } finally {
+      setLoadingSession(false)
+    }
+  }
+
+  // 打开分享弹窗
+  const handleOpenShare = () => {
+    setShowShareModal(true)
+    setShareMsg('')
+    fetchSessionList()
+  }
+
+  // 分享到指定会话
+  const handleShareToSession = async (session: SessionItem) => {
+    if (!note) return
+
+    Taro.showLoading({ title: '分享中...' })
+
+    try {
+      const res = await request({
+        url: '/api/v1/message/send',
+        method: 'POST',
+        data: {
+          target_id: String(session.peer_id),
+          session_type: session.session_type,
+          msg_type: 8,
+          content: shareMsg || `分享帖子：${note.title}`,
+          ext: {
+            card_type: 'note_forward',
+            note_id: note.id
+          }
+        }
+      })
+
+      Taro.hideLoading()
+
+      let resData: any = res.data
+      if (typeof resData === 'string') {
+        try { resData = JSON.parse(resData) } catch (e) {}
+      }
+
+      if (resData && resData.code === 200) {
+        Taro.showToast({ title: '分享成功', icon: 'success' })
+        setShowShareModal(false)
+        setShareMsg('')
+      } else {
+        Taro.showToast({ title: resData?.msg || '分享失败', icon: 'none' })
+      }
+    } catch (e) {
+      Taro.hideLoading()
+      console.error('分享失败', e)
+      Taro.showToast({ title: '分享失败', icon: 'none' })
+    }
   }
 
   if (loading) return <View className='post-detail-page loading-center'><AtActivityIndicator content='加载中...' color='#999' mode='center'/></View>
@@ -353,200 +443,252 @@ export default function PostDetailPage() {
   return (
     <View className='post-detail-page'>
       <View className='custom-nav' style={{ paddingTop: `${statusBarHeight}px`, height: `${navBarHeight}px`, paddingRight: `${navBarPaddingRight}px` }}>
-         <View className='left-area'>
-            <View className='back-btn' onClick={() => Taro.navigateBack()}>
-               <AtIcon value='chevron-left' size='24' color='#fff' />
-            </View>
-            <View className='user-mini' onClick={handleOpenUserProfile}>
-               <Image src={note.avatar} className='avatar' mode='aspectFill'/>
-               <Text className='name'>{note.nickname}</Text>
-            </View>
-         </View>
-         <View className='right-area'>
-            <View className={`follow-btn ${note.is_followed ? 'followed' : ''}`} onClick={handleToggleFollow}>
-              {note.is_followed ? '已关注' : '关注'}
-            </View>
+        <View className='left-area'>
+          <View className='back-btn' onClick={() => Taro.navigateBack()}>
+            <AtIcon value='chevron-left' size='24' color='#fff' />
+          </View>
+          <View className='user-mini' onClick={handleOpenUserProfile}>
+            <Image src={note.avatar} className='avatar' mode='aspectFill'/>
+            <Text className='name'>{note.nickname}</Text>
+          </View>
+        </View>
+        <View className='right-area'>
+          <View className={`follow-btn ${note.is_followed ? 'followed' : ''}`} onClick={handleToggleFollow}>
+            {note.is_followed ? '已关注' : '关注'}
+          </View>
+          <View onClick={handleOpenShare}>
             <AtIcon value='share' size='20' color='#fff' style={{marginLeft: '15px'}} />
-         </View>
+          </View>
+        </View>
       </View>
 
       <ScrollView scrollY className='detail-scroll'>
-         <Swiper
-           className='media-swiper'
-           style={{ height: '500px' }}
-           indicatorDots={note.media_data.length > 1}
-           indicatorColor='rgba(255,255,255,0.3)'
-           indicatorActiveColor='#FF2E4D'
-           onChange={(e) => setCurrentMedia(e.detail.current)}
-         >
-            {note.media_data.map((item, idx) => (
-               <SwiperItem key={idx}>
-                  <Image src={item.url} mode='aspectFill' className='media-img' onClick={() => handlePreviewImage(item.url)} />
-               </SwiperItem>
-            ))}
-         </Swiper>
+        <Swiper
+          className='media-swiper'
+          style={{ height: '500px' }}
+          indicatorDots={note.media_data.length > 1}
+          indicatorColor='rgba(255,255,255,0.3)'
+          indicatorActiveColor='#FF2E4D'
+          onChange={(e) => setCurrentMedia(e.detail.current)}
+        >
+          {note.media_data.map((item, idx) => (
+            <SwiperItem key={idx}>
+              <Image src={item.url} mode='aspectFill' className='media-img' onClick={() => handlePreviewImage(item.url)} />
+            </SwiperItem>
+          ))}
+        </Swiper>
 
-         <View className='content-body'>
-            <Text className='post-title'>{note.title}</Text>
-            <Text className='post-desc' selectable>{note.content}</Text>
-            {note.topic_ids && note.topic_ids.length > 0 && (<View className='tags'>{note.topic_ids.map(tid => <Text key={tid} className='tag'>#话题{tid}</Text>)}</View>)}
-            <View className='post-meta'>
-                <Text className='time'>{formatTime(note.created_at)}</Text>
-                {note.location && note.location.name && <Text className='loc'>{note.location.name}</Text>}
-            </View>
-         </View>
+        <View className='content-body'>
+          <Text className='post-title'>{note.title}</Text>
+          <Text className='post-desc' selectable>{note.content}</Text>
+          {note.topic_ids && note.topic_ids.length > 0 && (<View className='tags'>{note.topic_ids.map(tid => <Text key={tid} className='tag'>#话题{tid}</Text>)}</View>)}
+          <View className='post-meta'>
+            <Text className='time'>{formatTime(note.created_at)}</Text>
+            {note.location && note.location.name && <Text className='loc'>{note.location.name}</Text>}
+          </View>
+        </View>
 
-         <View className='divider' />
+        <View className='divider' />
 
-         {/* 评论区 */}
-         <View className='comment-section'>
-            <Text className='comment-count'>共{note.comment_count} 条评论</Text>
+        {/* 评论区 */}
+        <View className='comment-section'>
+          <Text className='comment-count'>共{note.comment_count} 条评论</Text>
 
-            {commentList.map(comment => (
-                <View key={comment.id} className='comment-item'>
-                    <Image src={comment.user.avatar} className='c-avatar' mode='aspectFill' />
-                    <View className='c-content'>
+          {commentList.map(comment => (
+            <View key={comment.id} className='comment-item'>
+              <Image src={comment.user.avatar} className='c-avatar' mode='aspectFill' />
+              <View className='c-content'>
 
-                        {/* Header: user + like */}
-                        <View className='c-header-row'>
-                            <Text className='c-user'>{comment.user.nickname}</Text>
-                            {String(comment.user_id) === String(note.user_id) && <Text className='author-tag'>作者</Text>}
+                <View className='c-header-row'>
+                  <Text className='c-user'>{comment.user.nickname}</Text>
+                  {String(comment.user_id) === String(note.user_id) && <Text className='author-tag'>作者</Text>}
 
-                            <View
-                              className='c-like-wrap'
-                              onClick={(e) => { e.stopPropagation(); handleLikeItem('comment', comment.id, comment.is_liked); }}
-                            >
-                                <AtIcon
-                                  value={comment.is_liked ? 'heart-2' : 'heart'}
-                                  size='12'
-                                  color={comment.is_liked ? '#FF2E4D' : '#666'}
-                                  className={comment.is_liked ? 'liked-anim' : ''}
-                                />
-                                {comment.like_count > 0 && <Text className='num'>{comment.like_count}</Text>}
-                            </View>
-                        </View>
-
-                        <Text className='c-text' onClick={() => onClickReply('comment', comment, comment.id)}>{comment.content}</Text>
-                        <View className='c-footer'>
-                            <Text className='c-time'>{formatTime(comment.created_at)} {comment.ip_location}</Text>
-                            <View className='c-action' onClick={(e) => { e.stopPropagation(); onClickReply('comment', comment, comment.id) }}><Text>回复</Text></View>
-                        </View>
-
-                        <View className='sub-reply-container'>
-                            {comment.latest_replies && comment.latest_replies.map(reply => (
-                                <View key={reply.id} className='sub-reply-item' onClick={(e) => { e.stopPropagation(); onClickReply('reply', reply, comment.id) }}>
-                                    <Image src={reply.user.avatar} className='sub-avatar' mode='aspectFill' />
-                                    <View className='sub-right'>
-
-                                        <View className='sub-header-row'>
-                                            <View className='sub-user-info'>
-                                                <Text className='sub-user'>{reply.user.nickname}</Text>
-                                                {String(reply.user.user_id) === String(note.user_id) && <Text className='author-tag mini'>作者</Text>}
-                                                {reply.reply_to_user && String(reply.reply_to_user.user_id) !== String(comment.user_id) && (
-                                                    <>
-                                                        <AtIcon value='chevron-right' size='10' color='#666' className='reply-arrow-icon'/>
-                                                        <Text className='sub-target-user'>{reply.reply_to_user.nickname}</Text>
-                                                    </>
-                                                )}
-                                            </View>
-
-                                            <View
-                                              className='sub-like-wrap'
-                                              onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    // Pass parentCommentId to update state.
-                                                    handleLikeItem('reply', reply.id, reply.is_liked, comment.id);
-                                                }}
-                                            >
-                                                <AtIcon
-                                                  value={reply.is_liked?'heart-2':'heart'}
-                                                  size='10'
-                                                  color={reply.is_liked?'#FF2E4D':'#666'}
-                                                  className={reply.is_liked ? 'liked-anim' : ''}
-                                                />
-                                                {reply.like_count > 0 && <Text className='num'>{reply.like_count}</Text>}
-                                            </View>
-                                        </View>
-
-                                        <Text className='sub-text'>{reply.content}</Text>
-                                        <View className='sub-footer-row'>
-                                            <Text className='sub-time'>{formatTime(reply.created_at)} {reply.ip_location}</Text>
-                                            <Text className='sub-reply-btn'>回复</Text>
-                                        </View>
-                                    </View>
-                                </View>
-                            ))}
-                            {comment.reply_has_more && (
-                                <View className='expand-more-btn' onClick={(e) => { e.stopPropagation(); fetchReplies(comment.id) }}>
-                                    {comment.reply_loading ? (
-                                        <AtActivityIndicator content='加载中...' color='#666' />
-                                    ) : (
-                                        <>
-                                            <Text className='line-bar'></Text>
-                                            <Text className='expand-text'>展开更多回复</Text>
-                                            <AtIcon value='chevron-down' size='12' color='#666' />
-                                        </>
-                                    )}
-                                </View>
-                            )}
-                        </View>
-                    </View>
+                  <View
+                    className='c-like-wrap'
+                    onClick={(e) => { e.stopPropagation(); handleLikeItem('comment', comment.id, comment.is_liked); }}
+                  >
+                    <AtIcon
+                      value={comment.is_liked ? 'heart-2' : 'heart'}
+                      size='12'
+                      color={comment.is_liked ? '#FF2E4D' : '#666'}
+                      className={comment.is_liked ? 'liked-anim' : ''}
+                    />
+                    {comment.like_count > 0 && <Text className='num'>{comment.like_count}</Text>}
+                  </View>
                 </View>
-            ))}
 
-            {!isCommentLoading && hasMoreComments && (
-              <View className='expand-more-btn' onClick={() => fetchComments(note.id)}>
-                <Text className='line-bar'></Text>
-                <Text className='expand-text'>展开更多评论</Text>
-                <AtIcon value='chevron-down' size='12' color='#666' />
+                <Text className='c-text' onClick={() => onClickReply('comment', comment, comment.id)}>{comment.content}</Text>
+                <View className='c-footer'>
+                  <Text className='c-time'>{formatTime(comment.created_at)} {comment.ip_location}</Text>
+                  <View className='c-action' onClick={(e) => { e.stopPropagation(); onClickReply('comment', comment, comment.id) }}><Text>回复</Text></View>
+                </View>
+
+                <View className='sub-reply-container'>
+                  {comment.latest_replies && comment.latest_replies.map(reply => (
+                    <View key={reply.id} className='sub-reply-item' onClick={(e) => { e.stopPropagation(); onClickReply('reply', reply, comment.id) }}>
+                      <Image src={reply.user.avatar} className='sub-avatar' mode='aspectFill' />
+                      <View className='sub-right'>
+
+                        <View className='sub-header-row'>
+                          <View className='sub-user-info'>
+                            <Text className='sub-user'>{reply.user.nickname}</Text>
+                            {String(reply.user.user_id) === String(note.user_id) && <Text className='author-tag mini'>作者</Text>}
+                            {reply.reply_to_user && String(reply.reply_to_user.user_id) !== String(comment.user_id) && (
+                              <>
+                                <AtIcon value='chevron-right' size='10' color='#666' className='reply-arrow-icon'/>
+                                <Text className='sub-target-user'>{reply.reply_to_user.nickname}</Text>
+                              </>
+                            )}
+                          </View>
+
+                          <View
+                            className='sub-like-wrap'
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleLikeItem('reply', reply.id, reply.is_liked, comment.id);
+                            }}
+                          >
+                            <AtIcon
+                              value={reply.is_liked?'heart-2':'heart'}
+                              size='10'
+                              color={reply.is_liked?'#FF2E4D':'#666'}
+                              className={reply.is_liked ? 'liked-anim' : ''}
+                            />
+                            {reply.like_count > 0 && <Text className='num'>{reply.like_count}</Text>}
+                          </View>
+                        </View>
+
+                        <Text className='sub-text'>{reply.content}</Text>
+                        <View className='sub-footer-row'>
+                          <Text className='sub-time'>{formatTime(reply.created_at)} {reply.ip_location}</Text>
+                          <Text className='sub-reply-btn'>回复</Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                  {comment.reply_has_more && (
+                    <View className='expand-more-btn' onClick={(e) => { e.stopPropagation(); fetchReplies(comment.id) }}>
+                      {comment.reply_loading ? (
+                        <AtActivityIndicator content='加载中...' color='#666' />
+                      ) : (
+                        <>
+                          <Text className='line-bar'></Text>
+                          <Text className='expand-text'>展开更多回复</Text>
+                          <AtIcon value='chevron-down' size='12' color='#666' />
+                        </>
+                      )}
+                    </View>
+                  )}
+                </View>
               </View>
-            )}
-            {isCommentLoading && <AtActivityIndicator content='加载中...' color='#666' />}
-            {!hasMoreComments && commentList.length > 0 && <View className='no-more'>- 没有更多评论了 -</View>}
-         </View>
+            </View>
+          ))}
 
-         <View style={{height: '120px'}} />
+          {!isCommentLoading && hasMoreComments && (
+            <View className='expand-more-btn' onClick={() => fetchComments(note.id)}>
+              <Text className='line-bar'></Text>
+              <Text className='expand-text'>展开更多评论</Text>
+              <AtIcon value='chevron-down' size='12' color='#666' />
+            </View>
+          )}
+          {isCommentLoading && <AtActivityIndicator content='加载中...' color='#666' />}
+          {!hasMoreComments && commentList.length > 0 && <View className='no-more'>- 没有更多评论了 -</View>}
+        </View>
+
+        <View style={{height: '120px'}} />
       </ScrollView>
 
       {/* 底部 */}
       <View className='bottom-bar'>
-         <View className='input-box' onClick={() => onClickReply('note', {id: note.id})}>
-            <AtIcon value='edit' size='14' color='#999' style={{marginRight: '8px'}}/>
-            <Text className='placeholder'>说点好听的...</Text>
-         </View>
-         <View className='icons'>
-            <View className='icon-item' onClick={handleToggleLike}>
-                <AtIcon value={note.is_liked ? 'heart-2' : 'heart'} size='24' color={note.is_liked ? '#FF2E4D' : '#fff'} className={note.is_liked ? 'liked-anim' : ''} />
-                <Text className='num'>{note.like_count}</Text>
-            </View>
-            <View className='icon-item'>
-                <AtIcon value={note.is_collected ? 'star-2' : 'star'} size='24' color={note.is_collected ? '#FFCC00' : '#fff'} className={note.is_collected ? 'liked-anim' : ''}/>
-                <Text className='num'>{note.coll_count}</Text>
-            </View>
-         </View>
+        <View className='input-box' onClick={() => onClickReply('note', {id: note.id})}>
+          <AtIcon value='edit' size='14' color='#999' style={{marginRight: '8px'}}/>
+          <Text className='placeholder'>说点好听的...</Text>
+        </View>
+        <View className='icons'>
+          <View className='icon-item' onClick={handleToggleLike}>
+            <AtIcon value={note.is_liked ? 'heart-2' : 'heart'} size='24' color={note.is_liked ? '#FF2E4D' : '#fff'} className={note.is_liked ? 'liked-anim' : ''} />
+            <Text className='num'>{note.like_count}</Text>
+          </View>
+          <View className='icon-item'>
+            <AtIcon value={note.is_collected ? 'star-2' : 'star'} size='24' color={note.is_collected ? '#FFCC00' : '#fff'} className={note.is_collected ? 'liked-anim' : ''}/>
+            <Text className='num'>{note.coll_count}</Text>
+          </View>
+        </View>
       </View>
 
-         {/* 评论区 */}
+      {/* 评论输入框 */}
       {inputFocus && (
-          <View className='comment-input-mask' onClick={() => setInputFocus(false)}>
-              <View className='real-input-bar' onClick={e => e.stopPropagation()}>
-                  <Input
-                    className='real-input'
-                    placeholder={replyTarget ? `回复 ${replyTarget.user.nickname}` : '说点什么...'}
-                    focus={inputFocus}
-                    value={inputText}
-                    onInput={e => setInputText(e.detail.value)}
-                    cursorSpacing={20}
-                    confirmType='send'
-                    onConfirm={handleSend}
-                    holdKeyboard
-                  />
-                  <View className='send-btn' onClick={handleSend}>发送</View>
-              </View>
+        <View className='comment-input-mask' onClick={() => setInputFocus(false)}>
+          <View className='real-input-bar' onClick={e => e.stopPropagation()}>
+            <Input
+              className='real-input'
+              placeholder={replyTarget ? `回复 ${replyTarget.user.nickname}` : '说点什么...'}
+              focus={inputFocus}
+              value={inputText}
+              onInput={e => setInputText(e.detail.value)}
+              cursorSpacing={20}
+              confirmType='send'
+              onConfirm={handleSend}
+              holdKeyboard
+            />
+            <View className='send-btn' onClick={handleSend}>发送</View>
           </View>
+        </View>
       )}
+
+      {/* 分享弹窗 */}
+      <AtFloatLayout
+        isOpened={showShareModal}
+        title='分享到'
+        onClose={() => setShowShareModal(false)}
+      >
+        <View className='share-modal'>
+          <View className='share-input-box'>
+            <Input
+              className='share-input'
+              placeholder='说点什么...(可选)'
+              value={shareMsg}
+              onInput={e => setShareMsg(e.detail.value)}
+              maxlength={100}
+            />
+          </View>
+
+          <ScrollView scrollY className='session-list'>
+            {loadingSession && (
+              <View className='loading-wrap'>
+                <AtActivityIndicator content='加载中...' color='#999' />
+              </View>
+            )}
+
+            {!loadingSession && sessionList.length === 0 && (
+              <View className='empty-wrap'>
+                <Text className='empty-text'>暂无会话</Text>
+              </View>
+            )}
+
+            {!loadingSession && sessionList.map(session => (
+              <View
+                key={`${session.session_type}_${session.peer_id}`}
+                className='session-item'
+                onClick={() => handleShareToSession(session)}
+              >
+                <Image
+                  src={session.peer_avatar ? decodeURIComponent(session.peer_avatar) : ''}
+                  className='session-avatar'
+                  mode='aspectFill'
+                />
+                <View className='session-info'>
+                  <Text className='session-name'>{session.peer_name || '未命名'}</Text>
+                  <Text className='session-type'>
+                    {session.session_type === 2 ? '群聊' : '私聊'}
+                  </Text>
+                </View>
+                <AtIcon value='chevron-right' size='20' color='#999' />
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </AtFloatLayout>
     </View>
   )
 }
-
-

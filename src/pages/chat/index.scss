@@ -325,3 +325,128 @@
 .send-btn.active {
   background-color: #5691ff;
 }
+
+/* 卡片气泡样式 */
+.card-bubble {
+  max-width: 540px;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  padding: 24px 24px 16px;
+  gap: 16px;
+}
+
+.card-author-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.card-author-name {
+  font-size: 28px;
+  font-weight: 500;
+  color: #333;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-body {
+  display: flex;
+  padding: 0 24px 16px;
+  gap: 20px;
+}
+
+.card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-title {
+  font-size: 30px;
+  font-weight: 500;
+  color: #333;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 8px;
+}
+
+.card-desc {
+  font-size: 26px;
+  color: #999;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-cover {
+  width: 160px;
+  height: 160px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.card-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-tag {
+  font-size: 24px;
+  color: #999;
+  padding: 8px 16px;
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+///* 自己发送的卡片样式调整 */
+//.msg-right .card-bubble {
+//  background: #95ec69;
+//}
+
+.msg-right .card-footer {
+  border-top-color: rgba(0, 0, 0, 0.05);
+}
+
+/* 确保卡片在气泡组中正确显示 */
+.bubble-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 540px;
+}
+
+/* 普通气泡保持原有样式 */
+.bubble {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 540px;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+.bubble .text {
+  font-size: 30px;
+  line-height: 1.5;
+  color: #333;
+}

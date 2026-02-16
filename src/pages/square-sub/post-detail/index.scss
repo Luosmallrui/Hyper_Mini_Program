@@ -20,7 +20,7 @@ page {
   background-color: #000;
   display: flex;
   flex-direction: column;
-  
+
   &.loading-center {
       align-items: center;
       justify-content: center;
@@ -49,13 +49,13 @@ page {
         display: flex; align-items: center; gap: 8px;
         overflow: hidden;
 
-        .avatar { 
-            width: 32px; height: 32px; 
-            border-radius: 50%; background: #333; 
-            border: 1px solid rgba(255,255,255,0.8); 
+        .avatar {
+            width: 32px; height: 32px;
+            border-radius: 50%; background: #333;
+            border: 1px solid rgba(255,255,255,0.8);
             flex-shrink: 0;
         }
-        .name { 
+        .name {
             font-size: 28rpx; font-weight: bold; color: #fff;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
@@ -74,7 +74,7 @@ page {
         color: #FF2E4D;
         font-weight: bold;
         background: rgba(0,0,0,0.3);
-        
+
         &.followed {
             border: 1px solid rgba(255,255,255,0.4);
             color: #ccc;
@@ -91,54 +91,54 @@ page {
 /* 3. 媒体轮播 */
 .media-swiper {
   width: 100%;
-  height: 500px; 
+  height: 500px;
   background: #111;
-  
-  .media-img { 
-      width: 100%; 
-      height: 100%; 
-      display: block; 
+
+  .media-img {
+      width: 100%;
+      height: 100%;
+      display: block;
   }
 }
 
 /* 4. 文本内容区 */
 .content-body {
   padding: 20px;
-  
-  .post-title { 
-      font-size: 36rpx; 
-      font-weight: bold; 
-      margin-bottom: 16px; 
+
+  .post-title {
+      font-size: 36rpx;
+      font-weight: bold;
+      margin-bottom: 16px;
       display: block;
       color: #fff;
       line-height: 1.4;
   }
-  
-  .post-desc { 
-      font-size: 30rpx; 
-      line-height: 1.6; 
-      color: #ddd; 
-      margin-bottom: 16px; 
+
+  .post-desc {
+      font-size: 30rpx;
+      line-height: 1.6;
+      color: #ddd;
+      margin-bottom: 16px;
       display: block;
-      white-space: pre-wrap; 
+      white-space: pre-wrap;
   }
-  
-  .tags { 
+
+  .tags {
      display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;
      .tag { color: #1E80FF; font-size: 30rpx; }
   }
-  
+
   .post-meta {
       display: flex;
-      font-size: 24rpx; 
+      font-size: 24rpx;
       color: #666;
       gap: 10px;
   }
 }
 
-.divider { 
-    height: 1px; 
-    background: #222; 
+.divider {
+    height: 1px;
+    background: #222;
     margin: 10px 20px;
 }
 
@@ -146,72 +146,72 @@ page {
 .comment-section {
    padding: 10px 20px;
    background-color: #000;
-   
-   .comment-count { 
-       font-size: 26rpx; 
-       color: #666; 
-       margin-bottom: 30px; 
+
+   .comment-count {
+       font-size: 26rpx;
+       color: #666;
+       margin-bottom: 30px;
        display: block;
    }
 
    /* 一级评论项 */
    .comment-item {
       display: flex; gap: 12px; margin-bottom: 30px;
-      
-      .c-avatar { 
-          width: 64rpx; height: 64rpx; 
-          border-radius: 50%; background: #444; 
+
+      .c-avatar {
+          width: 64rpx; height: 64rpx;
+          border-radius: 50%; background: #444;
           flex-shrink: 0;
       }
-      
+
       .c-content {
          flex: 1;
-         
+
          /* 一级评论头部：修改布局方式 */
-         .c-header-row { 
-            display: flex; 
-            align-items: center; 
+         .c-header-row {
+            display: flex;
+            align-items: center;
             /* 【修改点 1】移除 space-between，默认靠左排列 */
-            /* justify-content: space-between; */ 
+            /* justify-content: space-between; */
             margin-bottom: 4px;
-            
+
             /* 用户名 */
-            .c-user { 
-                color: #888; 
-                font-size: 24rpx; 
-                font-weight: bold; 
+            .c-user {
+                color: #888;
+                font-size: 24rpx;
+                font-weight: bold;
                 /* 【修改点 2】给右侧留点间距，防止紧贴作者标签 */
-                margin-right: 12rpx; 
+                margin-right: 12rpx;
             }
 
             /* 作者标签 */
-            .author-tag { 
-                background: #FF2E4D; 
-                color: #fff; 
-                font-size: 18rpx; 
-                padding: 0 6px; 
+            .author-tag {
+                background: #FF2E4D;
+                color: #fff;
+                font-size: 18rpx;
+                padding: 0 6px;
                 border-radius: 4px;
                 /* 防止标签被压缩 */
-                flex-shrink: 0; 
+                flex-shrink: 0;
             }
 
             /* 右侧点赞组件 */
             .c-like-wrap {
-                display: flex; 
-                align-items: center; 
+                display: flex;
+                align-items: center;
                 gap: 4px;
                 padding: 4px 0 4px 10px;
-                
+
                 /* 【修改点 3】关键：自动占据左侧剩余空间，从而把自己推到最右边 */
-                margin-left: auto; 
-                
+                margin-left: auto;
+
                 .num { font-size: 20rpx; color: #666; }
             }
          }
-         
+
          .c-text { font-size: 28rpx; line-height: 1.5; margin-bottom: 8px; display: block; color: #eee; }
-         
-         .c-footer { 
+
+         .c-footer {
              display: flex; align-items: center; gap: 16px;
              .c-time { font-size: 22rpx; color: #666;}
              .c-action { font-size: 24rpx; color: #fff; font-weight: 500;}
@@ -220,28 +220,28 @@ page {
          /* 二级回复容器 */
          .sub-reply-container {
              margin-top: 16rpx;
-             
+
              .sub-reply-item {
                  display: flex;
                  gap: 12rpx;
                  margin-bottom: 16rpx;
-                 
+
                  .sub-avatar {
-                     width: 40rpx; height: 40rpx; 
-                     border-radius: 50%; background: #555; 
+                     width: 40rpx; height: 40rpx;
+                     border-radius: 50%; background: #555;
                      flex-shrink: 0;
                  }
-                 
+
                  .sub-right {
                      flex: 1;
-                     
+
                      /* 二级评论头部：Flex 布局，两端对齐 */
                      .sub-header-row {
-                         display: flex; 
-                         align-items: center; 
+                         display: flex;
+                         align-items: center;
                          justify-content: space-between; /* 关键 */
                          margin-bottom: 2px;
-                         
+
                          .sub-user-info {
                              display: flex; align-items: center; gap: 8px;
                              .sub-user { font-size: 24rpx; color: #888; font-weight: bold; }
@@ -257,11 +257,11 @@ page {
                              .num { font-size: 18rpx; color: #666; }
                          }
                      }
-                     
+
                      .sub-text {
                          font-size: 26rpx; color: #ddd; line-height: 1.4; margin-bottom: 4px;
                      }
-                     
+
                      .sub-footer-row {
                          display: flex; align-items: center; gap: 12px;
                          .sub-time { font-size: 20rpx; color: #666; }
@@ -269,7 +269,7 @@ page {
                      }
                  }
              }
-             
+
              .expand-more-btn {
                  font-size: 24rpx; color: #409EFF;
                  display: flex; align-items: center; gap: 4px;
@@ -280,22 +280,22 @@ page {
          }
       }
    }
-   
+
    .load-more-btn {
        text-align: center; color: #409EFF; font-size: 26rpx; padding: 20rpx 0;
    }
-   
+
    /* 底部无更多提示：居中、轻盈 */
-   .no-more { 
-       text-align: center; 
-       color: #444; 
-       font-size: 22rpx; 
+   .no-more {
+       text-align: center;
+       color: #444;
+       font-size: 22rpx;
        padding: 40rpx 0;
        opacity: 0.6;
        display: flex;
        align-items: center;
        justify-content: center;
-       
+
        &::before, &::after {
            content: '';
            display: inline-block;
@@ -320,7 +320,7 @@ page {
    .input-box {
       flex: 1;
       height: 72rpx;
-      background: #1C1C1E; 
+      background: #1C1C1E;
       border-radius: 36rpx;
       display: flex; align-items: center; padding-left: 20px;
       margin-right: 20px;
@@ -342,7 +342,7 @@ page {
     position: fixed; top:0; left:0; right:0; bottom:0;
     z-index: 900; background: rgba(0,0,0,0.5);
     display: flex; flex-direction: column; justify-content: flex-end;
-    
+
     .real-input-bar {
         background: #1C1C1E;
         padding: 20rpx;
@@ -350,7 +350,7 @@ page {
         display: flex; align-items: center; gap: 20rpx;
         border-top-left-radius: 20rpx;
         border-top-right-radius: 20rpx;
-        
+
         .real-input {
             flex: 1; height: 72rpx; background: #2C2C2E; border-radius: 36rpx;
             padding: 0 24rpx; color: #fff; font-size: 28rpx;
@@ -372,4 +372,87 @@ page {
 /* 应用动画的类 */
 .liked-anim {
   animation: likeBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* 分享弹窗样式 */
+.share-modal {
+  min-height: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.share-input-box {
+  padding: 30px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.share-input {
+  width: 100%;
+  padding: 20px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  font-size: 28px;
+  color: #333;
+}
+
+.session-list {
+  flex: 1;
+  padding: 20px 0;
+}
+
+.loading-wrap,
+.empty-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 0;
+}
+
+.empty-text {
+  font-size: 28px;
+  color: #999;
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  padding: 30px;
+  border-bottom: 1px solid #f5f5f5;
+  transition: background-color 0.2s;
+}
+
+.session-item:active {
+  background-color: #f8f8f8;
+}
+
+.session-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  margin-right: 24px;
+  flex-shrink: 0;
+  background-color: #f0f0f0;
+}
+
+.session-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.session-name {
+  font-size: 30px;
+  font-weight: 500;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-type {
+  font-size: 24px;
+  color: #999;
 }
