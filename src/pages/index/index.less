@@ -12,6 +12,36 @@
   --tabbar-stack: calc(80px + 30px + env(safe-area-inset-bottom));
 }
 
+.active-marker-canvas {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 480px;
+  height: 486px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.inactive-marker-canvas {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 660px;
+  height: 456px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.avatar-marker-canvas {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 180px;
+  height: 180px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .map-bg {
   width: 100%;
   height: 100%;
@@ -19,7 +49,6 @@
   top: 0;
   left: 0;
   z-index: 1;
-  filter: grayscale(100%) invert(92%) contrast(110%);
 }
 
 .custom-header {
@@ -79,7 +108,7 @@
   right: 0;
   z-index: 45;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.45) 58%, rgba(0, 0, 0, 0) 100%);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.66) 56%, rgba(0, 0, 0, 0.12) 100%);
 }
 
 .filter-bar-unified {

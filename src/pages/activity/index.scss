@@ -470,32 +470,74 @@
 }
 
 .viewer-item {
-  margin-top: 16px;
+  margin-top: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.viewer-list {
+  margin-top: 8px;
+  max-height: 220px;
+}
+
+.viewer-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .viewer-name {
-  font-size: 22px;
-  color: #b7b7b7;
-  letter-spacing: 0.94px;
+  font-size: 24px;
+  color: #f1f1f1;
+  letter-spacing: 0.3px;
+  line-height: 34px;
+}
+
+.viewer-sub {
+  margin-top: 4px;
+  font-size: 20px;
+  color: #9a9a9a;
+  line-height: 28px;
 }
 
 .viewer-radio {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  border: 2px solid #fff;
+  border: 2px solid #818181;
+}
+
+.viewer-radio.active {
+  border-color: #fff;
+  background: radial-gradient(circle at center, #fff 0, #fff 9px, transparent 10px, transparent 100%);
+}
+
+.viewer-empty {
+  display: block;
+  margin-top: 14px;
+  font-size: 20px;
+  color: #8a8a8a;
+  line-height: 28px;
+}
+
+.viewer-selected-tip {
+  display: block;
+  margin-top: 14px;
+  font-size: 20px;
+  color: #b7b7b7;
+  line-height: 28px;
 }
 
 .viewer-add {
-  margin: 40px auto 0;
-  width: 216px;
+  margin: 28px auto 0;
+  width: 240px;
   text-align: center;
-  padding: 18px 0;
+  padding: 16px 0;
   border-radius: 33px;
-  background: #555;
+  background: #4e4e4e;
   color: #fff;
   font-size: 22px;
   letter-spacing: 0.94px;

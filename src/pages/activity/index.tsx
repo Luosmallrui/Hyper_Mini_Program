@@ -1,6 +1,6 @@
-﻿import { View, Text, Image, Swiper, SwiperItem } from '@tarojs/components'
+import { View, Text, Image, Swiper, SwiperItem, ScrollView } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import { request } from '@/utils/request'
@@ -48,6 +48,17 @@ interface TicketType {
   price: number
 }
 
+interface ViewerItem {
+  id: number
+  user_id: number
+  real_name: string
+  id_card: string
+  phone: string
+  type: number
+  created_at: string
+  updated_at: string
+}
+
 export default function ActivityPage() {
   const router = useRouter()
   const activityId = router.params?.id || ''
@@ -61,6 +72,13 @@ export default function ActivityPage() {
   const [ticketCount, setTicketCount] = useState(1)
   const [isPaying, setIsPaying] = useState(false)
   const [activeTab, setActiveTab] = useState(0)
+
+  const [viewerList, setViewerList] = useState<ViewerItem[]>([])
+  const [selectedViewerId, setSelectedViewerId] = useState<number | null>(null)
+  const [viewerLoading, setViewerLoading] = useState(false)
+  const [viewerError, setViewerError] = useState('')
+  const viewerInitLoadedRef = useRef(false)
+
   const fallbackMapCenter = { latitude: 30.657, longitude: 104.066 }
 
   useEffect(() => {
@@ -80,7 +98,7 @@ export default function ActivityPage() {
       try {
         const res = await request({
           url: `/api/v1/merchant/${activityId}`,
-          method: 'GET'
+          method: 'GET',
         })
         const detail = res?.data?.data || null
         setActivity(detail)
@@ -92,18 +110,53 @@ export default function ActivityPage() {
     fetchActivity()
   }, [activityId])
 
+  const fetchViewers = async (preferredViewerId?: number | null) => {
+    try {
+      setViewerLoading(true)
+      setViewerError('')
+      const res = await request({
+        url: '/api/v1/order/list-viewer',
+        method: 'GET',
+      })
+      const viewers: ViewerItem[] = Array.isArray(res?.data?.data?.viewers)
+        ? res.data.data.viewers
+        : []
+      setViewerList(viewers)
+
+      if (viewers.length === 0) {
+        setSelectedViewerId(null)
+        return
+      }
+
+      const candidate = preferredViewerId ?? selectedViewerId
+      const matched = typeof candidate === 'number' && viewers.some((v) => v.id === candidate)
+      setSelectedViewerId(matched ? candidate! : viewers[0].id)
+    } catch (error: any) {
+      console.error('viewer list load failed:', error)
+      setViewerError(error?.message || '观演人加载失败')
+    } finally {
+      setViewerLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (viewerInitLoadedRef.current) return
+    viewerInitLoadedRef.current = true
+    void fetchViewers()
+  }, [])
+
   const tickets = useMemo<TicketType[]>(() => {
     if (activity?.goods && activity.goods.length > 0) {
-      return activity.goods.map(item => ({
+      return activity.goods.map((item) => ({
         id: String(item.id),
         label: item.product_name,
-        price: Math.round(item.price / 100)
+        price: Math.round(item.price / 100),
       }))
     }
     return [
       { id: 'single', label: '单人票(赠啤酒1瓶)', price: 65 },
       { id: 'double', label: '双人票(赠啤酒2瓶)', price: 120 },
-      { id: 'vip', label: '畅饮票(酒水畅饮)', price: 150 }
+      { id: 'vip', label: '畅饮票(酒水畅饮)', price: 150 },
     ]
   }, [activity?.goods])
 
@@ -119,10 +172,19 @@ export default function ActivityPage() {
     return selectedTicket.price * ticketCount
   }, [selectedTicket, ticketCount])
 
+  const selectedViewer = useMemo(
+    () => viewerList.find((item) => item.id === selectedViewerId) || null,
+    [viewerList, selectedViewerId],
+  )
+
   const handlePay = async () => {
     if (isPaying) return
     if (!token) {
       Taro.showToast({ title: '请先登录', icon: 'none' })
+      return
+    }
+    if (viewerList.length === 0 || selectedViewerId === null) {
+      Taro.showToast({ title: '请先添加并选择观演人', icon: 'none' })
       return
     }
 
@@ -137,8 +199,8 @@ export default function ActivityPage() {
           amount: 1,
           product_id: selectedTicket?.id,
           description: '测试商品支付',
-          out_trade_no: 'test_order_20240124011'
-        }
+          out_trade_no: 'test_order_20240124011',
+        },
       })
 
       const payload = res.data
@@ -166,7 +228,7 @@ export default function ActivityPage() {
           } else {
             Taro.showModal({ title: '支付失败', content: err.errMsg, showCancel: false })
           }
-        }
+        },
       })
     } catch (error: any) {
       console.error('支付流程出错:', error)
@@ -203,18 +265,17 @@ export default function ActivityPage() {
           longitude,
           name: titleText,
           address: locationText,
-          scale: 17
+          scale: 17,
         })
         return
       }
 
-      // Fallback: still attempt to open map with known fields when coordinates are unavailable.
       await Taro.openLocation({
         latitude: fallbackMapCenter.latitude,
         longitude: fallbackMapCenter.longitude,
         name: titleText,
         address: locationText,
-        scale: 14
+        scale: 14,
       })
     } catch (error) {
       console.warn('openLocation failed:', error)
@@ -224,7 +285,7 @@ export default function ActivityPage() {
 
   const priceRange = useMemo(() => {
     if (activity?.goods && activity.goods.length > 0) {
-      const prices = activity.goods.map(item => Math.round(item.price / 100))
+      const prices = activity.goods.map((item) => Math.round(item.price / 100))
       const min = Math.min(...prices)
       const max = Math.max(...prices)
       if (min === max) return `${min}¥`
@@ -233,20 +294,32 @@ export default function ActivityPage() {
     if (activity?.avg_price) return `${Math.round(activity.avg_price / 100)}¥`
     return '65¥-128¥'
   }, [activity?.goods, activity?.avg_price])
+
   const tabItems = ['活动详情', '相关活动', '相关动态']
   const relatedActivities = (activity?.goods || []).slice(0, 3)
   const relatedDynamics = [
     '派对预热中，更多阵容与活动细节持续更新。',
     '关注主办方账号，第一时间接收开票与福利通知。',
-    '活动现场内容将于结束后发布到相关动态。'
+    '活动现场内容将于结束后发布到相关动态。',
   ]
+
+  const handleManageViewers = () => {
+    Taro.navigateTo({
+      url: `/pages/activity-attendee/index?mode=create&selectedViewerId=${selectedViewerId ?? ''}`,
+      success: (res) => {
+        res.eventChannel.on('VIEWER_CHANGED', (payload: { selectedViewerId: number | null }) => {
+          void fetchViewers(payload?.selectedViewerId)
+        })
+      },
+    })
+  }
 
   return (
     <View className='activity-page'>
       <View
         className='activity-hero'
         style={{
-          backgroundImage: `url(${heroImage || posterImage})`
+          backgroundImage: `url(${heroImage || posterImage})`,
         }}
       >
         <View
@@ -254,7 +327,7 @@ export default function ActivityPage() {
           style={{
             top: `${statusBarHeight}px`,
             height: `${navBarHeight}px`,
-            paddingRight: `${menuButtonWidth}px`
+            paddingRight: `${menuButtonWidth}px`,
           }}
         >
           <View className='nav-back' onClick={() => Taro.navigateBack()}>
@@ -321,8 +394,8 @@ export default function ActivityPage() {
             <SwiperItem>
               <View className='section-pane'>
                 <Text className='activity-desc'>
-                  想象一下，嘻哈最根源的韵律之力，接通了电子乐最前沿的高压电流，这就是 Power Flow。{"\n"}
-                  当这两种力量在同一轨道上交汇、加速、碰撞，便诞生了 Power Flow。它既不属于地下的昏暗，也不屈服于主流的浮华。{"\n"}
+                  想象一下，嘻哈最根源的韵律之力，接通了电子乐最前沿的高压电流，这就是 Power Flow。{'\n'}
+                  当这两种力量在同一轨道上交汇、加速、碰撞，便诞生了 Power Flow。它既不属于地下的昏暗，也不屈服于主流的浮华。{'\n'}
                   它站在电流与街头的交汇处，构建一个节奏更凶猛、旋律更迷幻、能量更密集的新现实。
                 </Text>
               </View>
@@ -344,7 +417,9 @@ export default function ActivityPage() {
             <SwiperItem>
               <View className='section-pane'>
                 {relatedDynamics.map((item) => (
-                  <Text key={item} className='dynamic-item'>{item}</Text>
+                  <Text key={item} className='dynamic-item'>
+                    {item}
+                  </Text>
                 ))}
               </View>
             </SwiperItem>
@@ -383,7 +458,7 @@ export default function ActivityPage() {
                 <Text className='section-sub'>（实名购票）</Text>
               </View>
               <View className='ticket-list'>
-                {tickets.map(ticket => (
+                {tickets.map((ticket) => (
                   <View
                     key={ticket.id}
                     className={`ticket-chip ${selectedTicket?.id === ticket.id ? 'active' : ''}`}
@@ -401,21 +476,45 @@ export default function ActivityPage() {
                 <Text className='section-sub'>（单人最多限购 6 张）</Text>
               </View>
               <View className='count-actions'>
-                <View className='count-btn' onClick={() => setTicketCount(Math.max(1, ticketCount - 1))}>-
+                <View className='count-btn' onClick={() => setTicketCount(Math.max(1, ticketCount - 1))}>
+                  -
                 </View>
                 <View className='count-value'>{ticketCount}</View>
-                <View className='count-btn' onClick={() => setTicketCount(ticketCount + 1)}>+
+                <View className='count-btn' onClick={() => setTicketCount(ticketCount + 1)}>
+                  +
                 </View>
               </View>
             </View>
 
             <View className='viewer-section'>
               <Text className='section-title'>观演人信息</Text>
-              <View className='viewer-item'>
-                <Text className='viewer-name'>陈 • 居 221***********2524</Text>
-                <View className='viewer-radio' />
-              </View>
-              <View className='viewer-add' onClick={() => Taro.navigateTo({ url: '/pages/activity-attendee/index' })}>
+              {viewerLoading ? (
+                <Text className='viewer-empty'>加载中...</Text>
+              ) : viewerList.length === 0 ? (
+                <Text className='viewer-empty'>{viewerError || '暂无观演人，请先新增'}</Text>
+              ) : (
+                <ScrollView scrollY className='viewer-list'>
+                  {viewerList.map((viewer) => (
+                    <View key={viewer.id} className='viewer-item' onClick={() => setSelectedViewerId(viewer.id)}>
+                      <View className='viewer-meta'>
+                        <Text className='viewer-name'>{viewer.real_name}</Text>
+                        <Text className='viewer-sub'>
+                          {viewer.id_card} {viewer.phone}
+                        </Text>
+                      </View>
+                      <View className={`viewer-radio ${selectedViewerId === viewer.id ? 'active' : ''}`} />
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+
+              {selectedViewer && (
+                <Text className='viewer-selected-tip'>
+                  当前已选：{selectedViewer.real_name} {selectedViewer.id_card}
+                </Text>
+              )}
+
+              <View className='viewer-add' onClick={handleManageViewers}>
                 新增观演人
               </View>
             </View>
@@ -425,7 +524,9 @@ export default function ActivityPage() {
                 <Text className='total-label'>合计 ¥{totalPrice}</Text>
                 <Text className='total-sub'>共 {ticketCount} 张</Text>
               </View>
-              <View className='pay-btn' onClick={handlePay}>立即支付</View>
+              <View className='pay-btn' onClick={handlePay}>
+                立即支付
+              </View>
             </View>
           </View>
         </View>
@@ -433,7 +534,3 @@ export default function ActivityPage() {
     </View>
   )
 }
-
-
-
-

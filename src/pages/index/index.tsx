@@ -1,16 +1,29 @@
-import { View, Text, Map, Swiper, SwiperItem, Image, ScrollView } from '@tarojs/components'
+import { View, Text, Map as TaroMap, Swiper, SwiperItem, Image, ScrollView, Canvas } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, useEffect, useRef } from 'react'
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import 'taro-ui/dist/style/components/slider.scss'
 import { request } from '@/utils/request'
+import CommonHeader from '@/components/CommonHeader'
+import { useNavBarMetrics } from '@/hooks/useNavBarMetrics'
 import { setTabBarIndex } from '../../store/tabbar'
+import mapPinFallbackIcon from '../../assets/icons/map-pin-fallback.png'
+import partyMarkerFallbackIcon from '../../assets/icons/marker-party-fallback.png'
+import venueMarkerFallbackIcon from '../../assets/icons/marker-venue-fallback.png'
+import mapPinIcon from '../../assets/icons/map-pin.svg'
+import {
+  AVATAR_MARKER_CANVAS_ID,
+  buildCircularAvatarMarker,
+} from './map-marker'
 import './index.less'
 
 const CATEGORIES = ['全部分类', '滑板', '派对', '汽车', '纹身', '体育运动', '活动', '露营', '酒吧/场地', '篮球']
 const AREA_LEVEL1 = [{ key: 'dist', name: '距离' }, { key: 'region', name: '行政区/商圈' }]
 const MAP_KEY = 'Y7YBZ-3UUEN-Z3KFC-SH4QG-LH5RT-IAB4S'
+const USER_LOCATION_MARKER_ID = 99900001
+const MARKER_INACTIVE_HEIGHT = 50
+const MARKER_ACTIVE_HEIGHT = 58
 const AREA_LEVEL2 = ['不限', '热门商圈', '高新区', '锦江区']
 const AREA_LEVEL3 = ['春熙路', '宽窄巷子', '兰桂坊', '铁像寺', 'SKP', '玉林', '望平街']
 const MORE_TAGS = ['积分立减', '买单立减', '新人优惠']
@@ -29,6 +42,7 @@ interface MerchantItem {
   avg_price: number
   current_count: number
   post_count: number
+  icon?: string
 }
 
 interface PartyItem {
@@ -45,6 +59,7 @@ interface PartyItem {
   attendees: number
   dynamicCount: number
   image: string
+  icon?: string
   rank?: string
   fans?: string
   isVerified?: boolean
@@ -53,6 +68,7 @@ interface PartyItem {
 export default function IndexPage() {
   const [current, setCurrent] = useState(0)
   const [markers, setMarkers] = useState<any[]>([])
+  const [userLocationMarker, setUserLocationMarker] = useState<any | null>(null)
   const [partyList, setPartyList] = useState<PartyItem[]>([])
   const isEmpty = partyList.length === 0
 
@@ -63,25 +79,35 @@ export default function IndexPage() {
   const [selectedRegion, setSelectedRegion] = useState('')
   const [selectedTags] = useState<string[]>([])
 
-  const [navBarHeight, setNavBarHeight] = useState(44)
-  const [statusBarHeight, setStatusBarHeight] = useState(20)
+  const { statusBarHeight, navBarHeight } = useNavBarMetrics()
   const [initialCenter, setInitialCenter] = useState({ lng: 104.066, lat: 30.657 })
   const mapCtx = useRef<any>(null)
+  const markerBuildTokenRef = useRef(0)
+  const markerIndexMapRef = useRef<Map<number, number>>(new Map())
+  const markerRatioCacheRef = useRef<Map<string, number>>(new Map())
 
   Taro.useDidShow(() => {
     setTabBarIndex(0)
     Taro.eventCenter.trigger('TAB_SWITCH_LOADING', false)
+    void refreshUserLocationMarker()
   })
 
   useEffect(() => {
-    const sysInfo = Taro.getWindowInfo()
-    const menuInfo = Taro.getMenuButtonBoundingClientRect()
-    const sbHeight = sysInfo.statusBarHeight || 20
-    setStatusBarHeight(sbHeight)
-    const calculatedNavHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
-    setNavBarHeight(Number.isNaN(calculatedNavHeight) ? 44 : calculatedNavHeight)
-
     mapCtx.current = Taro.createMapContext('myMap')
+  }, [])
+
+  useEffect(() => {
+    const onUserUpdate = () => {
+      void refreshUserLocationMarker()
+    }
+    Taro.eventCenter.on('USER_INFO_UPDATED', onUserUpdate)
+    return () => {
+      Taro.eventCenter.off('USER_INFO_UPDATED', onUserUpdate)
+    }
+  }, [])
+
+  useEffect(() => {
+    void refreshUserLocationMarker()
   }, [])
 
   useEffect(() => {
@@ -108,6 +134,7 @@ export default function IndexPage() {
                 user: item.username,
                 userAvatar: item.user_avatar,
                 image: item.cover_image,
+                icon: item.icon,
                 time: formattedTime,
                 price: typeof item.avg_price === 'number' ? (item.avg_price / 100).toFixed(0) : '0',
                 attendees: item.current_count,
@@ -123,9 +150,9 @@ export default function IndexPage() {
         if (mappedList.length > 0) {
           setCurrent(0)
           setInitialCenter({ lng: mappedList[0].lng, lat: mappedList[0].lat })
-          updateMarkers(mappedList, 0)
+          await updateMarkers(mappedList, 0)
         } else {
-          setMarkers([])
+          await updateMarkers([], 0)
         }
       } catch (error) {
         console.error('Party list load failed:', error)
@@ -135,27 +162,160 @@ export default function IndexPage() {
     fetchPartyList()
   }, [])
 
-  const updateMarkers = (list: PartyItem[], activeIndex: number) => {
-    const newMarkers = list.map((item, index) => ({
-      id: Number(item.id),
-      latitude: item.lat,
-      longitude: item.lng,
-      width: index === activeIndex ? 50 : 32,
-      height: index === activeIndex ? 50 : 32,
-      iconPath: require('../../assets/icons/map-pin.svg'),
-      zIndex: index === activeIndex ? 999 : 1,
-      callout: {
-        content: ` ${item.title} `,
-        display: index === activeIndex ? 'ALWAYS' : 'BYCLICK',
-        padding: 12,
-        borderRadius: 30,
-        bgColor: '#333333',
-        color: '#ffffff',
-        fontSize: 12,
-        textAlign: 'center',
-      },
-    }))
-    setMarkers(newMarkers)
+  const resolveMarkerFallback = (item: PartyItem) => {
+    if (item.type === '场地') return venueMarkerFallbackIcon
+    if (item.type === '派对') return partyMarkerFallbackIcon
+    return mapPinFallbackIcon
+  }
+
+  const resolveMarkerIconPath = (item: PartyItem) => {
+    const iconUrl = (item.icon || '').trim()
+    if (!iconUrl) return resolveMarkerFallback(item)
+    if (/\.svg(\?.*)?$/i.test(iconUrl)) return resolveMarkerFallback(item)
+    return iconUrl
+  }
+
+  const formatMarkerTitle = (title: string) => {
+    const safe = (title || '').trim()
+    if (!safe) return ''
+    if (safe.length <= 18) return safe
+    return `${safe.slice(0, 18)}...`
+  }
+
+  const resolveMarkerIconSize = async (
+    iconPath: string,
+    targetHeight: number,
+    ratioHint = 1,
+  ) => {
+    const safeHint = Number.isFinite(ratioHint) && ratioHint > 0 ? ratioHint : 1
+    const fallback = { width: Math.max(21, Math.round(targetHeight * safeHint)), height: targetHeight }
+    if (!iconPath) return fallback
+
+    const lower = iconPath.toLowerCase()
+    if (lower.includes('party.svg') || lower.includes('marker-party-fallback')) {
+      const partyRatio = 44 / 54
+      markerRatioCacheRef.current.set(iconPath, partyRatio)
+      return { width: Math.max(21, Math.round(targetHeight * partyRatio)), height: targetHeight }
+    }
+
+    const cachedRatio = markerRatioCacheRef.current.get(iconPath)
+    if (cachedRatio && Number.isFinite(cachedRatio)) {
+      return { width: Math.max(21, Math.round(targetHeight * cachedRatio)), height: targetHeight }
+    }
+    try {
+      const info = await Taro.getImageInfo({ src: iconPath })
+      const ratio = info?.width && info?.height ? info.width / info.height : safeHint
+      const safeRatio = Number.isFinite(ratio) && ratio > 0 ? ratio : safeHint
+      markerRatioCacheRef.current.set(iconPath, safeRatio)
+      return { width: Math.max(21, Math.round(targetHeight * safeRatio)), height: targetHeight }
+    } catch {
+      markerRatioCacheRef.current.set(iconPath, safeHint)
+      return fallback
+    }
+  }
+
+  const updateMarkers = async (list: PartyItem[], activeIndex: number) => {
+    const buildToken = ++markerBuildTokenRef.current
+    if (list.length === 0) {
+      markerIndexMapRef.current = new Map()
+      if (buildToken !== markerBuildTokenRef.current) return
+      setMarkers([])
+      return
+    }
+
+    const markerIndexMap = new Map<number, number>()
+    const markerAssets = await Promise.all(
+      list.map(async (item, index) => {
+        const markerId = Number(item.id)
+        markerIndexMap.set(markerId, index)
+        const isActive = index === activeIndex
+        const iconPath = resolveMarkerIconPath(item)
+        const ratioHint = item.type === '派对' ? 44 / 54 : 1
+        const iconSize = await resolveMarkerIconSize(
+          iconPath,
+          isActive ? MARKER_ACTIVE_HEIGHT : MARKER_INACTIVE_HEIGHT,
+          ratioHint,
+        )
+        return {
+          id: markerId,
+          latitude: item.lat,
+          longitude: item.lng,
+          width: iconSize.width,
+          height: iconSize.height,
+          iconPath,
+          zIndex: isActive ? 999 : 200,
+          anchor: { x: 0.5, y: 0.5 },
+          label: {
+            content: formatMarkerTitle(item.title),
+            color: '#ffffff',
+            fontSize: isActive ? 13 : 12,
+            anchorX: 0,
+            anchorY: 20,
+            borderWidth: 0,
+            borderColor: 'transparent',
+            borderRadius: 6,
+            bgColor: 'rgba(0,0,0,0.58)',
+            padding: 6,
+            textAlign: 'center',
+          },
+        }
+      }),
+    )
+
+    if (buildToken !== markerBuildTokenRef.current) return
+    markerIndexMapRef.current = markerIndexMap
+    setMarkers(markerAssets)
+  }
+
+  const getCachedUserAvatar = () => {
+    const cachedUser = Taro.getStorageSync('userInfo')
+    if (!cachedUser || typeof cachedUser !== 'object') return ''
+    return cachedUser.avatar_url || cachedUser.avatar || cachedUser.headimgurl || cachedUser.head_img || ''
+  }
+
+  const refreshUserLocationMarker = async (): Promise<{ latitude: number; longitude: number } | null> => {
+    let avatarUrl = getCachedUserAvatar()
+    if (!avatarUrl) {
+      const accessToken = Taro.getStorageSync('access_token')
+      if (accessToken) {
+        try {
+          const res = await request({ url: '/api/v1/user/info', method: 'GET' })
+          const latestUser = res?.data?.data?.user
+          if (latestUser) {
+            const normalizedUser = {
+              ...latestUser,
+              avatar_url: latestUser.avatar_url || latestUser.avatar || latestUser.headimgurl || latestUser.head_img || '',
+            }
+            Taro.setStorageSync('userInfo', normalizedUser)
+            avatarUrl = normalizedUser.avatar_url
+          }
+        } catch (error) {
+          console.warn('load latest user info for marker failed:', error)
+        }
+      }
+    }
+
+    try {
+      const location = await Taro.getLocation({ type: 'gcj02' })
+      const avatarIconPath = await buildCircularAvatarMarker(avatarUrl, mapPinFallbackIcon)
+      setUserLocationMarker({
+        id: USER_LOCATION_MARKER_ID,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        width: 60,
+        height: 60,
+        iconPath: avatarIconPath || mapPinFallbackIcon,
+        zIndex: 4000,
+        anchor: { x: 0.5, y: 0.5 },
+      })
+      return {
+        latitude: location.latitude,
+        longitude: location.longitude,
+      }
+    } catch (error) {
+      console.warn('refresh user location marker failed:', error)
+      return null
+    }
   }
 
   const handleSwiperChange = (e: any) => {
@@ -174,11 +334,47 @@ export default function IndexPage() {
         latitude: target.lat,
       })
     }
-    updateMarkers(partyList, index)
+    void updateMarkers(partyList, index)
   }
 
-  const handleLocate = () => {
-    if (mapCtx.current) mapCtx.current.moveToLocation()
+  const handleLocate = async () => {
+    const location = await refreshUserLocationMarker()
+    if (!location) {
+      Taro.showToast({
+        title: '定位失败，请开启定位权限',
+        icon: 'none',
+      })
+      return
+    }
+    setInitialCenter({
+      lng: location.longitude,
+      lat: location.latitude,
+    })
+
+    const ctx = mapCtx.current || Taro.createMapContext('myMap')
+    mapCtx.current = ctx
+    if (ctx) {
+      ctx.moveToLocation({
+        longitude: location.longitude,
+        latitude: location.latitude,
+      })
+    }
+  }
+
+  const handleMarkerTap = (e: any) => {
+    const markerId = Number(e?.detail?.markerId)
+    if (markerId === USER_LOCATION_MARKER_ID) return
+    const targetIndex = markerIndexMapRef.current.get(markerId)
+    if (typeof targetIndex !== 'number') return
+
+    setCurrent(targetIndex)
+    const target = partyList[targetIndex]
+    if (!target) return
+    mapCtx.current?.moveToLocation({
+      longitude: target.lng,
+      latitude: target.lat,
+    })
+    void updateMarkers(partyList, targetIndex)
   }
 
   const navigateTo = (path: string) => Taro.navigateTo({ url: path })
@@ -285,20 +481,21 @@ export default function IndexPage() {
 
   return (
     <View className='index-page-map'>
-      <Map
+      <TaroMap
         id='myMap'
         className='map-bg'
         longitude={initialCenter.lng}
         latitude={initialCenter.lat}
         scale={13}
-        markers={markers}
-        showLocation
+        markers={userLocationMarker ? [...markers, userLocationMarker] : markers}
         subkey={MAP_KEY}
         setting={{ enableSatellite: false, enableTraffic: false }}
+        onMarkerTap={handleMarkerTap}
         onError={(e) => {
           console.error('Map error:', e)
         }}
       />
+      <Canvas canvasId={AVATAR_MARKER_CANVAS_ID} className='avatar-marker-canvas' />
 
       <View className='top-header-fade' style={topHeaderFadeStyle} />
 
@@ -306,18 +503,7 @@ export default function IndexPage() {
         <View className='mask-layer' onClick={() => setFilterOpen('none')} />
       )}
 
-      <View className='custom-header' style={topHeaderStyle}>
-        <View className='left-area'>
-          <Text className='city-text'>成都</Text>
-          <AtIcon value='chevron-right' size='16' color='#fff' />
-          <View className='search-icon-btn' onClick={() => navigateTo('/pages/search/index')}>
-            <AtIcon value='search' size='22' color='#fff' />
-          </View>
-        </View>
-        <View className='center-logo-container'>
-          <Image src={require('../../assets/images/hyper-icon.png')} mode='heightFix' className='logo-img' />
-        </View>
-      </View>
+      <CommonHeader style={topHeaderStyle} onSearchClick={() => navigateTo('/pages/search/index')} />
 
       <View
         className={`filter-container-wrapper ${filterOpen !== 'none' ? 'is-open' : ''}`}
@@ -362,7 +548,7 @@ export default function IndexPage() {
 
       <View className={`floating-group${isEmpty ? ' empty' : ''}`}>
         <View className='circle-btn locate-btn' onClick={handleLocate}>
-          <Image className='map-pin' src={require('../../assets/icons/map-pin.svg')} mode='aspectFit' />
+          <Image className='map-pin' src={mapPinIcon} mode='aspectFit' />
         </View>
         <View className='capsule-btn list-btn' onClick={() => navigateTo('/pages/activity-list/index')}>
           <AtIcon value='list' size='16' color='#fff' />
