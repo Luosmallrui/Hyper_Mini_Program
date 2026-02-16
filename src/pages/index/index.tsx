@@ -8,12 +8,14 @@ import { request } from '@/utils/request'
 import CommonHeader from '@/components/CommonHeader'
 import { useNavBarMetrics } from '@/hooks/useNavBarMetrics'
 import { setTabBarIndex } from '../../store/tabbar'
+import mapPinIcon from '../../assets/icons/map-pin.svg'
 import mapPinFallbackIcon from '../../assets/icons/map-pin-fallback.png'
 import partyMarkerFallbackIcon from '../../assets/icons/marker-party-fallback.png'
 import venueMarkerFallbackIcon from '../../assets/icons/marker-venue-fallback.png'
-import mapPinIcon from '../../assets/icons/map-pin.svg'
 import {
   AVATAR_MARKER_CANVAS_ID,
+  ICON_ONLY_MARKER_CANVAS_ID,
+  buildIconOnlyMarker,
   buildCircularAvatarMarker,
 } from './map-marker'
 import './index.less'
@@ -84,7 +86,6 @@ export default function IndexPage() {
   const mapCtx = useRef<any>(null)
   const markerBuildTokenRef = useRef(0)
   const markerIndexMapRef = useRef<Map<number, number>>(new Map())
-  const markerRatioCacheRef = useRef<Map<string, number>>(new Map())
 
   Taro.useDidShow(() => {
     setTabBarIndex(0)
@@ -182,38 +183,6 @@ export default function IndexPage() {
     return `${safe.slice(0, 18)}...`
   }
 
-  const resolveMarkerIconSize = async (
-    iconPath: string,
-    targetHeight: number,
-    ratioHint = 1,
-  ) => {
-    const safeHint = Number.isFinite(ratioHint) && ratioHint > 0 ? ratioHint : 1
-    const fallback = { width: Math.max(21, Math.round(targetHeight * safeHint)), height: targetHeight }
-    if (!iconPath) return fallback
-
-    const lower = iconPath.toLowerCase()
-    if (lower.includes('party.svg') || lower.includes('marker-party-fallback')) {
-      const partyRatio = 44 / 54
-      markerRatioCacheRef.current.set(iconPath, partyRatio)
-      return { width: Math.max(21, Math.round(targetHeight * partyRatio)), height: targetHeight }
-    }
-
-    const cachedRatio = markerRatioCacheRef.current.get(iconPath)
-    if (cachedRatio && Number.isFinite(cachedRatio)) {
-      return { width: Math.max(21, Math.round(targetHeight * cachedRatio)), height: targetHeight }
-    }
-    try {
-      const info = await Taro.getImageInfo({ src: iconPath })
-      const ratio = info?.width && info?.height ? info.width / info.height : safeHint
-      const safeRatio = Number.isFinite(ratio) && ratio > 0 ? ratio : safeHint
-      markerRatioCacheRef.current.set(iconPath, safeRatio)
-      return { width: Math.max(21, Math.round(targetHeight * safeRatio)), height: targetHeight }
-    } catch {
-      markerRatioCacheRef.current.set(iconPath, safeHint)
-      return fallback
-    }
-  }
-
   const updateMarkers = async (list: PartyItem[], activeIndex: number) => {
     const buildToken = ++markerBuildTokenRef.current
     if (list.length === 0) {
@@ -229,10 +198,12 @@ export default function IndexPage() {
         const markerId = Number(item.id)
         markerIndexMap.set(markerId, index)
         const isActive = index === activeIndex
-        const iconPath = resolveMarkerIconPath(item)
+        const fallbackPath = resolveMarkerFallback(item)
+        const rawIconPath = resolveMarkerIconPath(item)
         const ratioHint = item.type === '派对' ? 44 / 54 : 1
-        const iconSize = await resolveMarkerIconSize(
-          iconPath,
+        const iconAsset = await buildIconOnlyMarker(
+          rawIconPath,
+          fallbackPath,
           isActive ? MARKER_ACTIVE_HEIGHT : MARKER_INACTIVE_HEIGHT,
           ratioHint,
         )
@@ -240,9 +211,9 @@ export default function IndexPage() {
           id: markerId,
           latitude: item.lat,
           longitude: item.lng,
-          width: iconSize.width,
-          height: iconSize.height,
-          iconPath,
+          width: iconAsset.width,
+          height: iconAsset.height,
+          iconPath: iconAsset.iconPath,
           zIndex: isActive ? 999 : 200,
           anchor: { x: 0.5, y: 0.5 },
           label: {
@@ -250,7 +221,7 @@ export default function IndexPage() {
             color: '#ffffff',
             fontSize: isActive ? 13 : 12,
             anchorX: 0,
-            anchorY: 20,
+            anchorY: Math.round(iconAsset.height / 2 + 14),
             borderWidth: 0,
             borderColor: 'transparent',
             borderRadius: 6,
@@ -495,6 +466,7 @@ export default function IndexPage() {
           console.error('Map error:', e)
         }}
       />
+      <Canvas canvasId={ICON_ONLY_MARKER_CANVAS_ID} className='icon-marker-canvas' />
       <Canvas canvasId={AVATAR_MARKER_CANVAS_ID} className='avatar-marker-canvas' />
 
       <View className='top-header-fade' style={topHeaderFadeStyle} />

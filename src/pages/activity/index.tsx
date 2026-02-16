@@ -441,9 +441,17 @@ export default function ActivityPage() {
                 <Image className='drawer-poster' src={heroImage || posterImage} mode='aspectFill' />
                 <View className='drawer-info'>
                   <Text className='drawer-name'>{titleText}</Text>
-                  <Text className='drawer-tag'>支持退票</Text>
-                  <Text className='drawer-time'>时间：{timeText}</Text>
-                  <Text className='drawer-place'>地点：{locationText}</Text>
+                  <View className='drawer-tag-row'>
+                    <Text className='drawer-tag'>支持退票</Text>
+                  </View>
+                  <View className='drawer-meta-row'>
+                    <Text className='drawer-meta-label'>时间：</Text>
+                    <Text className='drawer-meta-value'>{timeText}</Text>
+                  </View>
+                  <View className='drawer-meta-row drawer-meta-row--location'>
+                    <Text className='drawer-meta-label'>地点：</Text>
+                    <Text className='drawer-meta-value'>{locationText}</Text>
+                  </View>
                   <Text className='drawer-price'>{priceRange}</Text>
                 </View>
               </View>

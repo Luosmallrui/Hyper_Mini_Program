@@ -375,35 +375,69 @@
 
 .drawer-info {
   flex: 1;
+  min-width: 0;
 }
 
 .drawer-name {
+  display: block;
   font-size: 26px;
   line-height: 37px;
   color: #fff;
   font-weight: 600;
+  word-break: break-word;
+}
+
+.drawer-tag-row {
+  margin-top: 10px;
 }
 
 .drawer-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  min-width: 84px;
+  height: 34px;
+  border-radius: 17px;
+  background: rgba(0, 219, 126, 0.14);
+  border: 1px solid rgba(0, 219, 126, 0.38);
   font-size: 18px;
-  line-height: 25px;
+  line-height: 24px;
   color: #00db7e;
-  margin-top: 10px;
 }
 
-.drawer-time,
-.drawer-place {
+.drawer-meta-row {
+  margin-top: 8px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.drawer-meta-row--location {
+  margin-top: 6px;
+}
+
+.drawer-meta-label {
+  flex: 0 0 auto;
   font-size: 20px;
   line-height: 28px;
   color: #bbb;
-  margin-top: 10px;
+}
+
+.drawer-meta-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 20px;
+  line-height: 28px;
+  color: #bbb;
+  word-break: break-all;
 }
 
 .drawer-price {
+  display: block;
   font-size: 30px;
   line-height: 36px;
   color: #fff;
-  margin-top: 20px;
+  margin-top: 12px;
 }
 
 .drawer-close {

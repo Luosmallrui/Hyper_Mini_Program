@@ -3,8 +3,9 @@ import Taro from '@tarojs/taro'
 export const ACTIVE_MARKER_CANVAS_ID = 'active-marker-canvas'
 export const INACTIVE_MARKER_CANVAS_ID = 'inactive-marker-canvas'
 export const AVATAR_MARKER_CANVAS_ID = 'avatar-marker-canvas'
+export const ICON_ONLY_MARKER_CANVAS_ID = 'icon-only-marker-canvas'
 
-// Pin and text layout in logical pixels.
+// 基础尺寸配置
 const PIN_SIZE = 80
 const ARROW_HEIGHT = 12
 const TEXT_GAP = 4
@@ -21,7 +22,7 @@ const INACTIVE_TEXT_HEIGHT = INACTIVE_LINE_HEIGHT * INACTIVE_TEXT_MAX_LINES + 8
 export const INACTIVE_MARKER_WIDTH = 220
 export const INACTIVE_MARKER_HEIGHT = INACTIVE_ICON_SIZE + INACTIVE_TEXT_GAP + INACTIVE_TEXT_HEIGHT
 
-// 3x export to keep iOS output sharp.
+// 3倍图，保证 iOS 视网膜屏清晰度
 const SCALE = 3
 const CANVAS_WIDTH = ACTIVE_MARKER_WIDTH * SCALE
 const CANVAS_HEIGHT = ACTIVE_MARKER_HEIGHT * SCALE
@@ -30,8 +31,9 @@ const INACTIVE_CANVAS_HEIGHT = INACTIVE_MARKER_HEIGHT * SCALE
 const AVATAR_MARKER_SIZE = 60
 const AVATAR_CANVAS_SIZE = AVATAR_MARKER_SIZE * SCALE
 
-const STYLE_VERSION = 'v6.ios.fix.2'
+const STYLE_VERSION = 'v7.ios.fix.3'
 
+// 任务队列锁
 let renderQueue = Promise.resolve()
 const queueTask = <T>(task: () => Promise<T>): Promise<T> => {
   const next = renderQueue.then(task).catch(() => task())
@@ -39,287 +41,163 @@ const queueTask = <T>(task: () => Promise<T>): Promise<T> => {
   return next
 }
 
-const resolveImage = async (src: string) => {
+// 规范化图片路径
+const normalizeImageSrc = (src: unknown): string => {
+  if (!src) return ''
+  if (typeof src === 'string') return src
+  if (typeof src === 'object') {
+    // 兼容 require 进来的本地资源
+    const maybeDefault = (src as any).default
+    if (typeof maybeDefault === 'string') return maybeDefault
+    const maybePath = (src as any).path
+    if (typeof maybePath === 'string') return maybePath
+  }
+  return ''
+}
+
+// 图片加载核心逻辑
+const resolveImage = async (srcInput: unknown) => {
+  let src = normalizeImageSrc(srcInput)
   if (!src) return null
+
+  // 1. 强制 HTTP 转 HTTPS (iOS 必须 HTTPS)
+  if (src.startsWith('http://')) {
+    src = src.replace('http://', 'https://')
+  }
+  // 处理无协议头的链接 //example.com/img.png
+  if (src.startsWith('//')) {
+    src = `https:${src}`
+  }
+
   try {
-    return await Taro.getImageInfo({ src })
-  } catch {
-    if (src.startsWith('//')) {
+    // 2. 如果是网络图片，先下载
+    if (/^https:\/\//i.test(src)) {
       try {
-        const res = await Taro.downloadFile({ url: `https:${src}` })
-        if (res.statusCode === 200) return await Taro.getImageInfo({ src: res.tempFilePath })
-      } catch {
-        return null
+        const downloadRes = await Taro.downloadFile({ url: src })
+        if (downloadRes.statusCode === 200) {
+          src = downloadRes.tempFilePath
+        } else {
+          console.warn('Image download failed status:', downloadRes.statusCode)
+          return null
+        }
+      } catch (err) {
+        console.warn('Image download error:', err)
+        return null // 下载失败返回 null
       }
     }
-    if (/^https?:\/\//i.test(src)) {
-      try {
-        const res = await Taro.downloadFile({ url: src })
-        if (res.statusCode === 200) return await Taro.getImageInfo({ src: res.tempFilePath })
-      } catch {
-        return null
-      }
-    }
+
+    // 3. 获取图片信息 (本地路径或已下载的临时路径)
+    const info = await Taro.getImageInfo({ src })
+    return info
+  } catch (error) {
+    console.warn('resolveImage failed:', src, error)
     return null
   }
 }
 
+// 导出 Canvas 图片 (关键修复)
 const exportCanvas = (canvasId: string, width: number, height: number): Promise<string> => {
   return new Promise((resolve) => {
-    Taro.canvasToTempFilePath({
-      canvasId,
-      x: 0,
-      y: 0,
-      width,
-      height,
-      destWidth: width,
-      destHeight: height,
-      fileType: 'png',
-      success: (res) => resolve(res.tempFilePath),
-      fail: () => resolve(''),
-    })
+    // 延时 200ms，等待 iOS 绘图缓冲区刷新
+    setTimeout(() => {
+      Taro.canvasToTempFilePath({
+        canvasId,
+        x: 0,
+        y: 0,
+        width,
+        height,
+        destWidth: width, // 保持 1:1 输出，避免模糊
+        destHeight: height,
+        fileType: 'png',
+        success: (res) => resolve(res.tempFilePath),
+        fail: (err) => {
+          console.error('Canvas export failed:', err)
+          resolve('') // 失败返回空字符串
+        },
+      })
+    }, 200) // ★ 这里的延时非常重要
   })
 }
 
-const charUnit = (char: string) => {
-  if (/[\u4e00-\u9fa5]/.test(char)) return 1
-  if (/[a-z0-9]/i.test(char)) return 0.62
-  return 0.5
-}
-
-const wrapText = (text: string, maxUnitsPerLine: number, maxLines: number) => {
-  const safeText = (text || '').trim()
-  if (!safeText) return ['']
-  const lines: string[] = []
-  let currentLine = ''
-  let currentUnits = 0
-
-  for (const ch of safeText) {
-    const unit = charUnit(ch)
-    if (currentLine && currentUnits + unit > maxUnitsPerLine) {
-      lines.push(currentLine)
-      currentLine = ch
-      currentUnits = unit
-      if (lines.length >= maxLines) break
-    } else {
-      currentLine += ch
-      currentUnits += unit
-    }
-  }
-
-  if (lines.length < maxLines && currentLine) {
-    lines.push(currentLine)
-  }
-
-  if (lines.length === maxLines) {
-    const consumed = lines.join('').length
-    if (consumed < safeText.length) {
-      lines[maxLines - 1] = `${lines[maxLines - 1]}…`
-    }
-  }
-
-  return lines
-}
-
-const drawTextWithStroke = (
-  ctx: Taro.CanvasContext,
-  text: string,
-  x: number,
-  y: number,
-  size = 18,
-) => {
-  ctx.setTextAlign('center')
-  ctx.setTextBaseline('middle')
-  ctx.setFontSize(size)
-  ctx.setLineJoin('round')
-  ctx.setLineWidth(4)
-  ctx.setStrokeStyle('#F1F1F1')
-  ctx.strokeText(text, x, y)
-  ctx.setFillStyle('#000000')
-  ctx.fillText(text, x, y)
-}
-
-const drawActivePin = async (iconUrl: string, fallbackIcon: string, title: string): Promise<string> => {
-  const ctx = Taro.createCanvasContext(ACTIVE_MARKER_CANVAS_ID)
-  ctx.scale(SCALE, SCALE)
-
-  const w = ACTIVE_MARKER_WIDTH
-  const centerX = w / 2
-
-  const bubbleY = 4
-  const bubbleSize = PIN_SIZE
-  const radius = 20
-
-  ctx.save()
-  ctx.setShadow(0, 4, 10, 'rgba(0, 0, 0, 0.5)')
-  ctx.beginPath()
-  ctx.moveTo(centerX - bubbleSize / 2 + radius, bubbleY)
-  ctx.lineTo(centerX + bubbleSize / 2 - radius, bubbleY)
-  ctx.quadraticCurveTo(centerX + bubbleSize / 2, bubbleY, centerX + bubbleSize / 2, bubbleY + radius)
-  ctx.lineTo(centerX + bubbleSize / 2, bubbleY + bubbleSize - radius)
-  ctx.quadraticCurveTo(
-    centerX + bubbleSize / 2,
-    bubbleY + bubbleSize,
-    centerX + bubbleSize / 2 - radius,
-    bubbleY + bubbleSize,
-  )
-  const arrowBaseY = bubbleY + bubbleSize
-  const arrowTipY = arrowBaseY + ARROW_HEIGHT
-  ctx.lineTo(centerX + 10, arrowBaseY)
-  ctx.lineTo(centerX, arrowTipY)
-  ctx.lineTo(centerX - 10, arrowBaseY)
-  ctx.lineTo(centerX - bubbleSize / 2 + radius, bubbleY + bubbleSize)
-  ctx.quadraticCurveTo(
-    centerX - bubbleSize / 2,
-    bubbleY + bubbleSize,
-    centerX - bubbleSize / 2,
-    bubbleY + bubbleSize - radius,
-  )
-  ctx.lineTo(centerX - bubbleSize / 2, bubbleY + radius)
-  ctx.quadraticCurveTo(centerX - bubbleSize / 2, bubbleY, centerX - bubbleSize / 2 + radius, bubbleY)
-  ctx.closePath()
-  ctx.setFillStyle('#2b2b2b')
-  ctx.fill()
-  ctx.setShadow(0, 0, 0, 'transparent')
-  ctx.setLineWidth(2)
-  ctx.setStrokeStyle('rgba(255, 255, 255, 0.3)')
-  ctx.stroke()
-  ctx.restore()
-
-  let img = await resolveImage(iconUrl)
-  if (!img && fallbackIcon) {
-    img = await resolveImage(fallbackIcon)
-  }
-  const logoSize = 50
-  const logoY = bubbleY + (bubbleSize - logoSize) / 2
-  const logoX = centerX - logoSize / 2
-
-  if (img) {
-    ctx.save()
-    ctx.beginPath()
-    ctx.arc(centerX, logoY + logoSize / 2, logoSize / 2, 0, 2 * Math.PI)
-    ctx.clip()
-    ctx.drawImage(img.path, logoX, logoY, logoSize, logoSize)
-    ctx.restore()
-  } else {
-    ctx.beginPath()
-    ctx.arc(centerX, logoY + logoSize / 2, logoSize / 2, 0, 2 * Math.PI)
-    ctx.setFillStyle('#444')
-    ctx.fill()
-  }
-
-  const lines = wrapText(title, 11.5, 3)
-  const lineHeight = 22
-  const textTop = bubbleY + bubbleSize + ARROW_HEIGHT + TEXT_GAP + 8
-  lines.forEach((line, idx) => {
-    drawTextWithStroke(ctx, line, centerX, textTop + idx * lineHeight + lineHeight / 2, 18)
-  })
-
-  return new Promise((resolve) => {
-    ctx.draw(false, () => {
-      exportCanvas(ACTIVE_MARKER_CANVAS_ID, CANVAS_WIDTH, CANVAS_HEIGHT).then(resolve)
-    })
-  })
-}
-
-const drawInactiveMarker = async (iconUrl: string, fallbackIcon: string, title: string): Promise<string> => {
-  const ctx = Taro.createCanvasContext(INACTIVE_MARKER_CANVAS_ID)
-  ctx.scale(SCALE, SCALE)
-
-  const centerX = INACTIVE_MARKER_WIDTH / 2
-  let img = await resolveImage(iconUrl)
-  if (!img && fallbackIcon) {
-    img = await resolveImage(fallbackIcon)
-  }
-
-  const iconX = centerX - INACTIVE_ICON_SIZE / 2
-  const iconY = 0
-  if (img) {
-    ctx.drawImage(img.path, iconX, iconY, INACTIVE_ICON_SIZE, INACTIVE_ICON_SIZE)
-  } else {
-    ctx.setFillStyle('#2b2b2b')
-    ctx.fillRect(iconX, iconY, INACTIVE_ICON_SIZE, INACTIVE_ICON_SIZE)
-  }
-
-  const lines = wrapText(title, 15, INACTIVE_TEXT_MAX_LINES)
-  const textTop = INACTIVE_ICON_SIZE + INACTIVE_TEXT_GAP + 4
-  lines.forEach((line, idx) => {
-    drawTextWithStroke(
-      ctx,
-      line,
-      centerX,
-      textTop + idx * INACTIVE_LINE_HEIGHT + INACTIVE_LINE_HEIGHT / 2,
-      18,
-    )
-  })
-
-  return new Promise((resolve) => {
-    ctx.draw(false, () => {
-      exportCanvas(INACTIVE_MARKER_CANVAS_ID, INACTIVE_CANVAS_WIDTH, INACTIVE_CANVAS_HEIGHT).then(resolve)
-    })
-  })
-}
-
-const memoryCache = new Map<string, string>()
-const inactiveCache = new Map<string, string>()
-const avatarCache = new Map<string, string>()
-
-export const buildActiveMarkerIcon = async (
+// 仅绘制图标的 Marker (用于普通状态)
+export const buildIconOnlyMarker = async (
   iconUrl: string | undefined,
   fallbackIcon: string,
-  title: string,
-): Promise<string> => {
+  targetHeight: number,
+  ratioHint = 1,
+): Promise<{ iconPath: string; width: number; height: number }> => {
+  const safeHeight = Math.max(24, Math.round(targetHeight))
+  const safeHint = Number.isFinite(ratioHint) && ratioHint > 0 ? ratioHint : 1
   const targetIcon = iconUrl || ''
-  const key = `active::${targetIcon}::${fallbackIcon}::${title}::${STYLE_VERSION}`
+  const key = `icon-only::${targetIcon}::${fallbackIcon}::${safeHeight}::${safeHint}::${STYLE_VERSION}`
 
-  if (memoryCache.has(key)) return memoryCache.get(key) || fallbackIcon
+  const cached = iconOnlyCache.get(key)
+  if (cached) return cached
 
   return queueTask(async () => {
-    const path = await drawActivePin(targetIcon, fallbackIcon, title)
-    if (path) memoryCache.set(key, path)
-    return path || fallbackIcon
-  })
-}
-
-export const buildInactiveMarkerIcon = async (
-  iconUrl: string | undefined,
-  fallbackIcon: string,
-  title: string,
-): Promise<{ iconPath: string; width: number; height: number; anchor: { x: number; y: number } }> => {
-  const targetIcon = iconUrl || ''
-  const key = `inactive::${targetIcon}::${fallbackIcon}::${title}::${STYLE_VERSION}`
-
-  if (inactiveCache.has(key)) {
-    return {
-      iconPath: inactiveCache.get(key) || fallbackIcon,
-      width: INACTIVE_MARKER_WIDTH,
-      height: INACTIVE_MARKER_HEIGHT,
-      anchor: { x: 0.5, y: Number((INACTIVE_ICON_SIZE / 2 / INACTIVE_MARKER_HEIGHT).toFixed(2)) },
+    const normalizedTarget = normalizeImageSrc(targetIcon)
+    const normalizedFallback = normalizeImageSrc(fallbackIcon)
+    
+    // 尝试加载目标图标，失败则加载兜底图标
+    let img = await resolveImage(normalizedTarget)
+    if (!img && normalizedFallback) {
+      console.warn('Target icon failed, using fallback:', normalizedFallback)
+      img = await resolveImage(normalizedFallback)
     }
-  }
 
-  const path = await queueTask(async () => {
-    return await drawInactiveMarker(targetIcon, fallbackIcon, title)
+    // 计算宽高
+    const ratio = img?.width && img?.height ? img.width / img.height : safeHint
+    const safeRatio = Number.isFinite(ratio) && ratio > 0 ? ratio : safeHint
+    const width = Math.max(18, Math.round(safeHeight * safeRatio))
+    const height = safeHeight
+
+    // 如果连兜底图都加载失败，直接返回本地路径（让 Map 组件自己尝试渲染）
+    if (!img) {
+      const fallbackAsset = {
+        iconPath: normalizedFallback || normalizedTarget || '',
+        width,
+        height,
+      }
+      iconOnlyCache.set(key, fallbackAsset)
+      return fallbackAsset
+    }
+
+    // Canvas 绘制
+    const ctx = Taro.createCanvasContext(ICON_ONLY_MARKER_CANVAS_ID)
+    ctx.scale(SCALE, SCALE)
+    ctx.clearRect(0, 0, width, height)
+
+    // 绘制图片
+    ctx.drawImage(img.path, 0, 0, width, height)
+
+    const canvasWidth = width * SCALE
+    const canvasHeight = height * SCALE
+    
+    const iconPath = await new Promise<string>((resolve) => {
+      ctx.draw(false, () => {
+        exportCanvas(ICON_ONLY_MARKER_CANVAS_ID, canvasWidth, canvasHeight).then(resolve)
+      })
+    })
+
+    // ★ 关键兜底：如果 Canvas 导出失败（空字符串），返回原始 fallback 路径
+    // 这样至少显示本地图片，而不是红色默认 Pin
+    const finalPath = iconPath || normalizedFallback || ''
+    
+    const asset = {
+      iconPath: finalPath,
+      width,
+      height,
+    }
+    iconOnlyCache.set(key, asset)
+    return asset
   })
-  if (path) inactiveCache.set(key, path)
-  return {
-    iconPath: path || fallbackIcon,
-    width: INACTIVE_MARKER_WIDTH,
-    height: INACTIVE_MARKER_HEIGHT,
-    anchor: { x: 0.5, y: Number((INACTIVE_ICON_SIZE / 2 / INACTIVE_MARKER_HEIGHT).toFixed(2)) },
-  }
 }
 
-export const getActiveMarkerAnchor = () => {
-  const arrowTipY = 4 + PIN_SIZE + ARROW_HEIGHT
-  const anchorY = Number((arrowTipY / ACTIVE_MARKER_HEIGHT).toFixed(2))
-  return { x: 0.5, y: anchorY }
-}
+// 缓存 Maps
+const iconOnlyCache = new Map<string, { iconPath: string; width: number; height: number }>()
+const avatarCache = new Map<string, string>()
 
-export const resolveMarkerIconSize = (baseSize: number) => {
-  return { width: baseSize, height: baseSize }
-}
-
+// 头像绘制逻辑
 const drawCircularAvatar = async (avatarUrl: string, fallbackIcon: string): Promise<string> => {
   const ctx = Taro.createCanvasContext(AVATAR_MARKER_CANVAS_ID)
   ctx.scale(SCALE, SCALE)
@@ -369,6 +247,9 @@ export const buildCircularAvatarMarker = async (
   if (avatarCache.has(key)) return avatarCache.get(key) || fallbackIcon
 
   const path = await queueTask(async () => drawCircularAvatar(target, fallbackIcon))
-  if (path) avatarCache.set(key, path)
-  return path || fallbackIcon
+  
+  // 同样增加兜底
+  const finalPath = path || fallbackIcon
+  if (finalPath) avatarCache.set(key, finalPath)
+  return finalPath
 }
