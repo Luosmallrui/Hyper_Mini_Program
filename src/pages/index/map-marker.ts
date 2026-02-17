@@ -5,7 +5,6 @@ export const INACTIVE_MARKER_CANVAS_ID = 'inactive-marker-canvas'
 export const AVATAR_MARKER_CANVAS_ID = 'avatar-marker-canvas'
 export const ICON_ONLY_MARKER_CANVAS_ID = 'icon-only-marker-canvas'
 
-// 基础尺寸配置
 const PIN_SIZE = 80
 const ARROW_HEIGHT = 12
 const TEXT_GAP = 4
@@ -22,18 +21,12 @@ const INACTIVE_TEXT_HEIGHT = INACTIVE_LINE_HEIGHT * INACTIVE_TEXT_MAX_LINES + 8
 export const INACTIVE_MARKER_WIDTH = 220
 export const INACTIVE_MARKER_HEIGHT = INACTIVE_ICON_SIZE + INACTIVE_TEXT_GAP + INACTIVE_TEXT_HEIGHT
 
-// 3倍图，保证 iOS 视网膜屏清晰度
-const SCALE = 3
-const CANVAS_WIDTH = ACTIVE_MARKER_WIDTH * SCALE
-const CANVAS_HEIGHT = ACTIVE_MARKER_HEIGHT * SCALE
-const INACTIVE_CANVAS_WIDTH = INACTIVE_MARKER_WIDTH * SCALE
-const INACTIVE_CANVAS_HEIGHT = INACTIVE_MARKER_HEIGHT * SCALE
-const AVATAR_MARKER_SIZE = 60
-const AVATAR_CANVAS_SIZE = AVATAR_MARKER_SIZE * SCALE
+export const USER_AVATAR_MARKER_SIZE = 52
+const AVATAR_MARKER_SIZE = USER_AVATAR_MARKER_SIZE
+const AVATAR_CANVAS_SIZE = AVATAR_MARKER_SIZE
 
-const STYLE_VERSION = 'v7.ios.fix.3'
+const STYLE_VERSION = 'v14.icon.base64-file'
 
-// 任务队列锁
 let renderQueue = Promise.resolve()
 const queueTask = <T>(task: () => Promise<T>): Promise<T> => {
   const next = renderQueue.then(task).catch(() => task())
@@ -41,64 +34,101 @@ const queueTask = <T>(task: () => Promise<T>): Promise<T> => {
   return next
 }
 
-// 规范化图片路径
+const wait = (ms: number) => new Promise<void>((resolve) => {
+  setTimeout(resolve, ms)
+})
+
 const normalizeImageSrc = (src: unknown): string => {
   if (!src) return ''
   if (typeof src === 'string') return src
   if (typeof src === 'object') {
-    // 兼容 require 进来的本地资源
-    const maybeDefault = (src as any).default
+    const maybeDefault = (src as { default?: unknown }).default
     if (typeof maybeDefault === 'string') return maybeDefault
-    const maybePath = (src as any).path
+    const maybePath = (src as { path?: unknown }).path
     if (typeof maybePath === 'string') return maybePath
   }
   return ''
 }
 
-// 图片加载核心逻辑
-const resolveImage = async (srcInput: unknown) => {
-  let src = normalizeImageSrc(srcInput)
-  if (!src) return null
+const normalizeUrl = (src: string): string => {
+  if (!src) return ''
+  if (src.startsWith('http://')) return src.replace('http://', 'https://')
+  if (src.startsWith('//')) return `https:${src}`
+  return src
+}
 
-  // 1. 强制 HTTP 转 HTTPS (iOS 必须 HTTPS)
-  if (src.startsWith('http://')) {
-    src = src.replace('http://', 'https://')
-  }
-  // 处理无协议头的链接 //example.com/img.png
-  if (src.startsWith('//')) {
-    src = `https:${src}`
-  }
+const isDataImageUrl = (src: string) => /^data:image\/[a-zA-Z0-9+.-]+;base64,/.test(src)
+
+const dataImagePathCache = new Map<string, string>()
+
+const dataImageToTempFile = async (src: string): Promise<string> => {
+  if (!isDataImageUrl(src)) return src
+  const cached = dataImagePathCache.get(src)
+  if (cached) return cached
+
+  const match = src.match(/^data:image\/([a-zA-Z0-9+.-]+);base64,(.+)$/)
+  if (!match) return ''
+
+  const mime = (match[1] || '').toLowerCase()
+  const ext = mime.includes('png') ? 'png' : (mime.includes('jpg') || mime.includes('jpeg') ? 'jpg' : 'png')
+  const base64Data = match[2] || ''
+  if (!base64Data) return ''
 
   try {
-    // 2. 如果是网络图片，先下载
+    const fs = (Taro as any).getFileSystemManager?.()
+    const userDataPath = (Taro as any).env?.USER_DATA_PATH
+    if (!fs || !userDataPath) return ''
+
+    const filePath = `${userDataPath}/marker_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+    await new Promise<void>((resolve, reject) => {
+      fs.writeFile({
+        filePath,
+        data: base64Data,
+        encoding: 'base64',
+        success: () => resolve(),
+        fail: (err: any) => reject(err),
+      })
+    })
+    dataImagePathCache.set(src, filePath)
+    return filePath
+  } catch (error) {
+    console.warn('dataImageToTempFile failed', error)
+    return ''
+  }
+}
+
+const normalizeImagePath = async (srcInput: unknown): Promise<string> => {
+  let src = normalizeUrl(normalizeImageSrc(srcInput))
+  if (!src) return ''
+  if (isDataImageUrl(src)) {
+    src = await dataImageToTempFile(src)
+  }
+  return src
+}
+
+const resolveImage = async (srcInput: unknown) => {
+  let src = await normalizeImagePath(srcInput)
+  if (!src) return null
+
+  try {
     if (/^https:\/\//i.test(src)) {
-      try {
-        const downloadRes = await Taro.downloadFile({ url: src })
-        if (downloadRes.statusCode === 200) {
-          src = downloadRes.tempFilePath
-        } else {
-          console.warn('Image download failed status:', downloadRes.statusCode)
-          return null
-        }
-      } catch (err) {
-        console.warn('Image download error:', err)
-        return null // 下载失败返回 null
+      const downloadRes = await Taro.downloadFile({ url: src })
+      if (downloadRes.statusCode !== 200) {
+        console.warn('Image download failed status:', downloadRes.statusCode)
+        return null
       }
+      src = downloadRes.tempFilePath
     }
 
-    // 3. 获取图片信息 (本地路径或已下载的临时路径)
-    const info = await Taro.getImageInfo({ src })
-    return info
+    return await Taro.getImageInfo({ src })
   } catch (error) {
     console.warn('resolveImage failed:', src, error)
     return null
   }
 }
 
-// 导出 Canvas 图片 (关键修复)
 const exportCanvas = (canvasId: string, width: number, height: number): Promise<string> => {
   return new Promise((resolve) => {
-    // 延时 200ms，等待 iOS 绘图缓冲区刷新
     setTimeout(() => {
       Taro.canvasToTempFilePath({
         canvasId,
@@ -106,20 +136,28 @@ const exportCanvas = (canvasId: string, width: number, height: number): Promise<
         y: 0,
         width,
         height,
-        destWidth: width, // 保持 1:1 输出，避免模糊
+        destWidth: width,
         destHeight: height,
         fileType: 'png',
         success: (res) => resolve(res.tempFilePath),
         fail: (err) => {
-          console.error('Canvas export failed:', err)
-          resolve('') // 失败返回空字符串
+          console.warn('Canvas export failed:', canvasId, err)
+          resolve('')
         },
       })
-    }, 200) // ★ 这里的延时非常重要
+    }, 160)
   })
 }
 
-// 仅绘制图标的 Marker (用于普通状态)
+const iconOnlyCache = new Map<string, { iconPath: string; width: number; height: number }>()
+const avatarCache = new Map<string, string>()
+
+export const clearMarkerCaches = () => {
+  iconOnlyCache.clear()
+  avatarCache.clear()
+  dataImagePathCache.clear()
+}
+
 export const buildIconOnlyMarker = async (
   iconUrl: string | undefined,
   fallbackIcon: string,
@@ -132,75 +170,56 @@ export const buildIconOnlyMarker = async (
   const key = `icon-only::${targetIcon}::${fallbackIcon}::${safeHeight}::${safeHint}::${STYLE_VERSION}`
 
   const cached = iconOnlyCache.get(key)
-  if (cached) return cached
+  if (cached?.iconPath) return cached
+  if (cached && !cached.iconPath) {
+    iconOnlyCache.delete(key)
+  }
 
   return queueTask(async () => {
-    const normalizedTarget = normalizeImageSrc(targetIcon)
-    const normalizedFallback = normalizeImageSrc(fallbackIcon)
-    
-    // 尝试加载目标图标，失败则加载兜底图标
+    const normalizedTarget = await normalizeImagePath(targetIcon)
+    const normalizedFallback = await normalizeImagePath(fallbackIcon)
+
     let img = await resolveImage(normalizedTarget)
     if (!img && normalizedFallback) {
-      console.warn('Target icon failed, using fallback:', normalizedFallback)
       img = await resolveImage(normalizedFallback)
     }
 
-    // 计算宽高
     const ratio = img?.width && img?.height ? img.width / img.height : safeHint
     const safeRatio = Number.isFinite(ratio) && ratio > 0 ? ratio : safeHint
     const width = Math.max(18, Math.round(safeHeight * safeRatio))
     const height = safeHeight
 
-    // 如果连兜底图都加载失败，直接返回本地路径（让 Map 组件自己尝试渲染）
-    if (!img) {
-      const fallbackAsset = {
-        iconPath: normalizedFallback || normalizedTarget || '',
-        width,
-        height,
-      }
-      iconOnlyCache.set(key, fallbackAsset)
-      return fallbackAsset
+    const candidates = [normalizedTarget, normalizedFallback, img?.path || '']
+    let finalPath = ''
+    for (const candidate of candidates) {
+      const path = (candidate || '').trim()
+      if (!path) continue
+      try {
+        await Taro.getImageInfo({ src: path })
+        finalPath = path
+        break
+      } catch (error) {}
     }
-
-    // Canvas 绘制
-    const ctx = Taro.createCanvasContext(ICON_ONLY_MARKER_CANVAS_ID)
-    ctx.scale(SCALE, SCALE)
-    ctx.clearRect(0, 0, width, height)
-
-    // 绘制图片
-    ctx.drawImage(img.path, 0, 0, width, height)
-
-    const canvasWidth = width * SCALE
-    const canvasHeight = height * SCALE
-    
-    const iconPath = await new Promise<string>((resolve) => {
-      ctx.draw(false, () => {
-        exportCanvas(ICON_ONLY_MARKER_CANVAS_ID, canvasWidth, canvasHeight).then(resolve)
-      })
-    })
-
-    // ★ 关键兜底：如果 Canvas 导出失败（空字符串），返回原始 fallback 路径
-    // 这样至少显示本地图片，而不是红色默认 Pin
-    const finalPath = iconPath || normalizedFallback || ''
-    
     const asset = {
       iconPath: finalPath,
       width,
       height,
     }
-    iconOnlyCache.set(key, asset)
+    if (!asset.iconPath) {
+      console.warn('buildIconOnlyMarker resolved empty iconPath', {
+        targetIcon,
+        fallbackIcon,
+      })
+    }
+    if (asset.iconPath) {
+      iconOnlyCache.set(key, asset)
+    }
     return asset
   })
 }
 
-// 缓存 Maps
-const iconOnlyCache = new Map<string, { iconPath: string; width: number; height: number }>()
-const avatarCache = new Map<string, string>()
-
-// 头像绘制逻辑
 const drawCircularAvatar = async (avatarUrl: string, fallbackIcon: string): Promise<string> => {
   const ctx = Taro.createCanvasContext(AVATAR_MARKER_CANVAS_ID)
-  ctx.scale(SCALE, SCALE)
   ctx.clearRect(0, 0, AVATAR_MARKER_SIZE, AVATAR_MARKER_SIZE)
 
   let avatar = await resolveImage(avatarUrl)
@@ -209,7 +228,10 @@ const drawCircularAvatar = async (avatarUrl: string, fallbackIcon: string): Prom
   }
 
   const center = AVATAR_MARKER_SIZE / 2
-  const radius = center - 3
+  const borderWidth = 4
+  const safeInset = 0.5
+  const radius = center - borderWidth / 2 - safeInset
+  const drawSize = radius * 2
 
   ctx.save()
   ctx.beginPath()
@@ -218,14 +240,21 @@ const drawCircularAvatar = async (avatarUrl: string, fallbackIcon: string): Prom
   ctx.clip()
 
   if (avatar) {
-    ctx.drawImage(avatar.path, 0, 0, AVATAR_MARKER_SIZE, AVATAR_MARKER_SIZE)
+    const srcW = Number(avatar.width) || AVATAR_MARKER_SIZE
+    const srcH = Number(avatar.height) || AVATAR_MARKER_SIZE
+    const coverScale = Math.max(drawSize / srcW, drawSize / srcH)
+    const renderW = srcW * coverScale
+    const renderH = srcH * coverScale
+    const renderX = center - renderW / 2
+    const renderY = center - renderH / 2
+    ctx.drawImage(avatar.path, renderX, renderY, renderW, renderH)
   } else {
     ctx.setFillStyle('#4a4a4a')
-    ctx.fillRect(0, 0, AVATAR_MARKER_SIZE, AVATAR_MARKER_SIZE)
+    ctx.fillRect(center - radius, center - radius, drawSize, drawSize)
   }
   ctx.restore()
 
-  ctx.setLineWidth(4)
+  ctx.setLineWidth(borderWidth)
   ctx.setStrokeStyle('#ffffff')
   ctx.beginPath()
   ctx.arc(center, center, radius, 0, Math.PI * 2)
@@ -244,12 +273,22 @@ export const buildCircularAvatarMarker = async (
 ): Promise<string> => {
   const target = avatarUrl || ''
   const key = `avatar::${target}::${fallbackIcon}::${STYLE_VERSION}`
-  if (avatarCache.has(key)) return avatarCache.get(key) || fallbackIcon
+  const cached = avatarCache.get(key)
+  if (cached) return cached
 
-  const path = await queueTask(async () => drawCircularAvatar(target, fallbackIcon))
-  
-  // 同样增加兜底
-  const finalPath = path || fallbackIcon
-  if (finalPath) avatarCache.set(key, finalPath)
-  return finalPath
+  let path = await queueTask(async () => drawCircularAvatar(target, fallbackIcon))
+
+  if (!path) {
+    await wait(220)
+    path = await queueTask(async () => drawCircularAvatar(target, fallbackIcon))
+  }
+
+  // Cache generated temp path. If empty, fallback without caching.
+  if (path) {
+    avatarCache.set(key, path)
+    return path
+  }
+
+  return fallbackIcon
 }
+

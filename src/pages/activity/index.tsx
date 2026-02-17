@@ -5,6 +5,7 @@ import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import { request } from '@/utils/request'
 import backgroundWebp from '../../assets/images/background.webp'
+import certificationIcon from '../../assets/images/certification.png'
 import './index.scss'
 
 const heroBg = backgroundWebp
@@ -363,10 +364,12 @@ export default function ActivityPage() {
             <Image className='host-avatar' src={activity?.user_avatar || organizerAvatar} mode='aspectFill' />
             <View className='host-info'>
               <View className='host-meta'>
-                <Text className='host-name'>{organizerName}</Text>
+                <View className='host-name-row'>
+                  <Text className='host-name'>{organizerName}</Text>
+                  <Image className='verify-icon' src={certificationIcon} mode='aspectFit' />
+                </View>
                 <Text className='host-fans'>{organizerFans} 粉丝</Text>
               </View>
-              <AtIcon className='verify-icon' value='check-circle' size='14' color='#2e6bff' />
             </View>
             <View className='host-follow'>
               <Text className='host-follow-text'>已关注</Text>

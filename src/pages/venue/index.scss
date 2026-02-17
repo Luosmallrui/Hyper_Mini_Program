@@ -141,7 +141,7 @@ page {
     .host-avatar { width: 80px; height: 80px; border-radius: 50%; background: #333; }
     .host-info {
         display: flex; flex-direction: column; gap: 8px;
-        .host-name-row { display: flex; align-items: center; gap: 8px; .host-name { font-size: 28px; color: #fff; font-weight: bold; }}
+        .host-name-row { display: flex; align-items: center; gap: 10px; .host-name { font-size: 28px; color: #fff; font-weight: bold; } .host-certification-icon { width: 20px; height: 20px; display: block; }}
         .host-fans { font-size: 22px; color: #999; }
     }
   }
@@ -198,5 +198,3 @@ page {
 
 .empty-notes { text-align: center; padding: 60px 0; color: #666; font-size: 24px; }
 .bottom-space { height: 60px; }
-
-

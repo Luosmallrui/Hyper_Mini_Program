@@ -6,6 +6,7 @@ import 'taro-ui/dist/style/components/icon.scss'
 import { request } from '@/utils/request'
 import CommonHeader from '@/components/CommonHeader'
 import { useNavBarMetrics } from '@/hooks/useNavBarMetrics'
+import certificationIcon from '../../assets/images/certification.png'
 import './index.less'
 
 interface MerchantItem {
@@ -317,7 +318,7 @@ export default function ActivityListPage() {
                   <View className='user-text'>
                     <View className='name-line'>
                       <Text className='name'>{item.user}</Text>
-                      {item.isVerified && <AtIcon value='check-circle' size='14' color='#3d8bff' />}
+                      <Image className='certification-icon' src={certificationIcon} mode='aspectFit' />
                     </View>
                     <Text className='fans'>{item.fans} 粉丝</Text>
                   </View>

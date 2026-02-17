@@ -180,8 +180,14 @@
   width: 138px;
   margin-left: 10px;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.host-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .host-name {
@@ -200,7 +206,7 @@
 .verify-icon {
   width: 20px;
   height: 20px;
-  margin-top: 5px;
+  display: block;
 }
 
 .host-follow {

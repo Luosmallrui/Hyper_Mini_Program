@@ -6,6 +6,8 @@ export default defineAppConfig({
     'pages/user/index',
     'pages/search/index',
     'pages/order/index',
+    'pages/auth/index',
+    'pages/auth-code/index',
   ],
   subpackages: [
     {

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import { request } from '@/utils/request'
+import certificationIcon from '../../assets/images/certification.png'
 import './index.scss'
 
 interface MerchantGood {
@@ -267,7 +268,7 @@ export default function VenuePage() {
 
         <View className='hero-info-block'>
           {/* 商家信息 */}
-          <View className='hero-content' style={{ paddingTop: `${statusBarHeight + navBarHeight + 20}px` }}>
+          <View className='hero-content'>
              <Text className='title'>{venueName}</Text>
              <View className='meta-row'>
                <Text className='meta'>{venueTime}</Text>
@@ -303,7 +304,7 @@ export default function VenuePage() {
               <View className='host-info'>
                 <View className='host-name-row'>
                   <Text className='host-name'>{venueUser}</Text>
-                  <AtIcon value='check-circle' size='12' color='#2E6BFF' />
+                  <Image className='host-certification-icon' src={certificationIcon} mode='aspectFit' />
                 </View>
                 <Text className='host-fans'>{venueFans} 粉丝</Text>
               </View>
@@ -411,4 +412,5 @@ export default function VenuePage() {
     </View>
   )
 }
+
 

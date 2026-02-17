@@ -118,7 +118,8 @@ export default function UserPage() {
       }
       fetchLatestUserInfo();
     } else {
-      handleLogin(true);
+      setIsLogin(false);
+      setNeedPhoneAuth(false);
     }
   };
 
@@ -209,9 +210,12 @@ export default function UserPage() {
   };
 
   const handleLogout = () => {
+    Taro.setStorageSync('__force_auth_gate__', 1);
     Taro.removeStorageSync('access_token');
     Taro.removeStorageSync('refresh_token');
+    Taro.removeStorageSync('access_expire');
     Taro.removeStorageSync('userInfo');
+    Taro.eventCenter.trigger('FORCE_LOGOUT');
     setIsLogin(false);
     setUserInfo({});
     setUserStats({ following: 0, follower: 0, likes: 0, notes: 0 });

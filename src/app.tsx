@@ -1,98 +1,134 @@
 import { PropsWithChildren, useEffect, useState } from 'react'
-import { View, Text } from '@tarojs/components'
-import Taro, { useLaunch } from '@tarojs/taro'
+import { Text, View } from '@tarojs/components'
+import Taro, { useDidShow, useLaunch } from '@tarojs/taro'
 import { appUpdate } from './utils'
 import IMService from './utils/im'
-// 【新增】引入自动刷新调度器
 import { scheduleAutoRefresh } from './utils/request'
 import './app.less'
 
-// 在app.js或app.tsx文件顶部添加这段代码
+const AUTH_PAGE_ROUTE = 'pages/auth/index'
+const AUTH_CODE_PAGE_ROUTE = 'pages/auth-code/index'
+const AUTH_PAGE_URL = '/pages/auth/index'
+const FORCE_AUTH_KEY = '__force_auth_gate__'
+const AUTH_REDIRECT_KEY = '__auth_redirect__'
+const DEFAULT_REDIRECT = '/pages/index/index'
+
 if (typeof console.time !== 'function') {
-  const timeMap = {};
+  const timeMap: Record<string, number> = {}
 
-  console.time = function(label) {
-    timeMap[label] = Date.now();
-  };
+  console.time = function (label) {
+    timeMap[label] = Date.now()
+  }
 
-  console.timeEnd = function(label) {
+  console.timeEnd = function (label) {
     if (timeMap[label]) {
-      console.log(`${label}: ${Date.now() - timeMap[label]}ms`);
-      delete timeMap[label];
+      console.log(`${label}: ${Date.now() - timeMap[label]}ms`)
+      delete timeMap[label]
     } else {
-      console.log(`Timer '${label}' does not exist`);
+      console.log(`Timer '${label}' does not exist`)
     }
-  };
+  }
 }
 
 function App({ children }: PropsWithChildren<any>) {
   const [isSwitching, setIsSwitching] = useState(false)
 
-  useLaunch(() => {
-    // 小程序更新
-    appUpdate();
+  const isAuthPage = () => {
+    const pages = Taro.getCurrentPages()
+    const current: any = pages[pages.length - 1]
+    return current?.route === AUTH_PAGE_ROUTE || current?.route === AUTH_CODE_PAGE_ROUTE
+  }
 
-    // 不要删除，用来识别当前项目环境
+  const buildCurrentPageUrl = () => {
+    const pages = Taro.getCurrentPages()
+    const current: any = pages[pages.length - 1]
+    if (!current?.route) return DEFAULT_REDIRECT
+    const basePath = `/${current.route}`
+    const options = current.options || {}
+    const query = Object.keys(options)
+      .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(options[key])}`)
+      .join('&')
+    return query ? `${basePath}?${query}` : basePath
+  }
+
+  const navigateToAuthPage = () => {
+    if (isAuthPage()) return
+    const redirectUrl = buildCurrentPageUrl()
+    if (redirectUrl && !redirectUrl.startsWith(AUTH_PAGE_URL) && !redirectUrl.startsWith('/pages/auth-code/index')) {
+      Taro.setStorageSync(AUTH_REDIRECT_KEY, redirectUrl)
+    }
+    Taro.reLaunch({ url: AUTH_PAGE_URL })
+  }
+
+  const ensureAuthRoute = () => {
+    const token = Taro.getStorageSync('access_token')
+    const forceAuthGate = Taro.getStorageSync(FORCE_AUTH_KEY) === 1
+    if (token && !forceAuthGate) return
+    navigateToAuthPage()
+  }
+
+  useLaunch(() => {
+    appUpdate()
+
     console.log(
       `\n %c 电子科技大学${process.env.NODE_ENV} %c ${process.env.YDY_APP_API} \n`,
-      "color: #fff; background: #008bf8; padding:5px 0; font-size:12px;font-weight: bold;",
-      "background: #008bf8; padding:5px 0; font-size:12px;"
-    );
+      'color: #fff; background: #008bf8; padding:5px 0; font-size:12px;font-weight: bold;',
+      'background: #008bf8; padding:5px 0; font-size:12px;',
+    )
+  })
+
+  useDidShow(() => {
+    ensureAuthRoute()
   })
 
   useEffect(() => {
-    // 1. 初始化检查
     const token = Taro.getStorageSync('access_token')
-    // 【新增】读取本地存储的过期时间
     const expire = Taro.getStorageSync('access_expire')
 
-    if (token) {
-      // 如果已登录，启动 IM 连接
-      IMService.getInstance().connect()
+    ensureAuthRoute()
 
-      // 【新增】如果有过期时间，应用启动时恢复自动刷新定时器
-      // 否则用户杀掉小程序再进来，定时器就没了
+    if (token) {
+      IMService.getInstance().connect()
       if (expire) {
         scheduleAutoRefresh(expire)
       }
     }
-    
-    // 定义连接和关闭处理函数
+
     const handleConnect = () => {
-      console.log('[App] 监听到登录/刷新事件，启动IM')
-      // Token 刷新后，建议重置连接以使用新 Token
       IMService.getInstance().reset()
       setTimeout(() => {
-          IMService.getInstance().connect()
+        IMService.getInstance().connect()
       }, 500)
     }
 
-    const handleClose = () => {
-      console.log('[App] 监听到登出事件，关闭IM')
+    const handleForceLogout = () => {
       IMService.getInstance().close()
+      Taro.setStorageSync(FORCE_AUTH_KEY, 1)
+      navigateToAuthPage()
     }
 
-    // 2. 监听事件 (适配 UserPage 和 request.ts 中的广播)
-    
-    // 登录成功 (UserPage 触发)
+    const handleLoginSuccess = () => {
+      const topPages = Taro.getCurrentPages()
+      const current: any = topPages[topPages.length - 1]
+      if (current?.route === AUTH_PAGE_ROUTE) return
+      IMService.getInstance().reset()
+      setTimeout(() => {
+        IMService.getInstance().connect()
+      }, 500)
+    }
+
     Taro.eventCenter.on('USER_INFO_UPDATED', handleConnect)
-    
-    // Token 自动刷新成功 (request.ts 触发)
     Taro.eventCenter.on('TOKEN_REFRESHED', handleConnect)
-    
-    // 强制登出 (request.ts 触发 401 刷新失败)
-    Taro.eventCenter.on('FORCE_LOGOUT', handleClose)
-    
-    // 清理监听
+    Taro.eventCenter.on('FORCE_LOGOUT', handleForceLogout)
+    Taro.eventCenter.on('AUTH_LOGIN_SUCCESS', handleLoginSuccess)
+
     return () => {
       Taro.eventCenter.off('USER_INFO_UPDATED', handleConnect)
       Taro.eventCenter.off('TOKEN_REFRESHED', handleConnect)
-      Taro.eventCenter.off('FORCE_LOGOUT', handleClose)
+      Taro.eventCenter.off('FORCE_LOGOUT', handleForceLogout)
+      Taro.eventCenter.off('AUTH_LOGIN_SUCCESS', handleLoginSuccess)
     }
-    
   }, [])
-
-  // children 是将要会渲染的页面
 
   useEffect(() => {
     const handleSwitchLoading = (flag: boolean) => {
@@ -110,7 +146,7 @@ function App({ children }: PropsWithChildren<any>) {
       {isSwitching && (
         <View className='global-loading-mask'>
           <View className='global-loading-spinner' />
-          <Text className='global-loading-text'>加载中</Text>
+          <Text className='global-loading-text'>Loading...</Text>
         </View>
       )}
     </View>
