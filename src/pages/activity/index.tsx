@@ -1,8 +1,9 @@
-import { View, Text, Image, Swiper, SwiperItem, ScrollView } from '@tarojs/components'
+import { View, Text, Image, Swiper, SwiperItem, ScrollView, Input } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AtIcon } from 'taro-ui'
+import { AtIcon, AtFloatLayout } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
+import 'taro-ui/dist/style/components/float-layout.scss'
 import { request } from '@/utils/request'
 import backgroundWebp from '../../assets/images/background.webp'
 import certificationIcon from '../../assets/images/certification.png'
@@ -60,6 +61,13 @@ interface ViewerItem {
   updated_at: string
 }
 
+interface SessionItem {
+  session_type: number
+  peer_id: number
+  peer_avatar: string
+  peer_name: string
+}
+
 export default function ActivityPage() {
   const router = useRouter()
   const activityId = router.params?.id || ''
@@ -78,6 +86,10 @@ export default function ActivityPage() {
   const [selectedViewerId, setSelectedViewerId] = useState<number | null>(null)
   const [viewerLoading, setViewerLoading] = useState(false)
   const [viewerError, setViewerError] = useState('')
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [sessionList, setSessionList] = useState<SessionItem[]>([])
+  const [loadingSession, setLoadingSession] = useState(false)
+  const [shareMsg, setShareMsg] = useState('')
   const viewerInitLoadedRef = useRef(false)
 
   const fallbackMapCenter = { latitude: 30.657, longitude: 104.066 }
@@ -315,6 +327,92 @@ export default function ActivityPage() {
     })
   }
 
+  const parseResponse = (payload: any) => {
+    if (typeof payload === 'string') {
+      try {
+        return JSON.parse(payload)
+      } catch (error) {
+        return {}
+      }
+    }
+    return payload || {}
+  }
+
+  const fetchSessionList = async () => {
+    setLoadingSession(true)
+    try {
+      const res = await request({
+        url: '/api/v1/session/',
+        method: 'GET',
+      })
+      const resData = parseResponse(res?.data)
+      if (resData?.code === 200 && resData?.data?.list) {
+        setSessionList(resData.data.list || [])
+      } else {
+        setSessionList([])
+      }
+    } catch (error) {
+      console.error('fetch session list failed:', error)
+      setSessionList([])
+      Taro.showToast({ title: '获取会话失败', icon: 'none' })
+    } finally {
+      setLoadingSession(false)
+    }
+  }
+
+  const handleOpenShare = () => {
+    if (!activityId) {
+      Taro.showToast({ title: '活动信息无效', icon: 'none' })
+      return
+    }
+    setShowShareModal(true)
+    setShareMsg('')
+    void fetchSessionList()
+  }
+
+  const handleShareToSession = async (session: SessionItem) => {
+    if (!activityId) return
+    Taro.showLoading({ title: '分享中...' })
+    try {
+      const res = await request({
+        url: '/api/v1/message/send',
+        method: 'POST',
+        data: {
+          target_id: String(session.peer_id),
+          session_type: Number(session.session_type) === 2 ? 2 : 1,
+          msg_type: 9,
+          content: shareMsg || `分享活动：${titleText}`,
+          ext: {
+            card_type: 'activity_forward',
+            activity_id: String(activityId),
+          },
+        },
+      })
+      const resData = parseResponse(res?.data)
+      if (resData?.code === 200) {
+        Taro.showToast({ title: '分享成功', icon: 'success' })
+        setShowShareModal(false)
+        setShareMsg('')
+        return
+      }
+      Taro.showToast({ title: resData?.msg || '分享失败', icon: 'none' })
+    } catch (error) {
+      console.error('share activity failed:', error)
+      Taro.showToast({ title: '分享失败', icon: 'none' })
+    } finally {
+      Taro.hideLoading()
+    }
+  }
+
+  const safeDecode = (value?: string) => {
+    if (!value) return ''
+    try {
+      return decodeURIComponent(value)
+    } catch (error) {
+      return value
+    }
+  }
+
   return (
     <View className='activity-page'>
       <View
@@ -355,7 +453,7 @@ export default function ActivityPage() {
             <View className='subscribe-pill'>
               <Text className='subscribe-text'>订阅活动</Text>
             </View>
-            <View className='share-pill'>
+            <View className='share-pill' onClick={handleOpenShare}>
               <Text className='share-text'>分享活动</Text>
             </View>
           </View>
@@ -542,6 +640,58 @@ export default function ActivityPage() {
           </View>
         </View>
       )}
+
+      <AtFloatLayout
+        className='activity-share-layout'
+        isOpened={showShareModal}
+        title='分享到'
+        onClose={() => setShowShareModal(false)}
+      >
+        <View className='activity-share-modal'>
+          <View className='activity-share-input-box'>
+            <Input
+              className='activity-share-input'
+              placeholder='说点什么吧...(可选)'
+              placeholderStyle='color:#6f6f6f;'
+              value={shareMsg}
+              onInput={(e) => setShareMsg(e.detail.value)}
+              maxlength={100}
+            />
+          </View>
+          <ScrollView scrollY className='activity-session-list'>
+            {loadingSession && (
+              <View className='activity-share-loading'>
+                <Text className='activity-share-loading-text'>加载中...</Text>
+              </View>
+            )}
+            {!loadingSession && sessionList.length === 0 && (
+              <View className='activity-share-loading'>
+                <Text className='activity-share-empty-text'>暂无会话</Text>
+              </View>
+            )}
+            {!loadingSession && sessionList.map((session) => (
+              <View
+                key={`${session.session_type}_${session.peer_id}`}
+                className='activity-session-item'
+                onClick={() => handleShareToSession(session)}
+              >
+                <Image
+                  src={safeDecode(session.peer_avatar)}
+                  className='activity-session-avatar'
+                  mode='aspectFill'
+                />
+                <View className='activity-session-info'>
+                  <Text className='activity-session-name'>{session.peer_name || '未命名'}</Text>
+                  <Text className='activity-session-type'>
+                    {session.session_type === 2 ? '群聊' : '私聊'}
+                  </Text>
+                </View>
+                <AtIcon value='chevron-right' size='20' color='#999' />
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </AtFloatLayout>
     </View>
   )
 }

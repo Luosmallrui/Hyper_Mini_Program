@@ -23,6 +23,8 @@ interface MerchantItem {
   avg_price: number
   current_count: number
   post_count: number
+  is_subscribe?: boolean
+  is_subscribed?: boolean
 }
 
 interface PartyItem {
@@ -51,6 +53,7 @@ const FILTER_SORTS = ['智能推荐', '距离优先', '人气优先', '高分优
 export default function ActivityListPage() {
   const [list, setList] = useState<PartyItem[]>([])
   const isFetchingRef = useRef(false)
+  const subscribePendingRef = useRef<Set<string | number>>(new Set())
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [filterOpen, setFilterOpen] = useState<'none' | 'cat' | 'sort'>('none')
   const [selectedCat, setSelectedCat] = useState('全部')
@@ -104,7 +107,7 @@ export default function ActivityListPage() {
               fans: String(item.current_count ?? ''),
               isVerified: false,
               isFollowed: false,
-              isSubscribed: false,
+              isSubscribed: Boolean((item as any)?.is_subscribe ?? (item as any)?.is_subscribed),
             }
           })
         : []
@@ -170,7 +173,36 @@ export default function ActivityListPage() {
   }
 
   const toggleSubscribe = (id: string | number) => {
-    setList((prev) => prev.map((item) => (item.id === id ? { ...item, isSubscribed: !item.isSubscribed } : item)))
+    const target = list.find((item) => item.id === id)
+    if (!target || target.type !== '派对') return
+    if (subscribePendingRef.current.has(id)) return
+
+    const nextSubscribed = !Boolean(target.isSubscribed)
+    subscribePendingRef.current.add(id)
+    setList((prev) => prev.map((item) => (item.id === id ? { ...item, isSubscribed: nextSubscribed } : item)))
+
+    const endpoint = nextSubscribed ? '/api/v1/merchant/subscribe' : '/api/v1/merchant/unsubscribe'
+    request({
+      url: endpoint,
+      method: 'POST',
+      data: { party_id: String(id) },
+    })
+      .then((res: any) => {
+        const code = Number(res?.data?.code)
+        if (code !== 200) {
+          setList((prev) => prev.map((item) => (item.id === id ? { ...item, isSubscribed: !nextSubscribed } : item)))
+          Taro.showToast({ title: nextSubscribed ? '订阅失败' : '取消订阅失败', icon: 'none' })
+          return
+        }
+        Taro.showToast({ title: nextSubscribed ? '订阅成功' : '已取消订阅', icon: 'none' })
+      })
+      .catch(() => {
+        setList((prev) => prev.map((item) => (item.id === id ? { ...item, isSubscribed: !nextSubscribed } : item)))
+        Taro.showToast({ title: nextSubscribed ? '订阅失败' : '取消订阅失败', icon: 'none' })
+      })
+      .finally(() => {
+        subscribePendingRef.current.delete(id)
+      })
   }
 
   const handleFilterClick = (type: 'cat' | 'sort') => {
@@ -334,15 +366,15 @@ export default function ActivityListPage() {
                   >
                     {item.isFollowed ? '已关注' : '关注'}
                   </View>
-                  {item.type !== '场地' && (
+                  {item.type === '派对' && (
                     <View
-                      className={`btn outline ${item.isSubscribed ? 'disabled' : ''}`}
+                      className={`btn outline ${subscribePendingRef.current.has(item.id) ? 'disabled' : ''}`}
                       onClick={(e) => {
                         e.stopPropagation()
                         toggleSubscribe(item.id)
                       }}
                     >
-                      {item.isSubscribed ? '已订阅' : '订阅活动'}
+                      {item.isSubscribed ? '取消订阅' : '订阅活动'}
                     </View>
                   )}
                 </View>
@@ -355,3 +387,4 @@ export default function ActivityListPage() {
     </View>
   )
 }
+

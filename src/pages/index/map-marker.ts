@@ -1,4 +1,5 @@
 import Taro from '@tarojs/taro'
+import defaultActiveBackground from '../../assets/images/map-maker-background.png'
 
 export const ACTIVE_MARKER_CANVAS_ID = 'active-marker-canvas'
 export const INACTIVE_MARKER_CANVAS_ID = 'inactive-marker-canvas'
@@ -211,6 +212,40 @@ const ACTIVE_BACKGROUND_RATIO = 735 / 817
 const ACTIVE_ICON_BOX_WIDTH_RATIO = 0.62
 const ACTIVE_ICON_BOX_HEIGHT_RATIO = 0.45
 const ACTIVE_ICON_BOX_TOP_RATIO = 0.26
+const DEFAULT_ACTIVE_BACKGROUND = defaultActiveBackground
+
+const drawActiveBubbleFallback = (
+  ctx: Taro.CanvasContext,
+  width: number,
+  height: number,
+) => {
+  const radius = Math.max(10, Math.min(width, height) * 0.18)
+  const pointerWidth = Math.max(14, Math.round(width * 0.18))
+  const pointerHeight = Math.max(10, Math.round(height * 0.1))
+  const bodyBottom = height - pointerHeight
+  const centerX = width / 2
+
+  ctx.setFillStyle('#4f5562')
+  ctx.beginPath()
+  ctx.moveTo(radius, 0)
+  ctx.lineTo(width - radius, 0)
+  ctx.arc(width - radius, radius, radius, -Math.PI / 2, 0, false)
+  ctx.lineTo(width, bodyBottom - radius)
+  ctx.arc(width - radius, bodyBottom - radius, radius, 0, Math.PI / 2, false)
+  ctx.lineTo(centerX + pointerWidth / 2, bodyBottom)
+  ctx.lineTo(centerX, height)
+  ctx.lineTo(centerX - pointerWidth / 2, bodyBottom)
+  ctx.lineTo(radius, bodyBottom)
+  ctx.arc(radius, bodyBottom - radius, radius, Math.PI / 2, Math.PI, false)
+  ctx.lineTo(0, radius)
+  ctx.arc(radius, radius, radius, Math.PI, Math.PI * 1.5, false)
+  ctx.closePath()
+  ctx.fill()
+
+  ctx.setLineWidth(2)
+  ctx.setStrokeStyle('rgba(255,255,255,0.82)')
+  ctx.stroke()
+}
 
 const isSvgImageSource = (src: string) =>
   /^data:image\/svg\+xml[,;]/i.test(src) || /\.svg([?#].*)?$/i.test(src)
@@ -244,13 +279,17 @@ const composeActiveMarkerWithBackground = async (
 
   const ctx = Taro.createCanvasContext(ICON_ONLY_MARKER_CANVAS_ID)
   ctx.clearRect(0, 0, markerWidth, safeHeight)
+  // Always paint a bubble base first so iOS drawImage failures won't degrade to plain enlarged icon.
+  drawActiveBubbleFallback(ctx, markerWidth, safeHeight)
+
   if (bgInfo?.path) {
-    ctx.drawImage(bgInfo.path, 0, 0, markerWidth, safeHeight)
+    try {
+      ctx.drawImage(bgInfo.path, 0, 0, markerWidth, safeHeight)
+    } catch (error) {}
   } else if (bgSourcePath) {
-    ctx.drawImage(bgSourcePath, 0, 0, markerWidth, safeHeight)
-  } else {
-    ctx.setFillStyle('#5f646e')
-    ctx.fillRect(0, 0, markerWidth, safeHeight)
+    try {
+      ctx.drawImage(bgSourcePath, 0, 0, markerWidth, safeHeight)
+    } catch (error) {}
   }
 
   const iconBoxWidth = markerWidth * ACTIVE_ICON_BOX_WIDTH_RATIO
@@ -263,7 +302,11 @@ const composeActiveMarkerWithBackground = async (
   const iconY = safeHeight * ACTIVE_ICON_BOX_TOP_RATIO + (iconBoxHeight - drawIconHeight) / 2
   ctx.drawImage(iconInfo.path, iconX, iconY, drawIconWidth, drawIconHeight)
 
-  const path = await drawCanvasAndExport(ctx, ICON_ONLY_MARKER_CANVAS_ID, markerWidth, safeHeight)
+  let path = await drawCanvasAndExport(ctx, ICON_ONLY_MARKER_CANVAS_ID, markerWidth, safeHeight, 4200)
+  if (!path) {
+    await wait(180)
+    path = await drawCanvasAndExport(ctx, ICON_ONLY_MARKER_CANVAS_ID, markerWidth, safeHeight, 4200)
+  }
   return {
     iconPath: path,
     width: markerWidth,
@@ -325,7 +368,8 @@ export const buildIconOnlyMarker = async (
   const isActive = Boolean(options?.isActive)
   const activeBackground = options?.activeBackground || ''
   const normalizedActiveBackground = await normalizeImagePath(activeBackground)
-  const safeActiveBackground = normalizedActiveBackground || activeBackground
+  const normalizedDefaultBackground = await normalizeImagePath(DEFAULT_ACTIVE_BACKGROUND)
+  const safeActiveBackground = normalizedActiveBackground || normalizedDefaultBackground || activeBackground || DEFAULT_ACTIVE_BACKGROUND
   const key = `icon-only::${targetIcon}::${fallbackIcon}::${safeHeight}::${safeHint}::${isActive}::${safeActiveBackground}::${STYLE_VERSION}`
 
   const cached = iconOnlyCache.get(key)
@@ -346,6 +390,7 @@ export const buildIconOnlyMarker = async (
   const safeRatio = Number.isFinite(ratio) && ratio > 0 ? ratio : safeHint
   let width = Math.max(18, Math.round(safeHeight * safeRatio))
   let height = safeHeight
+  let composedSuccess = false
 
   const candidates = [resolvedMarkerIcon, img?.path || '', normalizedFallback]
   let finalPath = ''
@@ -365,7 +410,7 @@ export const buildIconOnlyMarker = async (
     finalPath = (img?.path || '').trim() || resolvedMarkerIcon || normalizedFallback || ''
   }
 
-  if (isActive && finalPath && activeBackground) {
+  if (isActive && finalPath && safeActiveBackground) {
     const compositeKey = `active-composite::${finalPath}::${safeActiveBackground}::${safeHeight}::${STYLE_VERSION}`
     const cachedComposite = activeCompositeCache.get(compositeKey)
     if (cachedComposite?.iconPath) {
@@ -377,11 +422,12 @@ export const buildIconOnlyMarker = async (
     if (composed.iconPath) {
       activeCompositeCache.set(compositeKey, composed)
       iconOnlyCache.set(key, composed)
+      composedSuccess = true
       return composed
     }
     console.warn('active marker compose failed, fallback to raw icon', {
       finalPath,
-      activeBackground,
+      activeBackground: safeActiveBackground,
     })
   }
 
@@ -398,7 +444,9 @@ export const buildIconOnlyMarker = async (
       normalizedFallback,
     })
   }
-  if (asset.iconPath) {
+  // If active composite failed this round, avoid caching raw enlarged icon,
+  // so next refresh can retry composition instead of being stuck in fallback.
+  if (asset.iconPath && (!isActive || composedSuccess || !safeActiveBackground)) {
     iconOnlyCache.set(key, asset)
   }
   return asset

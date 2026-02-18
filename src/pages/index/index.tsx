@@ -1,4 +1,4 @@
-import { View, Text, Map as TaroMap, Swiper, SwiperItem, Image, ScrollView, Canvas } from '@tarojs/components'
+﻿import { View, Text, Map as TaroMap, Swiper, SwiperItem, Image, ScrollView, Canvas } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, useEffect, useRef } from 'react'
 import { AtIcon } from 'taro-ui'
@@ -12,14 +12,13 @@ import mapPinIcon from '../../assets/icons/map-pin.svg'
 import mapPinFallbackIcon from '../../assets/icons/map-pin-fallback.png'
 import partyMarkerFallbackIcon from '../../assets/icons/marker-party-fallback.png'
 import venueMarkerFallbackIcon from '../../assets/icons/marker-venue-fallback.png'
-import mapMakerBackground from '../../assets/icons/map-maker-background.svg'
+import mapMakerBackground from '../../assets/images/map-maker-background.png'
 import certificationIcon from '../../assets/images/certification.png'
 import {
   AVATAR_MARKER_CANVAS_ID,
   ICON_ONLY_MARKER_CANVAS_ID,
   USER_AVATAR_MARKER_SIZE,
   clearMarkerCaches,
-  buildIconOnlyMarker,
   buildCircularAvatarMarker,
 } from './map-marker'
 import './index.less'
@@ -31,13 +30,15 @@ const USER_LOCATION_MARKER_ID = 99900001
 const MARKER_INACTIVE_HEIGHT = 46
 const MARKER_ACTIVE_HEIGHT = 96
 const MAP_FOCUS_PIXEL_OFFSET = 100
-const DEFAULT_MAP_SCALE = 15
+const DEFAULT_MAP_SCALE = 14
 const EARTH_METERS_PER_PIXEL_AT_EQUATOR = 156543.03392
 const METERS_PER_DEGREE_LAT = 111320
-const MARKER_PRELOAD_TIMEOUT_MS = 1600
-const AREA_LEVEL2 = ['不限', '热门商圈', '高新区', '锦江区']
-const AREA_LEVEL3 = ['春熙路', '宽窄巷子', '兰桂坊', '铁像寺', 'SKP', '玉林', '望平街']
-const MORE_TAGS = ['积分立减', '买单立减', '新人优惠']
+const MARKER_LABEL_ANCHOR_Y_ACTIVE = 10
+const MARKER_LABEL_ANCHOR_Y_INACTIVE = 52
+const ACTIVE_BACKGROUND_RATIO = 735 / 817
+const ACTIVE_FOREGROUND_ICON_HEIGHT = 48
+const ACTIVE_FOREGROUND_ICON_ANCHOR_Y = 1.55
+const MORE_TAGS: Array<{ id: number; name: string }> = []
 
 interface MerchantItem {
   id: number
@@ -54,6 +55,8 @@ interface MerchantItem {
   current_count: number
   post_count: number
   icon?: string
+  is_subscribe?: boolean
+  is_subscribed?: boolean
 }
 
 interface PartyItem {
@@ -74,6 +77,27 @@ interface PartyItem {
   rank?: string
   fans?: string
   isVerified?: boolean
+  isSubscribed?: boolean
+}
+
+interface DistrictArea {
+  id: number
+  district_id: number
+  name: string
+  sort_order: number
+  is_active: boolean
+}
+
+interface DistrictNode {
+  id: number
+  name: string
+  sort_order: number
+  areas: DistrictArea[]
+}
+
+interface MerchantTag {
+  id: number
+  name: string
 }
 
 export default function IndexPage() {
@@ -87,10 +111,19 @@ export default function IndexPage() {
   const [filterOpen, setFilterOpen] = useState<'none' | 'all' | 'area' | 'more'>('none')
   const [selectedCategory, setSelectedCategory] = useState('全部分类')
   const [areaL1, setAreaL1] = useState('region')
-  const [areaL2, setAreaL2] = useState('热门商圈')
-  const [selectedRegion, setSelectedRegion] = useState('')
-  const [selectedTags] = useState<string[]>([])
-
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([])
+  const [draftTagIds, setDraftTagIds] = useState<number[]>([])
+  const [merchantTags, setMerchantTags] = useState<MerchantTag[]>(MORE_TAGS)
+  const [merchantTagsLoading, setMerchantTagsLoading] = useState(false)
+  const [merchantTagsLoaded, setMerchantTagsLoaded] = useState(false)
+  const [merchantTagsError, setMerchantTagsError] = useState('')
+  const [districtTree, setDistrictTree] = useState<DistrictNode[]>([])
+  const [districtLoading, setDistrictLoading] = useState(false)
+  const [districtLoaded, setDistrictLoaded] = useState(false)
+  const [districtError, setDistrictError] = useState('')
+  const [selectedDistrictId, setSelectedDistrictId] = useState<number | null>(null)
+  const [selectedAreaId, setSelectedAreaId] = useState<number | null>(null)
+  const [selectedAreaName, setSelectedAreaName] = useState('')
   const { statusBarHeight, navBarHeight } = useNavBarMetrics()
   const [initialCenter, setInitialCenter] = useState({ lng: 104.066, lat: 30.657 })
   const initialCenterRef = useRef(initialCenter)
@@ -106,7 +139,14 @@ export default function IndexPage() {
   const mapScaleRef = useRef(DEFAULT_MAP_SCALE)
   const cameraAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cameraAnimTokenRef = useRef(0)
-
+  const districtLoadedRef = useRef(districtLoaded)
+  const districtLoadingRef = useRef(districtLoading)
+  const subscribePendingRef = useRef<Set<string | number>>(new Set())
+  const selectedTagIdsRef = useRef<number[]>(selectedTagIds)
+  const selectedDistrictIdRef = useRef<number | null>(selectedDistrictId)
+  const selectedAreaIdRef = useRef<number | null>(selectedAreaId)
+  const merchantTagsLoadedRef = useRef(merchantTagsLoaded)
+  const merchantTagsLoadingRef = useRef(merchantTagsLoading)
   const syncAuthState = () => {
     const next = Boolean(Taro.getStorageSync('access_token'))
     hasTokenRef.current = next
@@ -126,6 +166,19 @@ export default function IndexPage() {
     setUserLocationMarker(null)
     setCurrent(0)
     currentRef.current = 0
+    setDistrictTree([])
+    setDistrictLoaded(false)
+    setDistrictLoading(false)
+    setDistrictError('')
+    setSelectedDistrictId(null)
+    setSelectedAreaId(null)
+    setSelectedAreaName('')
+    setSelectedTagIds([])
+    setDraftTagIds([])
+    setMerchantTags(MORE_TAGS)
+    setMerchantTagsLoaded(false)
+    setMerchantTagsLoading(false)
+    setMerchantTagsError('')
   }
 
   const getMapContext = () => {
@@ -217,6 +270,109 @@ export default function IndexPage() {
     animateMapCenterTo(focusCenter.longitude, focusCenter.latitude)
   }
 
+  const bySortOrderThenId = <T extends { sort_order?: number; id?: number }>(a: T, b: T) => {
+    const sa = Number.isFinite(Number(a?.sort_order)) ? Number(a?.sort_order) : Number.MAX_SAFE_INTEGER
+    const sb = Number.isFinite(Number(b?.sort_order)) ? Number(b?.sort_order) : Number.MAX_SAFE_INTEGER
+    if (sa !== sb) return sa - sb
+    const ia = Number.isFinite(Number(a?.id)) ? Number(a?.id) : Number.MAX_SAFE_INTEGER
+    const ib = Number.isFinite(Number(b?.id)) ? Number(b?.id) : Number.MAX_SAFE_INTEGER
+    return ia - ib
+  }
+
+  const normalizeDistrictTree = (input: any): DistrictNode[] => {
+    if (!Array.isArray(input)) return []
+    return input
+      .map((node: any) => {
+        const areas = Array.isArray(node?.areas)
+          ? node.areas
+              .filter((area: any) => Boolean(area?.is_active))
+              .map((area: any) => ({
+                id: Number(area?.id) || 0,
+                district_id: Number(area?.district_id) || 0,
+                name: String(area?.name || ''),
+                sort_order: Number(area?.sort_order) || 0,
+                is_active: Boolean(area?.is_active),
+              }))
+              .sort(bySortOrderThenId)
+          : []
+        return {
+          id: Number(node?.id) || 0,
+          name: String(node?.name || ''),
+          sort_order: Number(node?.sort_order) || 0,
+          areas,
+        } as DistrictNode
+      })
+      .filter((node: DistrictNode) => node.id > 0 && Boolean(node.name))
+      .sort(bySortOrderThenId)
+  }
+
+  const fetchDistrictTree = async () => {
+    if (districtLoadingRef.current) return
+    districtLoadingRef.current = true
+    setDistrictLoading(true)
+    setDistrictError('')
+    try {
+      const res = await request({
+        url: '/api/v1/districts/tree',
+        method: 'GET',
+      })
+      const body: any = res?.data
+      const source = Array.isArray(body?.data) ? body.data : []
+      const normalized = normalizeDistrictTree(source)
+      setDistrictTree(normalized)
+      setDistrictLoaded(true)
+
+      if (normalized.length === 0) {
+        setSelectedDistrictId(null)
+        return
+      }
+
+      setSelectedDistrictId((prev) => {
+        const hasPrev = prev !== null && normalized.some((node) => node.id === prev)
+        return hasPrev ? prev : normalized[0].id
+      })
+    } catch (error) {
+      setDistrictLoaded(false)
+      setDistrictError('加载失败，点击重试')
+    } finally {
+      districtLoadingRef.current = false
+      setDistrictLoading(false)
+    }
+  }
+
+  const fetchMerchantTags = async () => {
+    if (merchantTagsLoadingRef.current) return
+    merchantTagsLoadingRef.current = true
+    setMerchantTagsLoading(true)
+    setMerchantTagsError('')
+    try {
+      const res = await request({
+        url: '/api/v1/merchant/tags',
+        method: 'GET',
+      })
+      const body: any = res?.data
+      const source = Array.isArray(body?.data) ? body.data : []
+      const normalized: MerchantTag[] = source
+        .map((item: any) => ({
+          id: Number(item?.id) || 0,
+          name: String(item?.name || ''),
+        }))
+        .filter((item: MerchantTag) => item.id > 0 && Boolean(item.name))
+        .sort((a, b) => a.id - b.id)
+
+      setMerchantTags(normalized)
+      setMerchantTagsLoaded(true)
+      setDraftTagIds((prev) => prev.filter((id) => normalized.some((tag) => tag.id === id)))
+      setSelectedTagIds((prev) => prev.filter((id) => normalized.some((tag) => tag.id === id)))
+    } catch (error) {
+      setMerchantTagsLoaded(false)
+      setMerchantTagsError('加载失败，点击重试')
+    } finally {
+      merchantTagsLoadingRef.current = false
+      setMerchantTagsLoading(false)
+    }
+  }
+
   const handleRegionChange = (e: any) => {
     const detail = e?.detail || {}
     if (detail.type !== 'end') return
@@ -234,8 +390,16 @@ export default function IndexPage() {
       return
     }
     clearMarkerCaches()
-    void syncPartyData()
-    void refreshUserLocationMarker()
+    Taro.nextTick(() => {
+      void syncPartyData()
+      void refreshUserLocationMarker()
+    })
+    if (!districtLoadedRef.current && !districtLoadingRef.current) {
+      void fetchDistrictTree()
+    }
+    if (!merchantTagsLoadedRef.current && !merchantTagsLoadingRef.current) {
+      void fetchMerchantTags()
+    }
   })
 
   useEffect(() => {
@@ -262,6 +426,54 @@ export default function IndexPage() {
   }, [hasToken])
 
   useEffect(() => {
+    districtLoadedRef.current = districtLoaded
+  }, [districtLoaded])
+
+  useEffect(() => {
+    districtLoadingRef.current = districtLoading
+  }, [districtLoading])
+
+  useEffect(() => {
+    selectedTagIdsRef.current = selectedTagIds
+  }, [selectedTagIds])
+
+  useEffect(() => {
+    selectedDistrictIdRef.current = selectedDistrictId
+  }, [selectedDistrictId])
+
+  useEffect(() => {
+    selectedAreaIdRef.current = selectedAreaId
+  }, [selectedAreaId])
+
+  useEffect(() => {
+    merchantTagsLoadedRef.current = merchantTagsLoaded
+  }, [merchantTagsLoaded])
+
+  useEffect(() => {
+    merchantTagsLoadingRef.current = merchantTagsLoading
+  }, [merchantTagsLoading])
+
+  useEffect(() => {
+    if (!districtTree.length) {
+      if (selectedDistrictId !== null) setSelectedDistrictId(null)
+      return
+    }
+    if (selectedDistrictId !== null && !districtTree.some((item) => item.id === selectedDistrictId)) {
+      setSelectedDistrictId(districtTree[0].id)
+    }
+  }, [districtTree, selectedDistrictId])
+
+  useEffect(() => {
+    if (selectedAreaId === null) return
+    const district = districtTree.find((item) => item.id === selectedDistrictId)
+    const areas = district?.areas || []
+    if (!areas.some((item) => item.id === selectedAreaId)) {
+      setSelectedAreaId(null)
+      setSelectedAreaName('')
+    }
+  }, [districtTree, selectedDistrictId, selectedAreaId])
+
+  useEffect(() => {
     return () => {
       stopCameraAnimation()
     }
@@ -272,8 +484,16 @@ export default function IndexPage() {
       const authed = syncAuthState()
       if (!authed) return
       clearMarkerCaches()
-      void syncPartyData()
-      void refreshUserLocationMarker()
+      Taro.nextTick(() => {
+        void syncPartyData()
+        void refreshUserLocationMarker()
+      })
+      if (!districtLoadedRef.current && !districtLoadingRef.current) {
+        void fetchDistrictTree()
+      }
+      if (!merchantTagsLoadedRef.current && !merchantTagsLoadingRef.current) {
+        void fetchMerchantTags()
+      }
     }
     const onForceLogout = () => {
       syncAuthState()
@@ -303,36 +523,10 @@ export default function IndexPage() {
     void refreshUserLocationMarker()
   }, [hasToken])
 
-  const preloadMarkerIcons = async (list: PartyItem[], activeIndex: number) => {
-    await Promise.all(
-      list.map((item, index) => {
-        const fallbackPath = resolveMarkerFallback(item)
-        const rawIconPath = resolveMarkerIconPath(item)
-        const ratioHint = item.type === '派对' ? 44 / 54 : 1
-        return buildIconOnlyMarker(
-          rawIconPath,
-          fallbackPath,
-          index === activeIndex ? MARKER_ACTIVE_HEIGHT : MARKER_INACTIVE_HEIGHT,
-          ratioHint,
-          {
-            isActive: index === activeIndex,
-            activeBackground: mapMakerBackground,
-          },
-        )
-      }),
-    )
-  }
-
-  const preloadMarkerIconsWithTimeout = async (list: PartyItem[], activeIndex: number) => {
-    await Promise.race([
-      preloadMarkerIcons(list, activeIndex),
-      new Promise<void>((resolve) => {
-        setTimeout(resolve, MARKER_PRELOAD_TIMEOUT_MS)
-      }),
-    ])
-  }
-
-  const syncPartyData = async () => {
+  const syncPartyData = async (options?: {
+    tagIds?: number[]
+    districtId?: number | null
+  }) => {
     if (!hasTokenRef.current) return
 
     if (listLoadingRef.current) {
@@ -342,8 +536,21 @@ export default function IndexPage() {
 
     listLoadingRef.current = true
     try {
+      const activeTagIds = Array.isArray(options?.tagIds) ? options?.tagIds : selectedTagIdsRef.current
+      const hasAreaSelected = selectedAreaIdRef.current !== null
+      const activeDistrictId = options && 'districtId' in options
+        ? options.districtId
+        : (hasAreaSelected ? selectedDistrictIdRef.current : null)
+      const queryParts: string[] = []
+      if (activeTagIds.length > 0) {
+        queryParts.push(`tags=${activeTagIds.map((id) => encodeURIComponent(String(id))).join(',')}`)
+      }
+      if (activeDistrictId !== null && activeDistrictId !== undefined) {
+        queryParts.push(`district_id=${encodeURIComponent(String(activeDistrictId))}`)
+      }
+      const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : ''
       const res = await request({
-        url: '/api/v1/merchant/list',
+        url: `/api/v1/merchant/list${query}`,
         method: 'GET',
       })
       if (!hasTokenRef.current) return
@@ -379,6 +586,7 @@ export default function IndexPage() {
           fans: String(item.current_count ?? ''),
           isVerified: false,
           rank: '',
+          isSubscribed: Boolean((item as any)?.is_subscribe ?? (item as any)?.is_subscribed),
         }
       })
 
@@ -400,9 +608,6 @@ export default function IndexPage() {
         setInitialCenter({ lng: focusCenter.longitude, lat: focusCenter.latitude })
       }
 
-      // Map markers render only after icon resources are ready.
-      await preloadMarkerIconsWithTimeout(mappedList, nextIndex)
-      console.log('[index] marker icons preloaded', { count: mappedList.length, nextIndex })
       await updateMarkers(mappedList, nextIndex)
     } catch (error) {
       console.error('Party list load failed:', error)
@@ -429,6 +634,14 @@ export default function IndexPage() {
     return iconUrl
   }
 
+  const resolveDisplayMarkerIconPath = (item: PartyItem) => {
+    const raw = resolveMarkerIconPath(item)
+    if (/^data:image\/svg\+xml[,;]/i.test(raw) || /\.svg([?#].*)?$/i.test(raw)) {
+      return resolveMarkerFallback(item)
+    }
+    return raw
+  }
+
   const formatMarkerTitle = (title: string) => {
     const safe = (title || '').trim()
     if (!safe) return ''
@@ -447,45 +660,42 @@ export default function IndexPage() {
     }
 
     const markerIndexMap = new Map<number, number>()
-    const markerAssetsRaw = await Promise.all(
-      list.map(async (item, index) => {
-        const markerBaseId = index + 1
-        const isActive = index === activeIndex
-        const markerId = renderVersion * 10000 + markerBaseId * 10 + (isActive ? 1 : 0)
-        const fallbackPath = resolveMarkerFallback(item)
-        const rawIconPath = resolveMarkerIconPath(item)
-        const latitude = Number(item.lat)
-        const longitude = Number(item.lng)
-        const safeLatitude = Number.isFinite(latitude) ? latitude : initialCenter.lat
-        const safeLongitude = Number.isFinite(longitude) ? longitude : initialCenter.lng
-        const ratioHint = item.type === '派对' ? 44 / 54 : 1
-        const iconAsset = await buildIconOnlyMarker(
-          rawIconPath,
-          fallbackPath,
-          isActive ? MARKER_ACTIVE_HEIGHT : MARKER_INACTIVE_HEIGHT,
-          ratioHint,
-          {
-            isActive,
-            activeBackground: mapMakerBackground,
-          },
-        )
+    const markerAssetsRaw = list.flatMap((item, index) => {
+      const markerBaseId = index + 1
+      const isActive = index === activeIndex
+      const fallbackPath = resolveMarkerFallback(item)
+      const rawIconPath = resolveDisplayMarkerIconPath(item) || fallbackPath
+      const latitude = Number(item.lat)
+      const longitude = Number(item.lng)
+      const safeLatitude = Number.isFinite(latitude) ? latitude : initialCenter.lat
+      const safeLongitude = Number.isFinite(longitude) ? longitude : initialCenter.lng
+      const ratioHint = item.type === '派对' ? 44 / 54 : 1
 
-        const iconPath = iconAsset.iconPath || fallbackPath
-        markerIndexMap.set(markerId, index)
-        const markerItem: any = {
-          id: markerId,
+      if (isActive) {
+        const bgMarkerId = renderVersion * 10000 + markerBaseId * 10 + 1
+        const fgMarkerId = renderVersion * 10000 + markerBaseId * 10 + 2
+        const bgWidth = Math.max(26, Math.round(MARKER_ACTIVE_HEIGHT * ACTIVE_BACKGROUND_RATIO))
+        const fgHeight = ACTIVE_FOREGROUND_ICON_HEIGHT
+        const fgWidth = Math.max(20, Math.round(fgHeight * ratioHint))
+
+        markerIndexMap.set(bgMarkerId, index)
+        markerIndexMap.set(fgMarkerId, index)
+
+        const bgMarker: any = {
+          id: bgMarkerId,
           latitude: safeLatitude,
           longitude: safeLongitude,
-          width: iconAsset.width,
-          height: iconAsset.height,
-          zIndex: isActive ? 999 : 200,
-          anchor: { x: 0.5, y: isActive ? 1 : 0.5 },
+          iconPath: mapMakerBackground,
+          width: bgWidth,
+          height: MARKER_ACTIVE_HEIGHT,
+          zIndex: 9998,
+          anchor: { x: 0.5, y: 1 },
           label: {
             content: formatMarkerTitle(item.title),
             color: '#ffffff',
-            fontSize: isActive ? 13 : 12,
+            fontSize: 13,
             anchorX: 0,
-            anchorY: isActive ? 10 : 30,
+            anchorY: MARKER_LABEL_ANCHOR_Y_ACTIVE,
             borderWidth: 0,
             borderColor: 'transparent',
             borderRadius: 6,
@@ -494,13 +704,55 @@ export default function IndexPage() {
             textAlign: 'center',
           },
         }
-        if (iconPath) {
-          markerItem.iconPath = iconPath
+
+        const fgMarker: any = {
+          id: fgMarkerId,
+          latitude: safeLatitude,
+          longitude: safeLongitude,
+          iconPath: rawIconPath,
+          width: fgWidth,
+          height: fgHeight,
+          zIndex: 9999,
+          anchor: { x: 0.5, y: ACTIVE_FOREGROUND_ICON_ANCHOR_Y },
         }
-        return markerItem
-      }),
-    )
-    const markerAssets = markerAssetsRaw.filter(Boolean) as any[]
+
+        return [bgMarker, fgMarker]
+      }
+
+      const markerId = renderVersion * 10000 + markerBaseId * 10
+      const width = Math.max(18, Math.round(MARKER_INACTIVE_HEIGHT * ratioHint))
+      markerIndexMap.set(markerId, index)
+      const markerItem: any = {
+        id: markerId,
+        latitude: safeLatitude,
+        longitude: safeLongitude,
+        iconPath: rawIconPath,
+        width,
+        height: MARKER_INACTIVE_HEIGHT,
+        zIndex: 200,
+        anchor: { x: 0.5, y: 0.5 },
+        label: {
+          content: formatMarkerTitle(item.title),
+          color: '#ffffff',
+          fontSize: 12,
+          anchorX: 0,
+          anchorY: MARKER_LABEL_ANCHOR_Y_INACTIVE,
+          borderWidth: 0,
+          borderColor: 'transparent',
+          borderRadius: 6,
+          bgColor: 'rgba(0,0,0,0.58)',
+          padding: 6,
+          textAlign: 'center',
+        },
+      }
+      return [markerItem]
+    })
+    const markerAssets = (markerAssetsRaw.filter(Boolean) as any[])
+      .sort((a, b) => {
+        const za = Number(a?.zIndex) || 0
+        const zb = Number(b?.zIndex) || 0
+        return za - zb
+      })
 
     if (buildToken !== markerBuildTokenRef.current) return
     markerIndexMapRef.current = markerIndexMap
@@ -626,9 +878,54 @@ export default function IndexPage() {
     void updateMarkers(partyList, targetIndex)
   }
 
+  const toggleSubscribe = (id: string | number) => {
+    const target = partyListRef.current.find((item) => item.id === id)
+    if (!target || target.type !== '派对') return
+    if (subscribePendingRef.current.has(id)) return
+
+    const nextSubscribed = !Boolean(target.isSubscribed)
+    subscribePendingRef.current.add(id)
+    setPartyList((prev) => {
+      const next = prev.map((item) => (item.id === id ? { ...item, isSubscribed: nextSubscribed } : item))
+      partyListRef.current = next
+      return next
+    })
+
+    const endpoint = nextSubscribed ? '/api/v1/merchant/subscribe' : '/api/v1/merchant/unsubscribe'
+    request({
+      url: endpoint,
+      method: 'POST',
+      data: { party_id: String(id) },
+    })
+      .then((res: any) => {
+        const code = Number(res?.data?.code)
+        if (code !== 200) {
+          setPartyList((prev) => {
+            const next = prev.map((item) => (item.id === id ? { ...item, isSubscribed: !nextSubscribed } : item))
+            partyListRef.current = next
+            return next
+          })
+          Taro.showToast({ title: nextSubscribed ? '订阅失败' : '取消订阅失败', icon: 'none' })
+          return
+        }
+        Taro.showToast({ title: nextSubscribed ? '订阅成功' : '已取消订阅', icon: 'none' })
+      })
+      .catch(() => {
+        setPartyList((prev) => {
+          const next = prev.map((item) => (item.id === id ? { ...item, isSubscribed: !nextSubscribed } : item))
+          partyListRef.current = next
+          return next
+        })
+        Taro.showToast({ title: nextSubscribed ? '订阅失败' : '取消订阅失败', icon: 'none' })
+      })
+      .finally(() => {
+        subscribePendingRef.current.delete(id)
+      })
+  }
+
   const navigateTo = (path: string) => Taro.navigateTo({ url: path })
   const getDetailPath = (item: PartyItem) => {
-    if (item?.type === '场地') {
+    if (item?.type === '鍦哄湴') {
       return `/pages/venue/index?id=${item.id}&tag=${encodeURIComponent(item.type || '')}`
     }
     return `/pages/activity/index?id=${item.id}&tag=${encodeURIComponent(item.type || '')}`
@@ -637,15 +934,27 @@ export default function IndexPage() {
   const topHeaderStyle = { top: `${statusBarHeight}px`, height: `${navBarHeight}px` }
   const topHeaderFadeStyle = { height: `${statusBarHeight + navBarHeight}px` }
   const filterContainerStyle = { top: `${statusBarHeight + navBarHeight + 10}px` }
+  const currentDistrict = districtTree.find((item) => item.id === selectedDistrictId) || districtTree[0]
+  const currentDistrictAreas = currentDistrict?.areas || []
 
   const toggleFilter = (type: 'all' | 'area' | 'more') => {
-    setFilterOpen(filterOpen === type ? 'none' : type)
+    const next = filterOpen === type ? 'none' : type
+    setFilterOpen(next)
+    if (next === 'area' && !districtLoadedRef.current && !districtLoadingRef.current) {
+      void fetchDistrictTree()
+    }
+    if (next === 'more') {
+      setDraftTagIds(selectedTagIdsRef.current)
+      if (!merchantTagsLoadedRef.current && !merchantTagsLoadingRef.current) {
+        void fetchMerchantTags()
+      }
+    }
   }
 
   const isHighlight = (type: string) => {
     if (type === 'all') return selectedCategory !== '全部分类'
-    if (type === 'area') return selectedRegion !== ''
-    if (type === 'more') return selectedTags.length > 0
+    if (type === 'area') return selectedAreaId !== null
+    if (type === 'more') return selectedTagIds.length > 0
     return false
   }
 
@@ -682,29 +991,87 @@ export default function IndexPage() {
                 </View>
               ))}
             </ScrollView>
-            <ScrollView scrollY className='col col-2'>
-              {AREA_LEVEL2.map(item => (
-                <View
-                  key={item}
-                  className={`item ${areaL2 === item ? 'active' : ''}`}
-                  onClick={() => setAreaL2(item)}
-                >
-                  {item}
+            {areaL1 === 'dist' ? (
+              <>
+                <View className='col col-2'>
+                  <View className='item active'>暂未开放</View>
                 </View>
-              ))}
-            </ScrollView>
-            <ScrollView scrollY className='col col-3'>
-              {AREA_LEVEL3.map(item => (
-                <View
-                  key={item}
-                  className={`item ${selectedRegion === item ? 'active' : ''}`}
-                  onClick={() => { setSelectedRegion(item); setFilterOpen('none') }}
-                >
-                  {item}
-                  {selectedRegion === item && <AtIcon value='check' size='14' color='#FF2E4D' />}
+                <View className='col col-3'>
+                  <View className='item'>请选择“行政区/商圈”</View>
                 </View>
-              ))}
-            </ScrollView>
+              </>
+            ) : (
+              <>
+                <ScrollView scrollY className='col col-2'>
+                  {districtLoading && (
+                    <View className='item'>加载中...</View>
+                  )}
+                  {!districtLoading && districtError && (
+                    <View className='item active' onClick={() => { void fetchDistrictTree() }}>
+                      {districtError}
+                    </View>
+                  )}
+                  {!districtLoading && !districtError && districtTree.length === 0 && (
+                    <View className='item'>暂无可选区域</View>
+                  )}
+                  {!districtLoading && !districtError && (
+                    <View
+                      className={`item ${selectedDistrictId === null && selectedAreaId === null ? 'active' : ''}`}
+                      onClick={() => {
+                        setSelectedDistrictId(null)
+                        setSelectedAreaId(null)
+                        setSelectedAreaName('')
+                        selectedDistrictIdRef.current = null
+                        selectedAreaIdRef.current = null
+                        setFilterOpen('none')
+                        void syncPartyData({ districtId: null })
+                      }}
+                    >
+                      不限
+                    </View>
+                  )}
+                  {!districtLoading && !districtError && districtTree.map((item) => (
+                    <View
+                      key={item.id}
+                      className={`item ${currentDistrict?.id === item.id ? 'active' : ''}`}
+                      onClick={() => {
+                        setSelectedDistrictId(item.id)
+                        setSelectedAreaId(null)
+                        setSelectedAreaName('')
+                        selectedDistrictIdRef.current = item.id
+                        selectedAreaIdRef.current = null
+                      }}
+                    >
+                      {item.name}
+                    </View>
+                  ))}
+                </ScrollView>
+                <ScrollView scrollY className='col col-3'>
+                  {!districtLoading && !districtError && currentDistrictAreas.length === 0 && (
+                    <View className='item'>暂无可选商圈</View>
+                  )}
+                  {!districtLoading && !districtError && currentDistrictAreas.map((item) => (
+                    <View
+                      key={item.id}
+                      className={`item ${selectedAreaId === item.id ? 'active' : ''}`}
+                      onClick={() => {
+                        const nextAreaId = selectedAreaId === item.id ? null : item.id
+                        setSelectedAreaId(nextAreaId)
+                        setSelectedAreaName(nextAreaId === null ? '' : item.name)
+                        selectedAreaIdRef.current = nextAreaId
+                        setFilterOpen('none')
+                        void syncPartyData({
+                          districtId: nextAreaId === null ? null : (currentDistrict?.id ?? item.district_id),
+                        })
+                      }}
+                    >
+                      {item.name}
+                      {selectedAreaId === item.id && <AtIcon value='check' size='14' color='#FF2E4D' />}
+                    </View>
+                  ))}
+                </ScrollView>
+              </>
+            )}
           </View>
         )}
 
@@ -712,15 +1079,67 @@ export default function IndexPage() {
           <View className='more-view'>
             <Text className='label'>优惠标签</Text>
             <View className='tags'>
-              {MORE_TAGS.map(tag => (
-                <View key={tag} className='tag'>
-                  {tag}
+              {merchantTagsLoading && <View className='tag'>加载中...</View>}
+              {!merchantTagsLoading && merchantTagsError && (
+                <View
+                  className='tag'
+                  onClick={() => {
+                    void fetchMerchantTags()
+                  }}
+                >
+                  {merchantTagsError}
                 </View>
-              ))}
+              )}
+              {!merchantTagsLoading && !merchantTagsError && merchantTags.map((tag) => {
+                const selected = draftTagIds.includes(tag.id)
+                return (
+                  <View
+                    key={tag.id}
+                    className='tag'
+                    style={selected ? { background: 'rgba(255,46,77,0.28)', color: '#fff' } : undefined}
+                    onClick={() => {
+                      setDraftTagIds((prev) => (
+                        prev.includes(tag.id) ? prev.filter((id) => id !== tag.id) : [...prev, tag.id]
+                      ))
+                    }}
+                  >
+                    {tag.name}
+                  </View>
+                )
+              })}
+              {!merchantTagsLoading && !merchantTagsError && merchantTags.length === 0 && (
+                <View className='tag'>暂无可选标签</View>
+              )}
             </View>
             <View className='btn-row'>
-              <View className='btn reset'>重置</View>
-              <View className='btn confirm' onClick={() => setFilterOpen('none')}>确定</View>
+              <View
+                className='btn reset'
+                onClick={() => {
+                  setSelectedDistrictId(null)
+                  setSelectedAreaId(null)
+                  setSelectedAreaName('')
+                  selectedDistrictIdRef.current = null
+                  selectedAreaIdRef.current = null
+                  setSelectedTagIds([])
+                  selectedTagIdsRef.current = []
+                  setDraftTagIds([])
+                  void syncPartyData({ tagIds: [], districtId: null })
+                }}
+              >
+                重置
+              </View>
+              <View
+                className='btn confirm'
+                onClick={() => {
+                  const applied = [...draftTagIds].sort((a, b) => a - b)
+                  setSelectedTagIds(applied)
+                  selectedTagIdsRef.current = applied
+                  setFilterOpen('none')
+                  void syncPartyData({ tagIds: applied })
+                }}
+              >
+                确定
+              </View>
             </View>
           </View>
         )}
@@ -779,7 +1198,9 @@ export default function IndexPage() {
             className={`capsule-item ${filterOpen === 'area' ? 'highlight-bg' : ''}`}
             onClick={() => toggleFilter('area')}
           >
-            <Text className={isHighlight('area') || filterOpen === 'area' ? 'highlight-text' : ''}>区域</Text>
+            <Text className={isHighlight('area') || filterOpen === 'area' ? 'highlight-text' : ''}>
+              {selectedAreaName || '区域'}
+            </Text>
             <View
               className={`triangle-icon ${isHighlight('area') || filterOpen === 'area' ? 'active' : ''} ${filterOpen === 'area' ? 'up' : 'down'}`}
             />
@@ -888,7 +1309,17 @@ export default function IndexPage() {
                       </View>
                       <View className='action-btns'>
                         <View className='card-action-btn follow-btn'>关注</View>
-                        <View className='card-action-btn subscribe-btn'>订阅活动</View>
+                        {item.type === '派对' && (
+                          <View
+                            className='card-action-btn subscribe-btn'
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleSubscribe(item.id)
+                            }}
+                          >
+                            {item.isSubscribed ? '取消订阅' : '订阅活动'}
+                          </View>
+                        )}
                       </View>
                     </View>
                   </View>

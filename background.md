@@ -46,6 +46,18 @@
 - 避免使用会改变文件编码的脚本式全量重写（尤其在 PowerShell 下）。
 - 地图交互问题优先检查：层级覆盖（pointer events）+ 时序（数据/scale/marker 构建顺序）。
 
+### 编码事故记录（2026-02-18）
+- 问题：`src/pages/index/index.tsx` 出现中文常量与文案乱码（mojibake），导致筛选文案/类型匹配异常。
+- 根因：PowerShell 脚本式改写文件时引入编码污染（非最小补丁编辑）。
+- 处理：
+  - 已恢复 `CATEGORIES` / `AREA_LEVEL1` / `MORE_TAGS` 等中文常量。
+  - 新增项目级巡检脚本 `scripts/check-mojibake.js`，并接入：
+    - `npm run check:encoding`
+    - `lint-staged`（提交前自动检测 staged 文本文件）
+- 后续强约束：
+  - 优先使用最小补丁编辑，避免整文件重写。
+  - 提交前至少运行一次 `npm run check:encoding`。
+
 ## 建议新会话优先任务
 1. 真机回归四个认证图标页面（不同机型字号/基线）。
 2. 首页地图聚焦参数微调（`MAP_FOCUS_PIXEL_OFFSET` 可按机型分档）。

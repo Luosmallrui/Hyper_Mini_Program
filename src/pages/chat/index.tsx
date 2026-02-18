@@ -20,13 +20,26 @@ interface NoteCardExt {
   }
 }
 
+interface ActivityCardExt {
+  card_type: 'activity_forward'
+  activity_id: string
+  activity?: {
+    id?: string | number
+    name?: string
+    title?: string
+    cover?: string
+    cover_image?: string
+    location_name?: string
+  }
+}
+
 interface MessageItem {
   id: string
   sender_id: number
   content: string
   msg_type: number
   time: number
-  ext: NoteCardExt | any
+  ext: NoteCardExt | ActivityCardExt | any
   is_self: boolean
   nickname?: string
   avatar?: string
@@ -622,14 +635,19 @@ export default function ChatPage() {
       if (noteId) {
         Taro.navigateTo({ url: `/pages/square-sub/post-detail/index?id=${noteId}` })
       }
+      return
+    }
+    if (msg.msg_type === 9 && msg.ext?.card_type === 'activity_forward') {
+      const activityId = String(msg.ext.activity_id || msg.ext.activity?.id || '')
+      if (activityId) {
+        Taro.navigateTo({ url: `/pages/activity/index?id=${activityId}` })
+      }
     }
   }
 
   // 渲染消息内容
   const renderMessageContent = (msg: MessageItem) => {
-    // 卡片消息 (msg_type: 8)
     if (msg.msg_type === 8) {
-      // 帖子转发卡片
       if (msg.ext?.card_type === 'note_forward' && msg.ext.note) {
         const note = msg.ext.note
         return (
@@ -653,7 +671,6 @@ export default function ChatPage() {
           </View>
         )
       }
-      // 其他类型卡片可以在这里扩展
       return (
         <View className='bubble'>
           <Text className='text'>[卡片消息]</Text>
@@ -661,14 +678,38 @@ export default function ChatPage() {
       )
     }
 
-    // 普通文本消息 (msg_type: 1)
+    if (msg.msg_type === 9 && msg.ext?.card_type === 'activity_forward') {
+      const activityTitle = msg.ext?.activity?.name || msg.ext?.activity?.title || '活动转发'
+      const activityLocation = msg.ext?.activity?.location_name || ''
+      const activityCover = msg.ext?.activity?.cover || msg.ext?.activity?.cover_image || ''
+      return (
+        <View className='card-bubble' onClick={() => handleCardClick(msg)}>
+          <View className='card-header'>
+            <Text className='card-author-name'>分享了一个活动</Text>
+          </View>
+          <View className='card-body'>
+            <View className='card-content'>
+              <Text className='card-title'>{activityTitle}</Text>
+              {msg.content && <Text className='card-desc'>{msg.content}</Text>}
+              {!msg.content && activityLocation && <Text className='card-desc'>{activityLocation}</Text>}
+            </View>
+            {activityCover && (
+              <Image src={activityCover} className='card-cover' mode='aspectFill' />
+            )}
+          </View>
+          <View className='card-footer'>
+            <Text className='card-tag card-tag-activity'>活动</Text>
+          </View>
+        </View>
+      )
+    }
+
     return (
       <View className='bubble'>
         <Text className='text'>{msg.content}</Text>
       </View>
     )
   }
-
   const safeDecode = (value?: string) => {
     if (!value) return ''
     try {
@@ -788,3 +829,4 @@ export default function ChatPage() {
     </View>
   )
 }
+

@@ -652,3 +652,118 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+.activity-share-modal {
+  min-height: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: #111214;
+}
+
+.activity-share-input-box {
+  padding: 30px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.activity-share-input {
+  width: 100%;
+  height: 72px;
+  line-height: 72px;
+  padding: 0 20px;
+  background: #1a1b1f;
+  border-radius: 8px;
+  font-size: 28px;
+  color: #f4f4f4;
+  box-sizing: border-box;
+  display: block;
+}
+
+.activity-session-list {
+  flex: 1;
+  padding: 20px 0;
+}
+
+.activity-share-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 0;
+}
+
+.activity-share-loading-text,
+.activity-share-empty-text {
+  font-size: 28px;
+  color: #8b8d94;
+}
+
+.activity-session-item {
+  display: flex;
+  align-items: center;
+  padding: 30px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background-color 0.2s;
+}
+
+.activity-session-item:active {
+  background-color: #1a1b1f;
+}
+
+.activity-session-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  margin-right: 24px;
+  flex-shrink: 0;
+  background-color: #2b2c31;
+}
+
+.activity-session-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.activity-session-name {
+  font-size: 30px;
+  font-weight: 500;
+  color: #f1f1f2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-session-type {
+  font-size: 24px;
+  color: #8b8d94;
+}
+
+.activity-share-layout.at-float-layout {
+  .at-float-layout__overlay {
+    background: rgba(0, 0, 0, 0.72);
+  }
+
+  .at-float-layout__container {
+    background: #111214;
+  }
+
+  .layout-header {
+    background: #15161a;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .layout-header__title {
+    color: #f5f6f7;
+  }
+
+  .layout-header__btn-close::before,
+  .layout-header__btn-close::after {
+    background: #8b8d94;
+  }
+
+  .layout-body {
+    background: #111214;
+  }
+}

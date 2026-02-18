@@ -32,7 +32,8 @@
     "dev:harmony-hybrid": "npm run build:harmony-hybrid -- --watch --mode development",
     "test": "jest",
     "postinstall": "weapp-tw patch",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "check:encoding": "node scripts/check-mojibake.js"
   },
   "browserslist": [
     "last 3 versions",
@@ -100,7 +101,11 @@
   },
   "lint-staged": {
     "src/**/*.{js,jsx,ts,tsx}": [
-      "eslint --fix --quiet"
+      "eslint --fix --quiet",
+      "node scripts/check-mojibake.js"
+    ],
+    "*.{md,less,scss,css,json}": [
+      "node scripts/check-mojibake.js"
     ]
   }
 }
