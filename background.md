@@ -1,46 +1,130 @@
-## 当前分支与目标
-- 当前阶段：UI 细节打磨 + 接口联调 + 编码清理。
-- 核心页面：`index`、`venue`、`activity`、`order-pay-success`。
-- 交接目的：新会话可直接进入执行阶段，减少上下文重复沟通。
+﻿## 当前阶段与目标
+- 阶段：登录体系稳定化 + 地图交互细节打磨 + 关键页面视觉一致性。
+- 目标：新会话可直接继续开发，无需重复排查历史问题。
 
-## 已完成状态（按页面）
-- `pages/index`：地图 + 卡片样式已多轮迭代；筛选与空态胶囊完成基础调整；卡片按钮样式进入收敛阶段。
-- `pages/venue`：已接入商家详情接口；支持商品/动态切换；购买按钮已打通跳转商品详情。
-- `pages/activity`：数据源已切到商家接口模型；底部购票区已具备固定展示能力并持续做视觉对齐。
-- `pages/order-sub/order-pay-success`：页面结构已在用，下一步对接支付详情接口动态渲染。
+## 本轮已完成（2026-02）
+1. 强制登录链路
+- 接入并稳定 `FORCE_LOGOUT` / `AUTH_LOGIN_SUCCESS` 事件流。
+- 未登录时不渲染 `src/pages/index/index.tsx` 地图页，不触发首页数据请求。
+- 登录成功后恢复首页数据加载与用户定位刷新。
 
-## 接口现状（当前应使用）
-- `GET /api/v1/merchant/list`：用于首页卡片与活动列表聚合数据。
-- `GET /api/v1/merchant/:id`：用于场地详情、活动详情主体数据。
-- `GET /api/v1/pay/detail?out_trade_no=...`：用于支付成功页订单详情。
-- 网络层统一要求：使用 `@/utils/request`，避免页面内直接散落请求实现。
+2. 登录页与验证码登录
+- 登录主页支持视频背景（`https://cdn.hypercn.cn/video/video.mp4`）。
+- 验证码登录拆分为独立页面流程，支持 6 位验证码。
+- 协议未勾选时弹提示抽屉，并支持“同意并登录”。
+- 顶部 Hyper 图标按胶囊区对齐方案处理。
 
-## 正在处理 / 待处理问题
-- 存在历史编码问题：部分文件出现乱码，需统一 UTF-8 清理。
-- `src/pages/index/index.tsx` 曾出现大面积语法损坏，已修复；仍需重点防回归。
-- 设计稿资源中 `lanhu-oss-proxy.lanhuapp.com` 链接不可用，需持续替换为可访问资源。
-- 视觉回归重点：按钮边框、按钮间距、顶部背景铺满、卡片文案对齐。
+3. 地图 Marker 与中心点
+- 修复登录后 marker 丢失与重建时序问题（先准备图标再渲染 marker）。
+- 用户定位 marker 支持头像圆形白边方案并做 fallback。
+- 地图聚焦支持平滑镜头动画（非瞬移）。
+- 中心偏移从“固定经纬度”改为“像素偏移 + 当前 scale 换算”，避免缩放漂移。
+- 聚焦前主动读取 `MapContext.getScale`，修复“放大后第一次聚焦偏移错误、第二次正常”。
 
-## 强制工程约束（简化版）
-- 所有代码文件必须使用 UTF-8 编码。
-- 禁止 `require()` 引入静态资源，统一使用 `import`。
-- 禁止直接使用 `Taro.request`（仅保留明确的特殊场景）。
-- 禁止引入不可访问素材 URL（尤其是 Lanhu 代理域名）。
+4. 认证图标统一替换
+- 统一使用 `src/assets/images/certification.png`。
+- 已替换页面：
+  - `src/pages/index/index.tsx`
+  - `src/pages/activity-list/index.tsx`
+  - `src/pages/activity/index.tsx`
+  - `src/pages/venue/index.tsx`
+- `activity` / `venue` 页图标尺寸已调为 `20px`，与名称上下居中，名称间距 `10px`。
 
-## 新会话优先任务（Top 5）
-1. 全量清理不可用 Lanhu 资源 URL。
-2. 统一修复乱码文案与编码问题。
-3. 完成 `order-pay-success` 的 `pay/detail` 接口接入与展示。
-4. 整理 `activity/index.tsx` 的类名语义化，降低维护成本。
-5. 对 `index` 卡片样式做最终视觉回归并锁定。
+5. Venue 头图手势修复
+- 修复 `src/pages/venue/index.tsx` 顶部红框区域无法滑动轮播的问题。
+- 原因：`hero-content` 的动态 `paddingTop` 覆盖触摸区域。
+- 处理：移除该内联 `paddingTop`，让手势透传到 `Swiper`。
 
-## 验证清单
-- `eslint` 通过（无 `import/no-commonjs` 报错）。
-- `tsc --noEmit` 通过（无语法/类型错误）。
-- 微信开发者工具编译通过（无 wxss/tsx 编译错误）。
-- 关键页面截图与设计稿主结构一致。
+## 当前关键参数（首页地图）
+- 文件：`src/pages/index/index.tsx`
+- `DEFAULT_MAP_SCALE = 14`（初始更放大）
+- `MAP_FOCUS_PIXEL_OFFSET = 128`（目标点相对屏幕位置偏移）
+- 聚焦流程：`getCurrentMapScale()` -> `getFocusCenter()` -> `animateMapCenterTo()`
 
-## 风险说明
-- 大文件在多次手改后，容易再次引入编码损坏和括号/标签配对错误。
-- 设计稿像素级还原与接口动态数据存在天然冲突，优先保证可读性、可维护性与数据正确性。
-- 视觉问题应以可复现截图为准逐项回归，避免“修复 A 破坏 B”。
+## 注意事项 / 踩坑记录
+- `src/pages/activity/index.tsx` 历史上多次出现编码损坏风险；编辑该文件时避免整文件批量替换，优先最小补丁。
+- 避免使用会改变文件编码的脚本式全量重写（尤其在 PowerShell 下）。
+- 地图交互问题优先检查：层级覆盖（pointer events）+ 时序（数据/scale/marker 构建顺序）。
+
+## 建议新会话优先任务
+1. 真机回归四个认证图标页面（不同机型字号/基线）。
+2. 首页地图聚焦参数微调（`MAP_FOCUS_PIXEL_OFFSET` 可按机型分档）。
+3. 登录后首页首帧体验优化（卡片/marker加载节奏与骨架过渡）。
+4. 对 `request` 层补充更严格的成功态判定与埋点日志。
+
+## 快速自检清单
+- `pnpm -s tsc --noEmit` 通过。
+- 未登录进入首页：不渲染地图、不请求首页接口。
+- 登录后：marker/卡片可见，切卡激活态变化正常，定位按钮可用。
+- Venue 顶部大图区域可左右滑动轮播。
+
+## 本次新增上下文（追加，2026-02-18）
+
+### A. Square 频道与列表能力
+1. 频道数据源切换
+- `src/pages/square/index.tsx` 已切到 `GET /api/v1/channel`。
+- 顶部 tab 以 `my_channels` 为主，编辑区区分 `my_channels / other_channels`。
+
+2. 订阅/退订
+- 接入：
+  - `POST /api/v1/channel/subscribe`（`channel_id`）
+  - `POST /api/v1/channel/unsubscribe`（`channel_id`）
+- 已做频道管理“编辑态”控制：进入编辑态才展示删除入口；完成编辑可退出编辑态并刷新频道。
+
+3. 默认频道规则
+- 已加入默认频道语义（`关注`、`推荐`）并在交互上与可编辑频道区分。
+- 进入 `square` 默认展示 `推荐` 分支（按最近实现约定）。
+
+4. 点赞能力
+- `square` 列表卡片支持点赞/取消点赞，复用：
+  - `POST /api/v1/note/{id}/like`
+  - `DELETE /api/v1/note/{id}/like`
+- 增加乐观更新、并发点击保护（pending set）、失败回滚。
+- 已按后续要求移除“`likes > 0` 就红心”的兼容判定，红心只由“我是否点赞”驱动。
+
+### B. Activity / Attendee 观演人联动
+1. `src/pages/activity/index.tsx`
+- 购票抽屉接入真实观演人列表：`GET /api/v1/order/list-viewer`。
+- 支持选中观演人、无观演人支付前校验、跳转观演人管理页并通过 `eventChannel` 回填。
+
+2. `src/pages/activity-attendee/index.tsx`
+- 已实现“单页双态”：`list`（管理/选择/删除） + `create`（新增）。
+- 接口：
+  - `GET /api/v1/order/list-viewer`
+  - `POST /api/v1/order/create-viewer`
+  - `POST /api/v1/order/delete-viewer`（body: `{ id }`）
+- 重点修复：曾出现 `list-viewer` 刷屏，已通过请求触发时机收敛（避免 effect 循环）。
+
+### C. 首页地图（index）近期改造与当前状态
+1. 已做改造
+- `src/pages/index/index.tsx` 恢复并接入：
+  - `CommonHeader`
+  - `useNavBarMetrics`
+  - `src/pages/index/map-marker.ts` 的 marker 构建能力
+- 用户定位 marker 与派对/场地 marker 分链路处理。
+- 非激活态 icon 规则：高度固定 `50`，宽度按比例自适应；激活态仅“略放大 icon”（不再强依赖底座背景）。
+- marker 名称位置逻辑已多次调整为“图标下方”。
+
+2. iOS 关键坑位
+- 服务端大量返回 SVG icon，iOS 地图原生层对 SVG marker 兼容差，曾触发红 pin 或黑块。
+- 已在 `map-marker.ts` 引入 icon 解析/离屏导出与 fallback 思路，但链路仍在迭代，当前仍需真机回归确认。
+
+3. 名称样式目标
+- 当前目标明确：marker 名称“黑字 + 白色描边（或近似描边）”，且长文案可换行/不截断。
+- 注意：原生 label 对样式支持有限；若要严格描边一致性，最终可能仍需 Canvas 标题图方案。
+
+### D. 其它页面改造要点（已落地过）
+- `activity` 详情页：时间/地址/按钮尺寸/tab 交互（可切换）等样式对齐设计稿。
+- `venue` 页：头图可左右滑动、商品/动态切换相关遮挡问题与样式问题有过修复。
+- `activity-list`：接入下拉刷新（含刷新状态管理与失败提示）。
+
+### E. 当前遗留风险（新会话优先关注）
+1. 首页地图 iOS 真机稳定性
+- 重点验证：派对/场地 marker 是否仍出现红 pin/黑块。
+- 若继续异常，优先落地“SVG -> PNG 本地临时路径”强制转换后再喂给 marker。
+
+2. marker 标题样式一致性
+- 需要在“性能可接受”前提下确认是否切到 Canvas 标题图，避免原生 label 样式差异。
+
+3. Attendee 空态交互
+- 用户反馈“多余页面”语义：当无观演人时更偏向直接进入新增态，保留列表态入口但避免空白感。

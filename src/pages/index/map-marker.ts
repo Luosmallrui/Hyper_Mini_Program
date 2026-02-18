@@ -25,7 +25,7 @@ export const USER_AVATAR_MARKER_SIZE = 52
 const AVATAR_MARKER_SIZE = USER_AVATAR_MARKER_SIZE
 const AVATAR_CANVAS_SIZE = AVATAR_MARKER_SIZE
 
-const STYLE_VERSION = 'v14.icon.base64-file'
+const STYLE_VERSION = 'v15.icon.active-background'
 
 let renderQueue = Promise.resolve()
 const queueTask = <T>(task: () => Promise<T>): Promise<T> => {
@@ -37,6 +37,37 @@ const queueTask = <T>(task: () => Promise<T>): Promise<T> => {
 const wait = (ms: number) => new Promise<void>((resolve) => {
   setTimeout(resolve, ms)
 })
+
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> => {
+  return await Promise.race<T | null>([
+    promise,
+    new Promise<null>((resolve) => {
+      setTimeout(() => resolve(null), timeoutMs)
+    }),
+  ])
+}
+
+const drawCanvasAndExport = async (
+  ctx: Taro.CanvasContext,
+  canvasId: string,
+  width: number,
+  height: number,
+  timeoutMs = 2600,
+): Promise<string> => {
+  return queueTask(async () => {
+    const drawDone = new Promise<string>((resolve) => {
+      ctx.draw(false, () => {
+        exportCanvas(canvasId, width, height).then((path) => resolve(path || ''))
+      })
+    })
+    const result = await withTimeout(drawDone, timeoutMs)
+    if (!result) {
+      console.warn('drawCanvasAndExport timeout', { canvasId, width, height, timeoutMs })
+      return ''
+    }
+    return result
+  })
+}
 
 const normalizeImageSrc = (src: unknown): string => {
   if (!src) return ''
@@ -98,10 +129,18 @@ const dataImageToTempFile = async (src: string): Promise<string> => {
 }
 
 const normalizeImagePath = async (srcInput: unknown): Promise<string> => {
-  let src = normalizeUrl(normalizeImageSrc(srcInput))
+  const raw = normalizeImageSrc(srcInput)
+  if (!raw) return ''
+  const cached = normalizedPathCache.get(raw)
+  if (cached) return cached
+
+  let src = normalizeUrl(raw)
   if (!src) return ''
   if (isDataImageUrl(src)) {
     src = await dataImageToTempFile(src)
+  }
+  if (src) {
+    normalizedPathCache.set(raw, src)
   }
   return src
 }
@@ -109,10 +148,17 @@ const normalizeImagePath = async (srcInput: unknown): Promise<string> => {
 const resolveImage = async (srcInput: unknown) => {
   let src = await normalizeImagePath(srcInput)
   if (!src) return null
+  const cached = resolvedImageCache.get(src)
+  if (cached) return cached
 
   try {
+    const cacheKey = src
     if (/^https:\/\//i.test(src)) {
-      const downloadRes = await Taro.downloadFile({ url: src })
+      const downloadRes = await withTimeout(Taro.downloadFile({ url: src }), 2500)
+      if (!downloadRes) {
+        console.warn('Image download timeout:', src)
+        return null
+      }
       if (downloadRes.statusCode !== 200) {
         console.warn('Image download failed status:', downloadRes.statusCode)
         return null
@@ -120,7 +166,13 @@ const resolveImage = async (srcInput: unknown) => {
       src = downloadRes.tempFilePath
     }
 
-    return await Taro.getImageInfo({ src })
+    const imageInfo = await withTimeout(Taro.getImageInfo({ src }), 2000)
+    if (!imageInfo) {
+      console.warn('getImageInfo timeout:', src)
+      return null
+    }
+    resolvedImageCache.set(cacheKey, imageInfo)
+    return imageInfo
   } catch (error) {
     console.warn('resolveImage failed:', src, error)
     return null
@@ -151,11 +203,110 @@ const exportCanvas = (canvasId: string, width: number, height: number): Promise<
 
 const iconOnlyCache = new Map<string, { iconPath: string; width: number; height: number }>()
 const avatarCache = new Map<string, string>()
+const svgRasterCache = new Map<string, string>()
+const activeCompositeCache = new Map<string, { iconPath: string; width: number; height: number }>()
+const resolvedImageCache = new Map<string, any>()
+const normalizedPathCache = new Map<string, string>()
+const ACTIVE_BACKGROUND_RATIO = 735 / 817
+const ACTIVE_ICON_BOX_WIDTH_RATIO = 0.62
+const ACTIVE_ICON_BOX_HEIGHT_RATIO = 0.45
+const ACTIVE_ICON_BOX_TOP_RATIO = 0.26
+
+const isSvgImageSource = (src: string) =>
+  /^data:image\/svg\+xml[,;]/i.test(src) || /\.svg([?#].*)?$/i.test(src)
+
+const rasterizeSvgToPng = async (src: string, width: number, height: number): Promise<string> => {
+  const safeWidth = Math.max(18, Math.round(width))
+  const safeHeight = Math.max(18, Math.round(height))
+  const ctx = Taro.createCanvasContext(ICON_ONLY_MARKER_CANVAS_ID)
+  ctx.clearRect(0, 0, safeWidth, safeHeight)
+  ctx.drawImage(src, 0, 0, safeWidth, safeHeight)
+  return await drawCanvasAndExport(ctx, ICON_ONLY_MARKER_CANVAS_ID, safeWidth, safeHeight)
+}
+
+const composeActiveMarkerWithBackground = async (
+  iconPath: string,
+  backgroundPath: string,
+  targetHeight: number,
+): Promise<{ iconPath: string; width: number; height: number }> => {
+  const preparedBackgroundPath = await resolveMarkerIconPath(backgroundPath, backgroundPath)
+  const normalizedBackgroundPath = await normalizeImagePath(preparedBackgroundPath || backgroundPath)
+  const bgSourcePath = normalizedBackgroundPath || preparedBackgroundPath || backgroundPath
+  const bgInfo = await resolveImage(bgSourcePath)
+  const iconInfo = await resolveImage(iconPath)
+  if (!iconInfo?.path) {
+    return { iconPath: '', width: 0, height: 0 }
+  }
+
+  const safeHeight = Math.max(32, Math.round(targetHeight))
+  const bgRatio = bgInfo?.width && bgInfo?.height ? bgInfo.width / bgInfo.height : ACTIVE_BACKGROUND_RATIO
+  const markerWidth = Math.max(26, Math.round(safeHeight * bgRatio))
+
+  const ctx = Taro.createCanvasContext(ICON_ONLY_MARKER_CANVAS_ID)
+  ctx.clearRect(0, 0, markerWidth, safeHeight)
+  if (bgInfo?.path) {
+    ctx.drawImage(bgInfo.path, 0, 0, markerWidth, safeHeight)
+  } else if (bgSourcePath) {
+    ctx.drawImage(bgSourcePath, 0, 0, markerWidth, safeHeight)
+  } else {
+    ctx.setFillStyle('#5f646e')
+    ctx.fillRect(0, 0, markerWidth, safeHeight)
+  }
+
+  const iconBoxWidth = markerWidth * ACTIVE_ICON_BOX_WIDTH_RATIO
+  const iconBoxHeight = safeHeight * ACTIVE_ICON_BOX_HEIGHT_RATIO
+  const iconRatio = iconInfo.width > 0 && iconInfo.height > 0 ? iconInfo.width / iconInfo.height : 1
+  const boxRatio = iconBoxWidth / iconBoxHeight
+  const drawIconWidth = iconRatio >= boxRatio ? iconBoxWidth : iconBoxHeight * iconRatio
+  const drawIconHeight = iconRatio >= boxRatio ? iconBoxWidth / iconRatio : iconBoxHeight
+  const iconX = (markerWidth - drawIconWidth) / 2
+  const iconY = safeHeight * ACTIVE_ICON_BOX_TOP_RATIO + (iconBoxHeight - drawIconHeight) / 2
+  ctx.drawImage(iconInfo.path, iconX, iconY, drawIconWidth, drawIconHeight)
+
+  const path = await drawCanvasAndExport(ctx, ICON_ONLY_MARKER_CANVAS_ID, markerWidth, safeHeight)
+  return {
+    iconPath: path,
+    width: markerWidth,
+    height: safeHeight,
+  }
+}
+
+const resolveMarkerIconPath = async (iconUrl: string, fallbackIcon: string): Promise<string> => {
+  const normalizedTarget = await normalizeImagePath(iconUrl)
+  const normalizedFallback = await normalizeImagePath(fallbackIcon)
+  const source = normalizedTarget || normalizedFallback
+  if (!source) return ''
+  if (!isSvgImageSource(source)) return source
+
+  const cached = svgRasterCache.get(source)
+  if (cached) return cached
+
+  const imageInfo = await resolveImage(source)
+  if (!imageInfo?.path) {
+    return normalizedFallback || ''
+  }
+
+  try {
+    const pngPath = await rasterizeSvgToPng(imageInfo.path, imageInfo.width, imageInfo.height)
+    if (pngPath) {
+      svgRasterCache.set(source, pngPath)
+      return pngPath
+    }
+  } catch (error) {
+    console.warn('rasterize svg marker failed:', source, error)
+  }
+
+  return normalizedFallback || ''
+}
 
 export const clearMarkerCaches = () => {
   iconOnlyCache.clear()
   avatarCache.clear()
   dataImagePathCache.clear()
+  svgRasterCache.clear()
+  activeCompositeCache.clear()
+  resolvedImageCache.clear()
+  normalizedPathCache.clear()
 }
 
 export const buildIconOnlyMarker = async (
@@ -163,11 +314,19 @@ export const buildIconOnlyMarker = async (
   fallbackIcon: string,
   targetHeight: number,
   ratioHint = 1,
+  options?: {
+    isActive?: boolean
+    activeBackground?: string
+  },
 ): Promise<{ iconPath: string; width: number; height: number }> => {
   const safeHeight = Math.max(24, Math.round(targetHeight))
   const safeHint = Number.isFinite(ratioHint) && ratioHint > 0 ? ratioHint : 1
   const targetIcon = iconUrl || ''
-  const key = `icon-only::${targetIcon}::${fallbackIcon}::${safeHeight}::${safeHint}::${STYLE_VERSION}`
+  const isActive = Boolean(options?.isActive)
+  const activeBackground = options?.activeBackground || ''
+  const normalizedActiveBackground = await normalizeImagePath(activeBackground)
+  const safeActiveBackground = normalizedActiveBackground || activeBackground
+  const key = `icon-only::${targetIcon}::${fallbackIcon}::${safeHeight}::${safeHint}::${isActive}::${safeActiveBackground}::${STYLE_VERSION}`
 
   const cached = iconOnlyCache.get(key)
   if (cached?.iconPath) return cached
@@ -175,47 +334,74 @@ export const buildIconOnlyMarker = async (
     iconOnlyCache.delete(key)
   }
 
-  return queueTask(async () => {
-    const normalizedTarget = await normalizeImagePath(targetIcon)
-    const normalizedFallback = await normalizeImagePath(fallbackIcon)
+  const normalizedFallback = await normalizeImagePath(fallbackIcon)
+  const resolvedMarkerIcon = await resolveMarkerIconPath(targetIcon, fallbackIcon)
 
-    let img = await resolveImage(normalizedTarget)
-    if (!img && normalizedFallback) {
-      img = await resolveImage(normalizedFallback)
+  let img = await resolveImage(resolvedMarkerIcon)
+  if (!img && normalizedFallback && resolvedMarkerIcon !== normalizedFallback) {
+    img = await resolveImage(normalizedFallback)
+  }
+
+  const ratio = img?.width && img?.height ? img.width / img.height : safeHint
+  const safeRatio = Number.isFinite(ratio) && ratio > 0 ? ratio : safeHint
+  let width = Math.max(18, Math.round(safeHeight * safeRatio))
+  let height = safeHeight
+
+  const candidates = [resolvedMarkerIcon, img?.path || '', normalizedFallback]
+  let finalPath = ''
+  for (const candidate of candidates) {
+    const path = (candidate || '').trim()
+    if (!path) continue
+    try {
+      const check = await withTimeout(Taro.getImageInfo({ src: path }), 1200)
+      if (!check) continue
+      finalPath = path
+      break
+    } catch (error) {}
+  }
+
+  if (!finalPath) {
+    // Best-effort fallback: avoid returning empty iconPath, which makes marker invisible on map.
+    finalPath = (img?.path || '').trim() || resolvedMarkerIcon || normalizedFallback || ''
+  }
+
+  if (isActive && finalPath && activeBackground) {
+    const compositeKey = `active-composite::${finalPath}::${safeActiveBackground}::${safeHeight}::${STYLE_VERSION}`
+    const cachedComposite = activeCompositeCache.get(compositeKey)
+    if (cachedComposite?.iconPath) {
+      iconOnlyCache.set(key, cachedComposite)
+      return cachedComposite
     }
 
-    const ratio = img?.width && img?.height ? img.width / img.height : safeHint
-    const safeRatio = Number.isFinite(ratio) && ratio > 0 ? ratio : safeHint
-    const width = Math.max(18, Math.round(safeHeight * safeRatio))
-    const height = safeHeight
+    const composed = await composeActiveMarkerWithBackground(finalPath, safeActiveBackground, safeHeight)
+    if (composed.iconPath) {
+      activeCompositeCache.set(compositeKey, composed)
+      iconOnlyCache.set(key, composed)
+      return composed
+    }
+    console.warn('active marker compose failed, fallback to raw icon', {
+      finalPath,
+      activeBackground,
+    })
+  }
 
-    const candidates = [normalizedTarget, normalizedFallback, img?.path || '']
-    let finalPath = ''
-    for (const candidate of candidates) {
-      const path = (candidate || '').trim()
-      if (!path) continue
-      try {
-        await Taro.getImageInfo({ src: path })
-        finalPath = path
-        break
-      } catch (error) {}
-    }
-    const asset = {
-      iconPath: finalPath,
-      width,
-      height,
-    }
-    if (!asset.iconPath) {
-      console.warn('buildIconOnlyMarker resolved empty iconPath', {
-        targetIcon,
-        fallbackIcon,
-      })
-    }
-    if (asset.iconPath) {
-      iconOnlyCache.set(key, asset)
-    }
-    return asset
-  })
+  const asset = {
+    iconPath: finalPath,
+    width,
+    height,
+  }
+  if (!asset.iconPath) {
+    console.warn('buildIconOnlyMarker resolved empty iconPath', {
+      targetIcon,
+      fallbackIcon,
+      resolvedMarkerIcon,
+      normalizedFallback,
+    })
+  }
+  if (asset.iconPath) {
+    iconOnlyCache.set(key, asset)
+  }
+  return asset
 }
 
 const drawCircularAvatar = async (avatarUrl: string, fallbackIcon: string): Promise<string> => {
@@ -260,11 +446,7 @@ const drawCircularAvatar = async (avatarUrl: string, fallbackIcon: string): Prom
   ctx.arc(center, center, radius, 0, Math.PI * 2)
   ctx.stroke()
 
-  return new Promise((resolve) => {
-    ctx.draw(false, () => {
-      exportCanvas(AVATAR_MARKER_CANVAS_ID, AVATAR_CANVAS_SIZE, AVATAR_CANVAS_SIZE).then(resolve)
-    })
-  })
+  return await drawCanvasAndExport(ctx, AVATAR_MARKER_CANVAS_ID, AVATAR_CANVAS_SIZE, AVATAR_CANVAS_SIZE)
 }
 
 export const buildCircularAvatarMarker = async (
@@ -276,11 +458,11 @@ export const buildCircularAvatarMarker = async (
   const cached = avatarCache.get(key)
   if (cached) return cached
 
-  let path = await queueTask(async () => drawCircularAvatar(target, fallbackIcon))
+  let path = await drawCircularAvatar(target, fallbackIcon)
 
   if (!path) {
     await wait(220)
-    path = await queueTask(async () => drawCircularAvatar(target, fallbackIcon))
+    path = await drawCircularAvatar(target, fallbackIcon)
   }
 
   // Cache generated temp path. If empty, fallback without caching.

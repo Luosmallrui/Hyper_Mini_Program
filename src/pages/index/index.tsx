@@ -12,6 +12,7 @@ import mapPinIcon from '../../assets/icons/map-pin.svg'
 import mapPinFallbackIcon from '../../assets/icons/map-pin-fallback.png'
 import partyMarkerFallbackIcon from '../../assets/icons/marker-party-fallback.png'
 import venueMarkerFallbackIcon from '../../assets/icons/marker-venue-fallback.png'
+import mapMakerBackground from '../../assets/icons/map-maker-background.svg'
 import certificationIcon from '../../assets/images/certification.png'
 import {
   AVATAR_MARKER_CANVAS_ID,
@@ -28,11 +29,12 @@ const AREA_LEVEL1 = [{ key: 'dist', name: '距离' }, { key: 'region', name: '�
 const MAP_KEY = 'Y7YBZ-3UUEN-Z3KFC-SH4QG-LH5RT-IAB4S'
 const USER_LOCATION_MARKER_ID = 99900001
 const MARKER_INACTIVE_HEIGHT = 46
-const MARKER_ACTIVE_HEIGHT = 72
+const MARKER_ACTIVE_HEIGHT = 96
 const MAP_FOCUS_PIXEL_OFFSET = 100
 const DEFAULT_MAP_SCALE = 15
 const EARTH_METERS_PER_PIXEL_AT_EQUATOR = 156543.03392
 const METERS_PER_DEGREE_LAT = 111320
+const MARKER_PRELOAD_TIMEOUT_MS = 1600
 const AREA_LEVEL2 = ['不限', '热门商圈', '高新区', '锦江区']
 const AREA_LEVEL3 = ['春熙路', '宽窄巷子', '兰桂坊', '铁像寺', 'SKP', '玉林', '望平街']
 const MORE_TAGS = ['积分立减', '买单立减', '新人优惠']
@@ -312,9 +314,22 @@ export default function IndexPage() {
           fallbackPath,
           index === activeIndex ? MARKER_ACTIVE_HEIGHT : MARKER_INACTIVE_HEIGHT,
           ratioHint,
+          {
+            isActive: index === activeIndex,
+            activeBackground: mapMakerBackground,
+          },
         )
       }),
     )
+  }
+
+  const preloadMarkerIconsWithTimeout = async (list: PartyItem[], activeIndex: number) => {
+    await Promise.race([
+      preloadMarkerIcons(list, activeIndex),
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, MARKER_PRELOAD_TIMEOUT_MS)
+      }),
+    ])
   }
 
   const syncPartyData = async () => {
@@ -386,7 +401,7 @@ export default function IndexPage() {
       }
 
       // Map markers render only after icon resources are ready.
-      await preloadMarkerIcons(mappedList, nextIndex)
+      await preloadMarkerIconsWithTimeout(mappedList, nextIndex)
       console.log('[index] marker icons preloaded', { count: mappedList.length, nextIndex })
       await updateMarkers(mappedList, nextIndex)
     } catch (error) {
@@ -411,7 +426,6 @@ export default function IndexPage() {
   const resolveMarkerIconPath = (item: PartyItem) => {
     const iconUrl = (item.icon || '').trim()
     if (!iconUrl) return resolveMarkerFallback(item)
-    if (/\.svg(\?.*)?$/i.test(iconUrl)) return resolveMarkerFallback(item)
     return iconUrl
   }
 
@@ -450,6 +464,10 @@ export default function IndexPage() {
           fallbackPath,
           isActive ? MARKER_ACTIVE_HEIGHT : MARKER_INACTIVE_HEIGHT,
           ratioHint,
+          {
+            isActive,
+            activeBackground: mapMakerBackground,
+          },
         )
 
         const iconPath = iconAsset.iconPath || fallbackPath
@@ -461,13 +479,13 @@ export default function IndexPage() {
           width: iconAsset.width,
           height: iconAsset.height,
           zIndex: isActive ? 999 : 200,
-          anchor: { x: 0.5, y: 0.5 },
+          anchor: { x: 0.5, y: isActive ? 1 : 0.5 },
           label: {
             content: formatMarkerTitle(item.title),
             color: '#ffffff',
             fontSize: isActive ? 13 : 12,
             anchorX: 0,
-            anchorY: 30,
+            anchorY: isActive ? 10 : 30,
             borderWidth: 0,
             borderColor: 'transparent',
             borderRadius: 6,
