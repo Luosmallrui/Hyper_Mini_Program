@@ -46,8 +46,12 @@
 .message-scroll {
   flex: 1;
   box-sizing: border-box;
-  padding-left: 30px;
-  padding-right: 30px;
+
+  .message-scroll-content {
+    padding-left: 30px;
+    padding-right: 30px;
+    box-sizing: border-box;
+  }
 }
 
 .system-list {

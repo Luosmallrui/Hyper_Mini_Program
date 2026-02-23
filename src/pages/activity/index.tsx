@@ -31,6 +31,7 @@ interface MerchantGood {
 
 interface MerchantDetail {
   id: number
+  user_id?: string | number
   name: string
   avg_price: number
   location_name: string
@@ -90,6 +91,7 @@ export default function ActivityPage() {
   const [sessionList, setSessionList] = useState<SessionItem[]>([])
   const [loadingSession, setLoadingSession] = useState(false)
   const [shareMsg, setShareMsg] = useState('')
+  const [followPending, setFollowPending] = useState(false)
   const viewerInitLoadedRef = useRef(false)
 
   const fallbackMapCenter = { latitude: 30.657, longitude: 104.066 }
@@ -296,6 +298,37 @@ export default function ActivityPage() {
     }
   }
 
+  const handleToggleFollow = async () => {
+    if (!activity || followPending) return
+    if (!activity.user_id) {
+      Taro.showToast({ title: '用户信息缺失', icon: 'none' })
+      return
+    }
+
+    const nextFollow = !Boolean(activity.is_follow)
+    const action = nextFollow ? 'follow' : 'unfollow'
+    setFollowPending(true)
+    setActivity((prev) => (prev ? { ...prev, is_follow: nextFollow } : prev))
+
+    try {
+      const res = await request({
+        url: `/api/v1/follow/${action}`,
+        method: 'POST',
+        data: { user_id: String(activity.user_id) },
+      })
+      const code = Number((res as any)?.data?.code)
+      if (code !== 200) {
+        throw new Error((res as any)?.data?.msg || '操作失败')
+      }
+      Taro.showToast({ title: nextFollow ? '已关注' : '已取消关注', icon: 'success' })
+    } catch (error) {
+      setActivity((prev) => (prev ? { ...prev, is_follow: !nextFollow } : prev))
+      Taro.showToast({ title: '操作失败', icon: 'none' })
+    } finally {
+      setFollowPending(false)
+    }
+  }
+
   const priceRange = useMemo(() => {
     if (activity?.goods && activity.goods.length > 0) {
       const prices = activity.goods.map((item) => Math.round(item.price / 100))
@@ -469,8 +502,8 @@ export default function ActivityPage() {
                 <Text className='host-fans'>{organizerFans} 粉丝</Text>
               </View>
             </View>
-            <View className='host-follow'>
-              <Text className='host-follow-text'>已关注</Text>
+            <View className='host-follow' onClick={handleToggleFollow}>
+              <Text className='host-follow-text'>{followPending ? '处理中' : (activity?.is_follow ? '已关注' : '关注')}</Text>
             </View>
           </View>
 
@@ -641,6 +674,7 @@ export default function ActivityPage() {
         </View>
       )}
 
+      {showShareModal && (
       <AtFloatLayout
         className='activity-share-layout'
         isOpened={showShareModal}
@@ -692,6 +726,7 @@ export default function ActivityPage() {
           </ScrollView>
         </View>
       </AtFloatLayout>
+      )}
     </View>
   )
 }

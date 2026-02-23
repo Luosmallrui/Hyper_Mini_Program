@@ -219,7 +219,8 @@ export default function MessagePage() {
         refresherBackground='#000000'
         refresherDefaultStyle='white'
       >
-        <View style={{ height: `${navBarPaddingTop + navBarHeight}px` }} />
+        <View className='message-scroll-content'>
+          <View style={{ height: `${navBarPaddingTop + navBarHeight}px` }} />
 
         <View className='system-list'>
           {systemNotices.map(item => (
@@ -279,7 +280,8 @@ export default function MessagePage() {
             </View>
           )}
         </View>
-        <View style={{ height: `${tabBarHeight + 20}px` }} />
+          <View style={{ height: `${tabBarHeight + 20}px` }} />
+        </View>
       </ScrollView>
     </View>
   )

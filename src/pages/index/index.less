@@ -34,28 +34,35 @@
 
 .avatar-marker-canvas {
   position: absolute;
-  left: 0;
-  top: 0;
+  left: -9999px;
+  top: -9999px;
   width: 180px;
   height: 180px;
-  opacity: 0.01;
+  opacity: 0;
   pointer-events: none;
   z-index: 0;
-  transform: translateZ(0) scale(0.01);
-  transform-origin: left top;
 }
 
 .icon-marker-canvas {
   position: absolute;
-  left: 0;
-  top: 0;
+  left: -9999px;
+  top: -9999px;
   width: 300px;
   height: 300px;
-  opacity: 0.01;
+  opacity: 0;
   pointer-events: none;
   z-index: 0;
-  transform: translateZ(0) scale(0.01);
-  transform-origin: left top;
+}
+
+.title-marker-canvas {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 600px;
+  height: 120px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .map-bg {
@@ -499,6 +506,12 @@
 
               &.subscribe-btn {
                 color: #f7f7f7;
+              }
+
+              &.disabled {
+                border: 1px solid rgba(255, 255, 255, 0.16);
+                color: #9c9ca3;
+                background-color: rgba(255, 255, 255, 0.03);
               }
 
               &::after {

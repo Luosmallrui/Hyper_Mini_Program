@@ -11,6 +11,7 @@ import './index.less'
 
 interface MerchantItem {
   id: number
+  user_id?: string | number
   title: string
   type: string
   location: string
@@ -25,10 +26,12 @@ interface MerchantItem {
   post_count: number
   is_subscribe?: boolean
   is_subscribed?: boolean
+  is_follow?: boolean
 }
 
 interface PartyItem {
   id: string | number
+  userId: string
   title: string
   type: string
   location: string
@@ -54,6 +57,7 @@ export default function ActivityListPage() {
   const [list, setList] = useState<PartyItem[]>([])
   const isFetchingRef = useRef(false)
   const subscribePendingRef = useRef<Set<string | number>>(new Set())
+  const followPendingRef = useRef<Set<string | number>>(new Set())
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [filterOpen, setFilterOpen] = useState<'none' | 'cat' | 'sort'>('none')
   const [selectedCat, setSelectedCat] = useState('全部')
@@ -92,6 +96,7 @@ export default function ActivityListPage() {
               createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt.toISOString().slice(0, 10) : item.created_at || ''
             return {
               id: item.id,
+              userId: String((item as any)?.user_id ?? ''),
               title: item.title,
               type: item.type,
               location: item.location,
@@ -106,7 +111,7 @@ export default function ActivityListPage() {
               dynamicCount: item.post_count,
               fans: String(item.current_count ?? ''),
               isVerified: false,
-              isFollowed: false,
+              isFollowed: Boolean((item as any)?.is_follow ?? (item as any)?.isFollowed),
               isSubscribed: Boolean((item as any)?.is_subscribe ?? (item as any)?.is_subscribed),
             }
           })
@@ -169,7 +174,39 @@ export default function ActivityListPage() {
   }, [])
 
   const toggleFollow = (id: string | number) => {
-    setList((prev) => prev.map((item) => (item.id === id ? { ...item, isFollowed: !item.isFollowed } : item)))
+    const target = list.find((item) => item.id === id)
+    if (!target) return
+    if (!target.userId) {
+      Taro.showToast({ title: '用户信息缺失', icon: 'none' })
+      return
+    }
+    if (followPendingRef.current.has(id)) return
+
+    const nextFollowed = !Boolean(target.isFollowed)
+    const action = nextFollowed ? 'follow' : 'unfollow'
+
+    followPendingRef.current.add(id)
+    setList((prev) => prev.map((item) => (item.id === id ? { ...item, isFollowed: nextFollowed } : item)))
+
+    request({
+      url: `/api/v1/follow/${action}`,
+      method: 'POST',
+      data: { user_id: String(target.userId) },
+    })
+      .then((res: any) => {
+        const code = Number(res?.data?.code)
+        if (code !== 200) {
+          throw new Error(res?.data?.msg || '操作失败')
+        }
+        Taro.showToast({ title: nextFollowed ? '已关注' : '已取消关注', icon: 'success' })
+      })
+      .catch(() => {
+        setList((prev) => prev.map((item) => (item.id === id ? { ...item, isFollowed: !nextFollowed } : item)))
+        Taro.showToast({ title: '操作失败', icon: 'none' })
+      })
+      .finally(() => {
+        followPendingRef.current.delete(id)
+      })
   }
 
   const toggleSubscribe = (id: string | number) => {
@@ -316,73 +353,75 @@ export default function ActivityListPage() {
         className='list-scroll'
         style={{ top: `${listTop}px`, height: `calc(100vh - ${listTop}px)` }}
       >
-        {list.map((item) => (
-          <View key={item.id} className='activity-card' onClick={() => handleGoDetail(item)}>
-            <View className='poster-area'>
-              {item.image ? <Image src={item.image} mode='aspectFill' className='cover-img' /> : <View className='cover-placeholder' />}
-              <View className='attendees-capsule'>
-                <Image className='run-icon' src={require('../../assets/icons/run.svg')} mode='aspectFit' />
-                <Text className='num-italic'>{item.attendees || 0}</Text>
-              </View>
-            </View>
-
-            <View className='info-area'>
-              <View className='title-row'>
-                <Text className='title'>{item.title}</Text>
-                <Text className='tag'>{item.type}</Text>
-              </View>
-
-              <View className='meta-row'>
-                <View className='meta-left'>
-                  <Image className='time-icon' src={require('../../assets/icons/time.svg')} mode='aspectFit' />
-                  <Text className='txt txt-first'>{item.time}</Text>
-                  <Text className='txt'>{item.dynamicCount}条动态</Text>
-                  <Text className='txt price'>¥{item.price}/人</Text>
+        <View className='list-content'>
+          {list.map((item) => (
+            <View key={item.id} className='activity-card' onClick={() => handleGoDetail(item)}>
+              <View className='poster-area'>
+                {item.image ? <Image src={item.image} mode='aspectFill' className='cover-img' /> : <View className='cover-placeholder' />}
+                <View className='attendees-capsule'>
+                  <Image className='run-icon' src={require('../../assets/icons/run.svg')} mode='aspectFit' />
+                  <Text className='num-italic'>{item.attendees || 0}</Text>
                 </View>
-                <Text className='location'>{item.location}</Text>
               </View>
 
-              <View className='action-row'>
-                <View className='user-box'>
-                  <View className='avatar'>
-                    {item.userAvatar && <Image src={item.userAvatar} mode='aspectFill' className='avatar-img' />}
+              <View className='info-area'>
+                <View className='title-row'>
+                  <Text className='title'>{item.title}</Text>
+                  <Text className='tag'>{item.type}</Text>
+                </View>
+
+                <View className='meta-row'>
+                  <View className='meta-left'>
+                    <Image className='time-icon' src={require('../../assets/icons/time.svg')} mode='aspectFit' />
+                    <Text className='txt txt-first'>{item.time}</Text>
+                    <Text className='txt'>{item.dynamicCount}条动态</Text>
+                    <Text className='txt price'>¥{item.price}/人</Text>
                   </View>
-                  <View className='user-text'>
-                    <View className='name-line'>
-                      <Text className='name'>{item.user}</Text>
-                      <Image className='certification-icon' src={certificationIcon} mode='aspectFit' />
+                  <Text className='location'>{item.location}</Text>
+                </View>
+
+                <View className='action-row'>
+                  <View className='user-box'>
+                    <View className='avatar'>
+                      {item.userAvatar && <Image src={item.userAvatar} mode='aspectFill' className='avatar-img' />}
                     </View>
-                    <Text className='fans'>{item.fans} 粉丝</Text>
+                    <View className='user-text'>
+                      <View className='name-line'>
+                        <Text className='name'>{item.user}</Text>
+                        <Image className='certification-icon' src={certificationIcon} mode='aspectFit' />
+                      </View>
+                      <Text className='fans'>{item.fans} 粉丝</Text>
+                    </View>
                   </View>
-                </View>
 
-                <View className='btn-group'>
-                  <View
-                    className={`btn outline ${item.isFollowed ? 'disabled' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggleFollow(item.id)
-                    }}
-                  >
-                    {item.isFollowed ? '已关注' : '关注'}
-                  </View>
-                  {item.type === '派对' && (
+                  <View className='btn-group'>
                     <View
-                      className={`btn outline ${subscribePendingRef.current.has(item.id) ? 'disabled' : ''}`}
+                      className={`btn outline ${(item.isFollowed || followPendingRef.current.has(item.id)) ? 'disabled' : ''}`}
                       onClick={(e) => {
                         e.stopPropagation()
-                        toggleSubscribe(item.id)
+                        toggleFollow(item.id)
                       }}
                     >
-                      {item.isSubscribed ? '取消订阅' : '订阅活动'}
+                      {item.isFollowed ? '已关注' : '关注'}
                     </View>
-                  )}
+                    {item.type === '派对' && (
+                      <View
+                        className={`btn outline ${subscribePendingRef.current.has(item.id) ? 'disabled' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleSubscribe(item.id)
+                        }}
+                      >
+                        {item.isSubscribed ? '取消订阅' : '订阅活动'}
+                      </View>
+                    )}
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
-        ))}
-        <View style={{ height: '40px' }} />
+          ))}
+          <View style={{ height: '40px' }} />
+        </View>
       </ScrollView>
     </View>
   )

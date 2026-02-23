@@ -13,10 +13,16 @@
   right: 0;
   z-index: 200;
   background-color: #202322;
+}
+
+.nav-main {
+  position: absolute;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   padding-left: 16px;
-  box-sizing: content-box;
+  box-sizing: border-box;
 }
 
 .nav-left-group {
@@ -328,7 +334,8 @@
 
 /* 卡片气泡样式 */
 .card-bubble {
-  max-width: 540px;
+  width: 540px;
+  max-width: 100%;
   background: #ffffff;
   border-radius: 12px;
   overflow: hidden;
@@ -429,7 +436,30 @@
 //}
 
 .msg-right .card-footer {
-  border-top-color: rgba(0, 0, 0, 0.05);
+  border-top-color: rgba(255, 255, 255, 0.22);
+}
+
+.msg-right .card-bubble {
+  background: #5691ff;
+}
+
+.msg-right .card-author-name,
+.msg-right .card-title {
+  color: #ffffff;
+}
+
+.msg-right .card-desc {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.msg-right .card-tag {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.msg-right .card-tag-activity {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.28);
 }
 
 /* 确保卡片在气泡组中正确显示 */
@@ -453,5 +483,12 @@
 .bubble .text {
   font-size: 30px;
   line-height: 1.5;
-  color: #333;
+}
+
+.msg-left .bubble .text {
+  color: #333333;
+}
+
+.msg-right .bubble .text {
+  color: #ffffff;
 }

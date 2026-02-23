@@ -17,8 +17,10 @@ import certificationIcon from '../../assets/images/certification.png'
 import {
   AVATAR_MARKER_CANVAS_ID,
   ICON_ONLY_MARKER_CANVAS_ID,
+  TITLE_MARKER_CANVAS_ID,
   USER_AVATAR_MARKER_SIZE,
   clearMarkerCaches,
+  buildStrokedTitleMarker,
   buildCircularAvatarMarker,
 } from './map-marker'
 import './index.less'
@@ -27,21 +29,23 @@ const CATEGORIES = ['全部分类', '滑板', '派对', '汽车', '纹身', '体
 const AREA_LEVEL1 = [{ key: 'dist', name: '距离' }, { key: 'region', name: '行政区/商圈' }]
 const MAP_KEY = 'Y7YBZ-3UUEN-Z3KFC-SH4QG-LH5RT-IAB4S'
 const USER_LOCATION_MARKER_ID = 99900001
-const MARKER_INACTIVE_HEIGHT = 46
-const MARKER_ACTIVE_HEIGHT = 96
+const MARKER_INACTIVE_HEIGHT = 32
+const MARKER_ACTIVE_HEIGHT = 67
 const MAP_FOCUS_PIXEL_OFFSET = 100
 const DEFAULT_MAP_SCALE = 14
 const EARTH_METERS_PER_PIXEL_AT_EQUATOR = 156543.03392
 const METERS_PER_DEGREE_LAT = 111320
-const MARKER_LABEL_ANCHOR_Y_ACTIVE = 10
-const MARKER_LABEL_ANCHOR_Y_INACTIVE = 52
+const MARKER_LABEL_ANCHOR_Y_ACTIVE = 7
+const MARKER_LABEL_ANCHOR_Y_INACTIVE = 21
 const ACTIVE_BACKGROUND_RATIO = 735 / 817
-const ACTIVE_FOREGROUND_ICON_HEIGHT = 48
+const ACTIVE_FOREGROUND_ICON_HEIGHT = 34
 const ACTIVE_FOREGROUND_ICON_ANCHOR_Y = 1.55
+const USER_LOCATION_MARKER_DISPLAY_SIZE = Math.max(16, Math.round(USER_AVATAR_MARKER_SIZE * 0.6))
 const MORE_TAGS: Array<{ id: number; name: string }> = []
 
 interface MerchantItem {
   id: number
+  user_id?: string | number
   title: string
   type: string
   location: string
@@ -57,12 +61,14 @@ interface MerchantItem {
   icon?: string
   is_subscribe?: boolean
   is_subscribed?: boolean
+  is_follow?: boolean
 }
 
 interface PartyItem {
   id: string | number
   title: string
   type: string
+  userId: string
   location: string
   lat: number
   lng: number
@@ -77,6 +83,7 @@ interface PartyItem {
   rank?: string
   fans?: string
   isVerified?: boolean
+  isFollowed?: boolean
   isSubscribed?: boolean
 }
 
@@ -142,6 +149,7 @@ export default function IndexPage() {
   const districtLoadedRef = useRef(districtLoaded)
   const districtLoadingRef = useRef(districtLoading)
   const subscribePendingRef = useRef<Set<string | number>>(new Set())
+  const followPendingRef = useRef<Set<string | number>>(new Set())
   const selectedTagIdsRef = useRef<number[]>(selectedTagIds)
   const selectedDistrictIdRef = useRef<number | null>(selectedDistrictId)
   const selectedAreaIdRef = useRef<number | null>(selectedAreaId)
@@ -570,6 +578,7 @@ export default function IndexPage() {
           : item.created_at || ''
         return {
           id: item.id,
+          userId: String((item as any)?.user_id ?? ''),
           title: item.title,
           type: item.type,
           location: item.location,
@@ -585,6 +594,7 @@ export default function IndexPage() {
           dynamicCount: item.post_count,
           fans: String(item.current_count ?? ''),
           isVerified: false,
+          isFollowed: Boolean((item as any)?.is_follow ?? (item as any)?.isFollowed),
           rank: '',
           isSubscribed: Boolean((item as any)?.is_subscribe ?? (item as any)?.is_subscribed),
         }
@@ -660,11 +670,12 @@ export default function IndexPage() {
     }
 
     const markerIndexMap = new Map<number, number>()
-    const markerAssetsRaw = list.flatMap((item, index) => {
+    const markerGroups = await Promise.all(list.map(async (item, index) => {
       const markerBaseId = index + 1
       const isActive = index === activeIndex
       const fallbackPath = resolveMarkerFallback(item)
       const rawIconPath = resolveDisplayMarkerIconPath(item) || fallbackPath
+      const markerTitle = formatMarkerTitle(item.title)
       const latitude = Number(item.lat)
       const longitude = Number(item.lng)
       const safeLatitude = Number.isFinite(latitude) ? latitude : initialCenter.lat
@@ -674,6 +685,7 @@ export default function IndexPage() {
       if (isActive) {
         const bgMarkerId = renderVersion * 10000 + markerBaseId * 10 + 1
         const fgMarkerId = renderVersion * 10000 + markerBaseId * 10 + 2
+        const titleMarkerId = renderVersion * 10000 + markerBaseId * 10 + 3
         const bgWidth = Math.max(26, Math.round(MARKER_ACTIVE_HEIGHT * ACTIVE_BACKGROUND_RATIO))
         const fgHeight = ACTIVE_FOREGROUND_ICON_HEIGHT
         const fgWidth = Math.max(20, Math.round(fgHeight * ratioHint))
@@ -690,19 +702,6 @@ export default function IndexPage() {
           height: MARKER_ACTIVE_HEIGHT,
           zIndex: 9998,
           anchor: { x: 0.5, y: 1 },
-          label: {
-            content: formatMarkerTitle(item.title),
-            color: '#ffffff',
-            fontSize: 13,
-            anchorX: 0,
-            anchorY: MARKER_LABEL_ANCHOR_Y_ACTIVE,
-            borderWidth: 0,
-            borderColor: 'transparent',
-            borderRadius: 6,
-            bgColor: 'rgba(0,0,0,0.58)',
-            padding: 6,
-            textAlign: 'center',
-          },
         }
 
         const fgMarker: any = {
@@ -716,10 +715,56 @@ export default function IndexPage() {
           anchor: { x: 0.5, y: ACTIVE_FOREGROUND_ICON_ANCHOR_Y },
         }
 
-        return [bgMarker, fgMarker]
+        const markersForItem: any[] = [bgMarker, fgMarker]
+        if (markerTitle) {
+          const titleAsset = await buildStrokedTitleMarker(markerTitle, {
+            fontSize: 16,
+            lineHeight: 22,
+            fontWeight: 500,
+            fontFamily: 'PingFangSC, PingFang SC',
+            fontStyle: 'normal',
+            strokeWidth: 2,
+            strokeColor: '#DBDBDB',
+            fillColor: '#000000',
+            textAlign: 'left',
+            topOffset: MARKER_LABEL_ANCHOR_Y_ACTIVE,
+            paddingX: 2,
+            paddingY: 1,
+          })
+          if (titleAsset.iconPath && titleAsset.width > 0 && titleAsset.height > 0) {
+            markerIndexMap.set(titleMarkerId, index)
+            markersForItem.push({
+              id: titleMarkerId,
+              latitude: safeLatitude,
+              longitude: safeLongitude,
+              iconPath: titleAsset.iconPath,
+              width: titleAsset.width,
+              height: titleAsset.height,
+              zIndex: 10000,
+              anchor: { x: 0.5, y: 0 },
+            })
+          } else {
+            fgMarker.label = {
+              content: markerTitle,
+              color: '#000000',
+              fontSize: 16,
+              anchorX: 0,
+              anchorY: MARKER_LABEL_ANCHOR_Y_ACTIVE,
+              borderWidth: 2,
+              borderColor: '#DBDBDB',
+              borderRadius: 4,
+              bgColor: 'transparent',
+              padding: 0,
+              textAlign: 'left',
+            }
+          }
+        }
+
+        return markersForItem
       }
 
-      const markerId = renderVersion * 10000 + markerBaseId * 10
+      const markerId = renderVersion * 10000 + markerBaseId * 10 + 1
+      const titleMarkerId = renderVersion * 10000 + markerBaseId * 10 + 2
       const width = Math.max(18, Math.round(MARKER_INACTIVE_HEIGHT * ratioHint))
       markerIndexMap.set(markerId, index)
       const markerItem: any = {
@@ -731,23 +776,54 @@ export default function IndexPage() {
         height: MARKER_INACTIVE_HEIGHT,
         zIndex: 200,
         anchor: { x: 0.5, y: 0.5 },
-        label: {
-          content: formatMarkerTitle(item.title),
-          color: '#ffffff',
-          fontSize: 12,
-          anchorX: 0,
-          anchorY: MARKER_LABEL_ANCHOR_Y_INACTIVE,
-          borderWidth: 0,
-          borderColor: 'transparent',
-          borderRadius: 6,
-          bgColor: 'rgba(0,0,0,0.58)',
-          padding: 6,
-          textAlign: 'center',
-        },
       }
-      return [markerItem]
-    })
-    const markerAssets = (markerAssetsRaw.filter(Boolean) as any[])
+      const markersForItem: any[] = [markerItem]
+      if (markerTitle) {
+        const titleAsset = await buildStrokedTitleMarker(markerTitle, {
+          fontSize: 16,
+          lineHeight: 22,
+          fontWeight: 500,
+          fontFamily: 'PingFangSC, PingFang SC',
+          fontStyle: 'normal',
+          strokeWidth: 2,
+          strokeColor: '#DBDBDB',
+          fillColor: '#000000',
+          textAlign: 'left',
+          topOffset: MARKER_LABEL_ANCHOR_Y_INACTIVE,
+          paddingX: 2,
+          paddingY: 1,
+        })
+        if (titleAsset.iconPath && titleAsset.width > 0 && titleAsset.height > 0) {
+          markerIndexMap.set(titleMarkerId, index)
+          markersForItem.push({
+            id: titleMarkerId,
+            latitude: safeLatitude,
+            longitude: safeLongitude,
+            iconPath: titleAsset.iconPath,
+            width: titleAsset.width,
+            height: titleAsset.height,
+            zIndex: 201,
+            anchor: { x: 0.5, y: 0 },
+          })
+        } else {
+          markerItem.label = {
+            content: markerTitle,
+            color: '#000000',
+            fontSize: 16,
+            anchorX: 0,
+            anchorY: MARKER_LABEL_ANCHOR_Y_INACTIVE,
+            borderWidth: 2,
+            borderColor: '#DBDBDB',
+            borderRadius: 4,
+            bgColor: 'transparent',
+            padding: 0,
+            textAlign: 'left',
+          }
+        }
+      }
+      return markersForItem
+    }))
+    const markerAssets = (markerGroups.flat().filter(Boolean) as any[])
       .sort((a, b) => {
         const za = Number(a?.zIndex) || 0
         const zb = Number(b?.zIndex) || 0
@@ -811,8 +887,8 @@ export default function IndexPage() {
         id: USER_LOCATION_MARKER_ID,
         latitude: location.latitude,
         longitude: location.longitude,
-        width: USER_AVATAR_MARKER_SIZE,
-        height: USER_AVATAR_MARKER_SIZE,
+        width: USER_LOCATION_MARKER_DISPLAY_SIZE,
+        height: USER_LOCATION_MARKER_DISPLAY_SIZE,
         iconPath: safeAvatarIconPath,
         zIndex: 4000,
         anchor: { x: 0.5, y: 0.5 },
@@ -923,9 +999,53 @@ export default function IndexPage() {
       })
   }
 
+  const toggleFollow = (id: string | number) => {
+    const target = partyListRef.current.find((item) => item.id === id)
+    if (!target) return
+    if (!target.userId) {
+      Taro.showToast({ title: '用户信息缺失', icon: 'none' })
+      return
+    }
+    if (followPendingRef.current.has(id)) return
+
+    const nextFollowed = !Boolean(target.isFollowed)
+    const action = nextFollowed ? 'follow' : 'unfollow'
+    followPendingRef.current.add(id)
+    setPartyList((prev) => {
+      const next = prev.map((item) => (item.id === id ? { ...item, isFollowed: nextFollowed } : item))
+      partyListRef.current = next
+      return next
+    })
+
+    request({
+      url: `/api/v1/follow/${action}`,
+      method: 'POST',
+      data: { user_id: String(target.userId) },
+    })
+      .then((res: any) => {
+        const code = Number(res?.data?.code)
+        if (code !== 200) {
+          throw new Error(res?.data?.msg || '操作失败')
+        }
+        Taro.showToast({ title: nextFollowed ? '已关注' : '已取消关注', icon: 'success' })
+      })
+      .catch(() => {
+        setPartyList((prev) => {
+          const next = prev.map((item) => (item.id === id ? { ...item, isFollowed: !nextFollowed } : item))
+          partyListRef.current = next
+          return next
+        })
+        Taro.showToast({ title: '操作失败', icon: 'none' })
+      })
+      .finally(() => {
+        followPendingRef.current.delete(id)
+      })
+  }
+
   const navigateTo = (path: string) => Taro.navigateTo({ url: path })
   const getDetailPath = (item: PartyItem) => {
-    if (item?.type === '鍦哄湴') {
+    const itemType = String(item?.type || '').trim()
+    if (itemType === '场地') {
       return `/pages/venue/index?id=${item.id}&tag=${encodeURIComponent(item.type || '')}`
     }
     return `/pages/activity/index?id=${item.id}&tag=${encodeURIComponent(item.type || '')}`
@@ -1168,6 +1288,7 @@ export default function IndexPage() {
       />
       <Canvas canvasId={ICON_ONLY_MARKER_CANVAS_ID} className='icon-marker-canvas' />
       <Canvas canvasId={AVATAR_MARKER_CANVAS_ID} className='avatar-marker-canvas' />
+      <Canvas canvasId={TITLE_MARKER_CANVAS_ID} className='title-marker-canvas' />
 
       <View className='top-header-fade' style={topHeaderFadeStyle} />
 
@@ -1308,7 +1429,15 @@ export default function IndexPage() {
                         </View>
                       </View>
                       <View className='action-btns'>
-                        <View className='card-action-btn follow-btn'>关注</View>
+                        <View
+                          className={`card-action-btn follow-btn ${(item.isFollowed || followPendingRef.current.has(item.id)) ? 'disabled' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleFollow(item.id)
+                          }}
+                        >
+                          {item.isFollowed ? '已关注' : '关注'}
+                        </View>
                         {item.type === '派对' && (
                           <View
                             className='card-action-btn subscribe-btn'

@@ -6,6 +6,8 @@ import 'taro-ui/dist/style/components/icon.scss'
 import 'taro-ui/dist/style/components/activity-indicator.scss'
 import CommonHeader from '@/components/CommonHeader'
 import { useNavBarMetrics } from '@/hooks/useNavBarMetrics'
+import lightningFilledIcon from '@/assets/icons/lightning.svg'
+import lightningOutlineIcon from '@/assets/icons/lightning-outline.svg'
 import { setTabBarIndex } from '../../store/tabbar'
 import { request } from '../../utils/request'
 import './index.scss'
@@ -59,6 +61,7 @@ interface NoteItem {
   likes: number
   is_liked: boolean
   liked_by_me: boolean
+  gender?: number | string
   finalHeight?: number
 }
 
@@ -101,11 +104,10 @@ const WaterfallCard = memo(({
               onToggleLike(item.id, item.liked_by_me)
             }}
           >
-            <AtIcon
-              value={item.is_liked ? 'heart-2' : 'heart'}
-              size='12'
-              color={item.is_liked ? '#FF2E4D' : '#999'}
-              className={item.is_liked ? 'liked-anim' : ''}
+            <Image
+              src={item.is_liked ? lightningFilledIcon : lightningOutlineIcon}
+              className={`like-icon-sm ${item.is_liked ? 'liked-anim' : ''}`}
+              mode='aspectFit'
             />
             <Text className='num' style={{ color: item.is_liked ? '#FF2E4D' : '#999' }}>{item.likes ?? 0}</Text>
           </View>
@@ -121,18 +123,23 @@ const WaterfallCard = memo(({
   prev.item.finalHeight === next.item.finalHeight
 ))
 
-const formatTime = (timeStr: string) => {
+const formatFollowMetaTime = (timeStr: string) => {
   if (!timeStr) return ''
   const date = new Date(timeStr)
   const now = new Date()
   if (Number.isNaN(date.getTime())) return ''
-  const sameDay = date.getFullYear() === now.getFullYear()
-    && date.getMonth() === now.getMonth()
-    && date.getDate() === now.getDate()
-  if (sameDay) {
-    return `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`
-  }
-  return `${date.getMonth() + 1}-${date.getDate()}`
+  const diffMs = Math.max(0, now.getTime() - date.getTime())
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  if (diffHours < 1) return '刚刚'
+  if (diffHours < 24) return `${diffHours}小时前`
+  const diffDays = Math.floor(diffHours / 24)
+  return `${diffDays}天前`
+}
+
+const getGenderSymbol = (gender?: number | string) => {
+  if (gender === 1 || gender === '1' || gender === 'male') return '♂'
+  if (gender === 2 || gender === '2' || gender === 'female') return '♀'
+  return ''
 }
 
 const InstaCard = memo(({
@@ -151,9 +158,10 @@ const InstaCard = memo(({
           {item.user_avatar && <Image src={item.user_avatar} className='avatar-img' mode='aspectFill' lazyLoad />}
         </View>
         <Text className='name'>{item.user_name}</Text>
-        <Text className='time'>{formatTime(item.created_at)}</Text>
+        {getGenderSymbol(item.gender) && <Text className='gender'>{getGenderSymbol(item.gender)}</Text>}
+        <Text className='time'>· {formatFollowMetaTime(item.created_at)}</Text>
       </View>
-      <AtIcon value='menu' size='20' color='#fff' />
+      <Text className='menu-dots'>•••</Text>
     </View>
 
     <View className='media-wrap'>
@@ -168,22 +176,37 @@ const InstaCard = memo(({
         <View className='media-placeholder' />
       )}
       {item.media_data?.length > 1 && (
-        <View className='count-badge'>1/{item.media_data.length}</View>
+        <View className='dot-indicator'>
+          {item.media_data.map((_, idx) => (
+            <View key={`${item.id}-dot-${idx}`} className={`dot ${idx === 0 ? 'active' : ''}`} />
+          ))}
+        </View>
       )}
     </View>
 
     <View className='action-bar'>
       <View className='left-actions'>
+        <AtIcon value='reload' size='24' color='#fff' className='left-action-icon' />
+      </View>
+      <View className='right-actions'>
         <View
+          className='action-item'
           onClick={(e: any) => {
             e.stopPropagation?.()
             onToggleLike(item.id, item.liked_by_me)
           }}
         >
-          <AtIcon value={item.is_liked ? 'heart-2' : 'heart'} size='24' color={item.is_liked ? '#FF2E4D' : '#fff'} />
+          <Image
+            src={item.is_liked ? lightningFilledIcon : lightningOutlineIcon}
+            className={`like-icon-lg ${item.is_liked ? 'liked-anim' : ''}`}
+            mode='aspectFit'
+          />
+          <Text className='action-text'>点赞</Text>
         </View>
-        <AtIcon value='message' size='24' color='#fff' className='ml-3' />
-        <AtIcon value='share' size='24' color='#fff' className='ml-3' />
+        <View className='action-item'>
+          <AtIcon value='message' size='24' color='#fff' className='action-icon' />
+          <Text className='action-text'>评论</Text>
+        </View>
       </View>
     </View>
 
@@ -248,12 +271,17 @@ const pickDefaultActiveChannelId = (channels: ChannelApiItem[]): number | null =
 }
 
 export default function SquarePage() {
+  const [channelChipMarqueeMeta, setChannelChipMarqueeMeta] = useState<Record<number, {
+    shouldScroll: boolean
+    shiftPx: number
+  }>>({})
   const [activeIdx, setActiveIdx] = useState(0)
   const [myChannels, setMyChannels] = useState<ChannelApiItem[]>([])
   const [otherChannels, setOtherChannels] = useState<ChannelApiItem[]>([])
   const [activeChannelId, setActiveChannelId] = useState<number | null>(null)
   const [isChannelEditOpen, setIsChannelEditOpen] = useState(false)
   const [isChannelEditing, setIsChannelEditing] = useState(false)
+  const [hasTabBarInteracted, setHasTabBarInteracted] = useState(false)
 
   const [noteList, setNoteList] = useState<NoteItem[]>([])
   const [leftCol, setLeftCol] = useState<NoteItem[]>([])
@@ -274,6 +302,7 @@ export default function SquarePage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const refreshStartRef = useRef(0)
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const channelMarqueeMeasureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingLikeIdsRef = useRef<Set<string>>(new Set())
 
   const { statusBarHeight, navBarHeight } = useNavBarMetrics()
@@ -318,6 +347,10 @@ export default function SquarePage() {
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current)
       refreshTimerRef.current = null
+    }
+    if (channelMarqueeMeasureTimerRef.current) {
+      clearTimeout(channelMarqueeMeasureTimerRef.current)
+      channelMarqueeMeasureTimerRef.current = null
     }
   }, [])
 
@@ -579,6 +612,7 @@ export default function SquarePage() {
   }
 
   const handleTabClick = (index: number) => {
+    setHasTabBarInteracted(true)
     if (index === activeIdx) {
       setIsChannelEditOpen(false)
       setIsChannelEditing(false)
@@ -589,6 +623,7 @@ export default function SquarePage() {
 
   const handleSwiperChange = (e: any) => {
     if (e.detail.source !== 'touch') return
+    setHasTabBarInteracted(true)
     const nextIndex = e.detail.current
     if (nextIndex === activeIdxRef.current) return
     switchToChannel(nextIndex)
@@ -880,6 +915,51 @@ export default function SquarePage() {
     setIsChannelEditing(false)
   }
 
+  const measureChannelChipMarquee = () => {
+    if (!isChannelEditOpen || editableOtherChannels.length === 0) return
+
+    const ids = editableOtherChannels.map(ch => ch.id)
+    const query = Taro.createSelectorQuery()
+    ids.forEach((id) => {
+      query.select(`#channel-chip-marquee-viewport-${id}`).boundingClientRect()
+      query.select(`#channel-chip-marquee-text-${id}`).boundingClientRect()
+    })
+
+    query.exec((rects: any[] = []) => {
+      if (!Array.isArray(rects) || rects.length === 0) return
+
+      const nextMeta: Record<number, { shouldScroll: boolean; shiftPx: number }> = {}
+      ids.forEach((id, idx) => {
+        const viewportRect = rects[idx * 2]
+        const textRect = rects[idx * 2 + 1]
+        const viewportWidth = Number(viewportRect?.width || 0)
+        const textWidth = Number(textRect?.width || 0)
+        const overflowPx = Math.max(Math.ceil(textWidth - viewportWidth), 0)
+        const shouldScroll = overflowPx > 2
+
+        nextMeta[id] = {
+          shouldScroll,
+          shiftPx: shouldScroll ? overflowPx : 0
+        }
+      })
+
+      setChannelChipMarqueeMeta(nextMeta)
+    })
+  }
+
+  useEffect(() => {
+    if (!isChannelEditOpen || editableOtherChannels.length === 0) return
+
+    if (channelMarqueeMeasureTimerRef.current) {
+      clearTimeout(channelMarqueeMeasureTimerRef.current)
+    }
+
+    channelMarqueeMeasureTimerRef.current = setTimeout(() => {
+      measureChannelChipMarquee()
+      channelMarqueeMeasureTimerRef.current = null
+    }, 80)
+  }, [isChannelEditOpen, editableOtherChannels.map(ch => `${ch.id}:${ch.name}`).join('|')])
+
   const handleFinishEdit = async () => {
     setIsChannelEditing(false)
     await fetchChannelList()
@@ -899,7 +979,10 @@ export default function SquarePage() {
     const topPos = statusBarHeight + navBarHeight
 
     return (
-      <View className={`channel-edit-overlay ${isChannelEditing ? 'editing' : ''}`} style={{ top: `${topPos}px` }}>
+      <View
+        className={`channel-edit-overlay ${isChannelEditing ? 'editing' : ''}`}
+        style={{ top: `${topPos}px`, maxHeight: `calc(100vh - ${topPos}px)` }}
+      >
         <View className='channel-header'>
           <Text className='title'>我的频道</Text>
           <View className='actions'>
@@ -922,7 +1005,7 @@ export default function SquarePage() {
                 if (displayIndex >= 0) handleTabClick(displayIndex)
               }}
             >
-              <Text>{ch.name}</Text>
+              <Text className='channel-chip-text'>{ch.name}</Text>
               {isChannelEditing && (
                 <View
                   className='del-icon'
@@ -938,20 +1021,37 @@ export default function SquarePage() {
           ))}
         </View>
 
-        <Text className='sub-title'>推荐频道</Text>
+        <Text className='sub-title'>推荐频道 (点击添加频道)</Text>
         <View className='channel-grid'>
-          {editableOtherChannels.map(ch => (
-            <View
-              key={ch.id}
-              className={`channel-chip add-chip ${isChannelEditing ? '' : 'disabled'}`}
-              onClick={() => {
-                if (!isChannelEditing) return
-                subscribeChannel(ch)
-              }}
-            >
-              <Text>{ch.name}</Text>
-            </View>
-          ))}
+          {editableOtherChannels.map(ch => {
+            const marqueeMeta = channelChipMarqueeMeta[ch.id] || { shouldScroll: false, shiftPx: 0 }
+
+            return (
+              <View
+                key={ch.id}
+                className={`channel-chip add-chip ${isChannelEditing ? '' : 'disabled'}`}
+                onClick={() => {
+                  if (!isChannelEditing) return
+                  subscribeChannel(ch)
+                }}
+              >
+                <View className='channel-chip-text-row'>
+                  <Text className='channel-chip-prefix'>+</Text>
+                  <View
+                    id={`channel-chip-marquee-viewport-${ch.id}`}
+                    className={`channel-chip-marquee-viewport ${marqueeMeta.shouldScroll ? 'is-scrolling' : ''}`}
+                  >
+                    <View
+                      className={`channel-chip-marquee-track ${marqueeMeta.shouldScroll ? 'is-scrolling' : ''}`}
+                      style={{ '--marquee-shift-px': `-${marqueeMeta.shiftPx}px` } as any}
+                    >
+                      <Text id={`channel-chip-marquee-text-${ch.id}`} className='channel-chip-marquee-text'>{ch.name}</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )
+          })}
         </View>
       </View>
     )
@@ -979,7 +1079,7 @@ export default function SquarePage() {
               <ScrollView
                 scrollX
                 className='channel-scroll-view'
-                scrollIntoView={activeIdx > 0 ? `tab-${Math.max(activeIdx - 1, 0)}` : undefined}
+                scrollIntoView={hasTabBarInteracted && activeIdx > 0 ? `tab-${Math.max(activeIdx - 1, 0)}` : undefined}
                 showScrollbar={false}
                 enableFlex
               >
@@ -1076,4 +1176,3 @@ export default function SquarePage() {
     </View>
   )
 }
-

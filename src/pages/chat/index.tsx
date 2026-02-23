@@ -1,4 +1,4 @@
-import { View, Text, Input, ScrollView, Image } from '@tarojs/components'
+﻿import { View, Text, Input, ScrollView, Image } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useState, useEffect, useRef } from 'react'
 import { AtIcon } from 'taro-ui'
@@ -51,6 +51,7 @@ export default function ChatPage() {
   const { peer_id, title, type } = router.params
   const sessionType = Number(type) === 2 ? 2 : 1
   const isGroupChat = sessionType === 2
+  const NAV_BOTTOM_EXTEND = 8
 
   const [msgList, setMsgList] = useState<MessageItem[]>([])
   const msgListRef = useRef<MessageItem[]>([])
@@ -74,7 +75,6 @@ export default function ChatPage() {
 
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
-  const [navBarGap, setNavBarGap] = useState(0)
   const [menuButtonWidth, setMenuButtonWidth] = useState(0)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
 
@@ -201,6 +201,22 @@ export default function ChatPage() {
     return aStr.localeCompare(bStr)
   }
 
+  const resolveIsSelf = (msg: Partial<MessageItem> & { sender_id?: number | string; is_self?: boolean | number | string }) => {
+    const currentUserId = Number(myUserId || Taro.getStorageSync('userInfo')?.user_id || 0)
+    const senderId = Number(msg.sender_id || 0)
+    if (currentUserId > 0 && senderId > 0) {
+      return senderId === currentUserId
+    }
+    const raw = msg.is_self
+    if (typeof raw === 'boolean') return raw
+    if (typeof raw === 'number') return raw === 1
+    if (typeof raw === 'string') {
+      const lower = String(raw).toLowerCase()
+      return lower === '1' || lower === 'true'
+    }
+    return false
+  }
+
   useEffect(() => {
     try {
       const userInfo = Taro.getStorageSync('userInfo')
@@ -219,8 +235,6 @@ export default function ChatPage() {
     const sbHeight = sysInfo.statusBarHeight || 20
     setStatusBarHeight(sbHeight)
     const baseHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
-    const extraBottom = 22
-    setNavBarGap(extraBottom)
     setNavBarHeight(baseHeight > 0 ? baseHeight : 44)
     const rightPadding = sysInfo.screenWidth - menuInfo.left
     setMenuButtonWidth(rightPadding)
@@ -296,13 +310,13 @@ export default function ChatPage() {
     Taro.eventCenter.on('IM_NEW_MESSAGE', onNewMessage)
 
     const onImConnected = () => {
-      console.log('[ChatPage] IM已连接，执行消息补洞...')
+      console.log('[ChatPage] IM 已连接，执行消息补拉...')
       reconnectFetch()
     }
     Taro.eventCenter.on('IM_CONNECTED', onImConnected)
 
     const onTokenRefreshed = () => {
-      console.log('[ChatPage] Token刷新')
+      console.log('[ChatPage] token refreshed')
     }
     Taro.eventCenter.on('TOKEN_REFRESHED', onTokenRefreshed)
 
@@ -366,7 +380,7 @@ export default function ChatPage() {
       const lastLocalMsg = validMsgs.length > 0 ? validMsgs[validMsgs.length - 1] : null
       const sinceTime = lastLocalMsg ? lastLocalMsg.time : 0
 
-      console.log('[ChatPage] 开始补洞，本地最新时间:', sinceTime)
+      console.log('[ChatPage] 开始补拉，本地最新时间:', sinceTime)
 
       const params: any = {
         peer_id: Number(peer_id),
@@ -387,16 +401,19 @@ export default function ChatPage() {
       if (resBody.code === 200 && resBody.data) {
         const newMsgs: MessageItem[] = (resBody.data.list || []).map((item: MessageItem) => ({
           ...item,
-          time: normalizeTimestamp(item.time)
+          time: normalizeTimestamp(item.time),
+          is_self: resolveIsSelf(item)
         }))
 
         if (newMsgs.length > 0) {
-          console.log(`[ChatPage] 补洞拉取到 ${newMsgs.length} 条消息`)
+          console.log(`[ChatPage] reconnect fetched ${newMsgs.length} messages`)
 
           setMsgList(prev => {
             const merged = mergeMessages(prev, newMsgs)
-            if (merged.length > prev.length ||
-              (merged.length > 0 && prev.length > 0 && merged[merged.length - 1].id !== prev[prev.length - 1].id)) {
+            if (
+              merged.length > prev.length ||
+              (merged.length > 0 && prev.length > 0 && merged[merged.length - 1].id !== prev[prev.length - 1].id)
+            ) {
               scrollToBottom(merged)
             }
             return merged
@@ -404,11 +421,11 @@ export default function ChatPage() {
 
           clearUnread()
         } else {
-          console.log('[ChatPage] 补洞完成，无新消息')
+          console.log('[ChatPage] reconnect done, no new messages')
         }
       }
     } catch (e) {
-      console.error('[ChatPage] 消息补洞失败', e)
+      console.error('[ChatPage] reconnect fetch failed', e)
     }
   }
 
@@ -454,7 +471,8 @@ export default function ChatPage() {
         const data = resBody.data
         const newMsgs: MessageItem[] = (data.list || []).map((item: MessageItem) => ({
           ...item,
-          time: normalizeTimestamp(item.time)
+          time: normalizeTimestamp(item.time),
+          is_self: resolveIsSelf(item)
         }))
         const cursor = data.next_cursor
 
@@ -559,7 +577,7 @@ export default function ChatPage() {
         }))
       }
     } catch (err) {
-      console.error('[ChatPage] 发送失败', err)
+      console.error('[ChatPage] send failed', err)
     }
   }
 
@@ -627,8 +645,7 @@ export default function ChatPage() {
       url: `/pages/chat/group-members/index?group_id=${peer_id}&group_name=${encodeURIComponent(safeTitle)}`
     })
   }
-
-  // 处理卡片点击
+  // 处理卡片消息点击
   const handleCardClick = (msg: MessageItem) => {
     if (msg.msg_type === 8 && msg.ext?.card_type === 'note_forward') {
       const noteId = String(msg.ext.note_id || msg.ext.note?.id)
@@ -644,7 +661,6 @@ export default function ChatPage() {
       }
     }
   }
-
   // 渲染消息内容
   const renderMessageContent = (msg: MessageItem) => {
     if (msg.msg_type === 8) {
@@ -710,6 +726,7 @@ export default function ChatPage() {
       </View>
     )
   }
+
   const safeDecode = (value?: string) => {
     if (!value) return ''
     try {
@@ -719,51 +736,47 @@ export default function ChatPage() {
     }
   }
 
-  const safeTitle = safeDecode(title || '聊天')
+  const safeTitle = safeDecode(title || '\u804a\u5929')
 
   return (
     <View className='chat-page'>
-      <View className='custom-navbar' style={{ paddingTop: `${statusBarHeight}px`, height: `${navBarHeight}px`, paddingRight: `${menuButtonWidth}px` }}>
-        <View className='nav-left-group'>
-          <View className='nav-left' onClick={() => Taro.navigateBack()}><AtIcon value='chevron-left' size='24' color='#fff' /></View>
-          {unreadCount > 0 && (
-            <View className='nav-badge'>
-              <Text className='nav-badge-text'>{unreadCount}</Text>
-            </View>
-          )}
-        </View>
-        <View className='nav-center'>
-          <Text className='nav-title'>{safeTitle}</Text>
-          {!isGroupChat && !isFollowed && (
-            <View className='follow-btn' onClick={handleToggleFollow}>
-              <Text className='follow-text'>关注</Text>
-            </View>
-          )}
-        </View>
-        {isGroupChat && (
-          <View className='nav-right' onClick={handleOpenGroupMembers}>
-            <View className='nav-right-btn'>
-              <AtIcon value='list' size='18' color='#fff' />
-            </View>
+      <View className='custom-navbar' style={{ height: `${statusBarHeight + navBarHeight + NAV_BOTTOM_EXTEND}px` }}>
+        <View className='nav-main' style={{ top: `${statusBarHeight}px`, height: `${navBarHeight}px`, paddingRight: `${menuButtonWidth}px` }}>
+          <View className='nav-left-group'>
+            <View className='nav-left' onClick={() => Taro.navigateBack()}><AtIcon value='chevron-left' size='24' color='#fff' /></View>
+            {unreadCount > 0 && (
+              <View className='nav-badge'>
+                <Text className='nav-badge-text'>{unreadCount}</Text>
+              </View>
+            )}
           </View>
-        )}
+          <View className='nav-center'>
+            <Text className='nav-title'>{safeTitle}</Text>
+            {!isGroupChat && !isFollowed && (
+              <View className='follow-btn' onClick={handleToggleFollow}>
+                <Text className='follow-text'>{'\u5173\u6ce8'}</Text>
+              </View>
+            )}
+          </View>
+          {isGroupChat && (
+            <View className='nav-right' onClick={handleOpenGroupMembers}>
+              <View className='nav-right-btn'>
+                <AtIcon value='list' size='18' color='#fff' />
+              </View>
+            </View>
+          )}
+        </View>
       </View>
 
-      <ScrollView
-        scrollY
-        className='chat-scroll'
-        style={{ top: `${statusBarHeight + navBarHeight + navBarGap}px`, bottom: `${keyboardHeight > 0 ? keyboardHeight + 60 : 80}px`, opacity: firstLoaded ? 1 : 0 }}
-        scrollIntoView={scrollId}
-        upperThreshold={80}
-        onScrollToUpper={() => { fetchMessages(false) }}
-      >
+        <ScrollView
+          scrollY
+          className='chat-scroll'
+          style={{ top: `${statusBarHeight + navBarHeight + NAV_BOTTOM_EXTEND}px`, bottom: `${keyboardHeight > 0 ? keyboardHeight + 60 : 80}px`, opacity: firstLoaded ? 1 : 0 }}
+          scrollIntoView={scrollId}
+          upperThreshold={80}
+          onScrollToUpper={() => { fetchMessages(false) }}
+        >
         <View className='msg-container'>
-          <View className='system-tip'>
-            <Text className='tip-text'>
-              一切以<Text className='tip-link'>投资</Text>、<Text className='tip-link'>理财</Text>、<Text className='tip-link'>炒币</Text>、<Text className='tip-link'>炒股</Text>等赚钱理由，要求加微信或下载其他软件均为诈骗，<Text className='tip-link'>请立即举报</Text>
-            </Text>
-          </View>
-          <View className='time-stamp'>06-06 17:36</View>
           <View className='history-loader' style={{ minHeight: isHistoryLoading ? '60px' : '0' }}>
             {isHistoryLoading && (
               <View className='custom-loading'>
@@ -807,13 +820,6 @@ export default function ChatPage() {
                     </View>
                   )}
                 </View>
-                {index === 2 && (
-                  <View className='system-tip secondary'>
-                    <Text className='tip-text'>
-                      温馨提示：凡涉及<Text className='tip-link'>转账</Text>均为诈骗，切勿相信。若对方要求转账，<Text className='tip-link'>请立即举报</Text>
-                    </Text>
-                  </View>
-                )}
               </View>
             )
           })}

@@ -62,6 +62,7 @@ export default function UserPage() {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'activity' | 'dynamic'>('activity');
+  const [activitySubTab, setActivitySubTab] = useState<'joined' | 'subscribed'>('joined');
 
   useEffect(() => {
     setTabBarIndex(4);
@@ -468,6 +469,9 @@ export default function UserPage() {
 
   const hasData = isLogin || needPhoneAuth;
   const joinDate = userInfo?.created_at ? String(userInfo.created_at).split('T')[0] : '';
+  const joinedActivityList: Array<{ id: number; cover?: string }> = [];
+  const subscribedActivityList: Array<{ id: number; cover?: string }> = [];
+  const currentActivityList = activitySubTab === 'joined' ? joinedActivityList : subscribedActivityList;
 
   const stats = [
     { label: '获赞/收藏', value: hasData ? userStats?.likes || 0 : '-', type: null },
@@ -596,15 +600,39 @@ export default function UserPage() {
       {activeTab === 'activity' && (
         <View className="activity-card">
           <View className="activity-header">
-            <Text className="activity-title active">我参加过的活动</Text>
+            <Text
+              className={`activity-title ${activitySubTab === 'joined' ? 'active' : ''}`}
+              onClick={() => setActivitySubTab('joined')}
+            >
+              {'\u6211\u53c2\u52a0\u8fc7\u7684\u6d3b\u52a8'}
+            </Text>
             <View className="activity-divider" />
-            <Text className="activity-title">我订阅的活动(18)</Text>
+            <Text
+              className={`activity-title ${activitySubTab === 'subscribed' ? 'active' : ''}`}
+              onClick={() => setActivitySubTab('subscribed')}
+            >
+              {'\u6211\u8ba2\u9605\u7684\u6d3b\u52a8'}
+            </Text>
           </View>
-          <ScrollView className="activity-scroll" scrollX enableFlex>
-            {[1, 2, 3, 4].map(i => (
-              <View key={i} className="activity-poster" />
-            ))}
-          </ScrollView>
+          {currentActivityList.length > 0 ? (
+            <ScrollView className="activity-scroll" scrollX enableFlex>
+              {currentActivityList.map((item) => (
+                <View key={item.id} className="activity-poster">
+                  {!!item.cover && <Image className="activity-poster-img" src={item.cover} mode="aspectFill" />}
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <View className="activity-empty">
+              <View className="activity-empty-icon">
+                <AtIcon value="calendar" size="20" color="rgba(255,255,255,0.45)" />
+              </View>
+              <Text className="activity-empty-title">
+                {activitySubTab === 'joined' ? '\u6682\u65e0\u53c2\u52a0\u8fc7\u7684\u6d3b\u52a8' : '\u6682\u65e0\u8ba2\u9605\u7684\u6d3b\u52a8'}
+              </Text>
+              <Text className="activity-empty-tip">{'\u53bb\u9996\u9875\u6216\u6d3b\u52a8\u5217\u8868\u770b\u770b\u5427'}</Text>
+            </View>
+          )}
         </View>
       )}
 

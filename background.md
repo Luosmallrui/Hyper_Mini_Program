@@ -140,3 +140,86 @@
 
 3. Attendee 空态交互
 - 用户反馈“多余页面”语义：当无观演人时更偏向直接进入新增态，保留列表态入口但避免空白感。
+
+## 本次新增上下文（追加，2026-02-21）
+
+### A. 首页地图（index）最近调整
+1. Marker 激活态
+- 激活态继续使用底图叠加方案（`map-maker-background`）+ 前景 icon 组合。
+- 多轮微调后，前景 icon 已做位置上移微调（小步进像素级调整）。
+
+2. Marker 名称与层级
+- 已修复“激活态不在最顶层”与“被其他 marker 名称遮挡”的问题方向，当前仍以真机视觉为准继续微调。
+- 非激活态名称间距参数已调整：`MARKER_LABEL_ANCHOR_Y_INACTIVE` 近期从 `52 -> 44 -> 30`，用于缩短图标与标题距离。
+
+3. iOS 兼容结论
+- iOS 地图对 SVG marker 支持不稳定，激活态底图统一优先 PNG 资源（避免 SVG 渲染失败导致仅放大前景图标）。
+
+### B. Square 页（关注分支）近期变更
+1. 视觉结构
+- `src/pages/square/index.tsx` 的关注流单列卡片已按设计图进行一轮结构对齐：头部信息、菜单点位、底部操作区布局。
+
+2. 点赞图标方案
+- 已改为 lightning 图标体系：
+  - 已点赞：`src/assets/icons/lightning.svg`
+  - 未点赞：`src/assets/icons/lightning-outline.svg`
+- 瀑布流图标尺寸改为 `24x35`，与点赞数间距 `4px`。
+
+### C. 提交流程踩坑（重要）
+1. lint-staged 报错根因
+- 出现过 “VSCode 只显示 Preparing lint-staged” 的场景，实际是 `eslint --fix` 失败。
+- 典型报错：`import/first`（绝对路径 import 需在相对路径 import 之前）。
+
+2. 部分暂存陷阱
+- 文件状态 `MM`（部分暂存）时，`lint-staged` 检查的是“已暂存版本”，可能反复报旧错。
+- 处理方式：先 `git add` 目标文件再执行 `npx lint-staged`。
+
+### D. Chat 页当前待处理问题（已确认）
+- 文件：`src/pages/chat/index.tsx` / `src/pages/chat/index.scss`
+- 待修项：
+  1. 顶部区域存在黑块，遮挡消息内容。
+  2. 他人转发卡片与自己转发卡片宽度不一致。
+  3. 自己发送的转发卡片需要改为蓝色气泡背景（与普通自己消息一致）。
+- 建议实现方向：清理顶部冗余占位块、统一 `card-bubble` 宽度规则、补齐 `.msg-right .card-bubble` 及子元素颜色体系。
+
+## 本次新增上下文（追加，2026-02-23）
+
+### A. merchant 关注字段切换（`is_follow`）
+1. 列表接口字段变更
+- `/api/v1/merchant/list` 已返回 `is_follow`（替代旧兼容思路）。
+- 首页 `src/pages/index/index.tsx` 与列表页 `src/pages/activity-list/index.tsx` 已改为优先并最终统一使用 `is_follow` 初始化关注状态。
+
+2. 详情页关注能力补齐
+- `/api/v1/merchant/{id}` 已返回 `is_follow`，并用于：
+  - `src/pages/activity/index.tsx`
+  - `src/pages/venue/index.tsx`
+- 两页【关注】按钮已接入：
+  - `POST /api/v1/follow/follow`
+  - `POST /api/v1/follow/unfollow`
+- 已实现：乐观更新、失败回滚、防重复点击（pending 状态）。
+
+### B. `activity` 页编码事故修复经验（重要）
+1. 现象
+- `src/pages/activity/index.tsx` 出现大量中文乱码，且部分字符串被截断，导致：
+  - JSX 标签损坏（如 `</Text>` 被破坏）
+  - 引号不闭合
+  - `if/else` 结构被挤坏
+  - `tsc` 大量语法报错
+
+2. 高风险操作特征
+- 在含乱码文件上做脚本式批量替换/整段替换时，极易继续扩大损坏范围。
+- 即使功能改动很小（例如增加关注按钮），也可能触发整文件更多中文区域异常。
+
+3. 实战修复策略（有效）
+- 先做“最小功能补丁”（仅加关注逻辑和按钮点击）。
+- 再按 `tsc` 报错行号逐段修复，优先处理：
+  - 未闭合字符串
+  - 损坏的 JSX 文本节点
+  - 被破坏的条件分支结构
+- 对乱码严重、补丁匹配失败的片段：
+  - 用“按行号定点替换”方式修复（而不是整文件重写）。
+- 修复后必须执行：`npx tsc --noEmit`。
+
+### C. 额外操作细节（避免重复踩坑）
+- PowerShell 下不要把 `git diff` 输出误管道给 `cat`（会被当作 `Get-Content`，产生误导性错误）。
+- 需要查看 diff 时直接用 `git diff -- <file>`，或用 `Get-Content` 读取具体文件片段。

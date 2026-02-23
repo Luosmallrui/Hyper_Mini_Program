@@ -48,6 +48,7 @@ interface MerchantGood {
   
   interface MerchantDetail {
     id: number
+    user_id?: string | number
     name: string
     avg_price: number
     location_name: string
@@ -82,6 +83,7 @@ export default function VenuePage() {
   const [currentHero, setCurrentHero] = useState<string>(fallbackGallery[0])
   const [heroIndex, setHeroIndex] = useState(0)
   const [activeTab, setActiveTab] = useState<'goods' | 'notes'>('goods')
+  const [followPending, setFollowPending] = useState(false)
   const fallbackMapCenter = { latitude: 30.657, longitude: 104.066 }
   const tabTouchStartXRef = useRef(0)
 
@@ -228,6 +230,38 @@ export default function VenuePage() {
     }
   }
 
+  const handleToggleFollow = async () => {
+    if (!venue || followPending) return
+    if (!venue.user_id) {
+      Taro.showToast({ title: '用户信息缺失', icon: 'none' })
+      return
+    }
+
+    const nextFollow = !Boolean(venue.is_follow)
+    const action = nextFollow ? 'follow' : 'unfollow'
+
+    setFollowPending(true)
+    setVenue((prev) => (prev ? { ...prev, is_follow: nextFollow } : prev))
+
+    try {
+      const res = await request({
+        url: `/api/v1/follow/${action}`,
+        method: 'POST',
+        data: { user_id: String(venue.user_id) },
+      })
+      const code = Number((res as any)?.data?.code)
+      if (code !== 200) {
+        throw new Error((res as any)?.data?.msg || '操作失败')
+      }
+      Taro.showToast({ title: nextFollow ? '已关注' : '已取消关注', icon: 'success' })
+    } catch (error) {
+      setVenue((prev) => (prev ? { ...prev, is_follow: !nextFollow } : prev))
+      Taro.showToast({ title: '操作失败', icon: 'none' })
+    } finally {
+      setFollowPending(false)
+    }
+  }
+
   return (
     <View className='venue-page'>
       {/* 顶部导航（固定、透明） */}
@@ -309,7 +343,9 @@ export default function VenuePage() {
                 <Text className='host-fans'>{venueFans} 粉丝</Text>
               </View>
             </View>
-            <View className='follow-btn'>{venue?.is_follow ? '已关注' : '关注'}</View>
+            <View className='follow-btn' onClick={handleToggleFollow}>
+              {followPending ? '处理中' : (venue?.is_follow ? '已关注' : '关注')}
+            </View>
           </View>
 
           <View className='tab-row'>

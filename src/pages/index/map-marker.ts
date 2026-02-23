@@ -5,6 +5,7 @@ export const ACTIVE_MARKER_CANVAS_ID = 'active-marker-canvas'
 export const INACTIVE_MARKER_CANVAS_ID = 'inactive-marker-canvas'
 export const AVATAR_MARKER_CANVAS_ID = 'avatar-marker-canvas'
 export const ICON_ONLY_MARKER_CANVAS_ID = 'icon-only-marker-canvas'
+export const TITLE_MARKER_CANVAS_ID = 'title-marker-canvas'
 
 const PIN_SIZE = 80
 const ARROW_HEIGHT = 12
@@ -22,11 +23,11 @@ const INACTIVE_TEXT_HEIGHT = INACTIVE_LINE_HEIGHT * INACTIVE_TEXT_MAX_LINES + 8
 export const INACTIVE_MARKER_WIDTH = 220
 export const INACTIVE_MARKER_HEIGHT = INACTIVE_ICON_SIZE + INACTIVE_TEXT_GAP + INACTIVE_TEXT_HEIGHT
 
-export const USER_AVATAR_MARKER_SIZE = 52
+export const USER_AVATAR_MARKER_SIZE = 31
 const AVATAR_MARKER_SIZE = USER_AVATAR_MARKER_SIZE
 const AVATAR_CANVAS_SIZE = AVATAR_MARKER_SIZE
 
-const STYLE_VERSION = 'v15.icon.active-background'
+const STYLE_VERSION = 'v16.icon.active-background.user-avatar-smaller'
 
 let renderQueue = Promise.resolve()
 const queueTask = <T>(task: () => Promise<T>): Promise<T> => {
@@ -206,6 +207,7 @@ const iconOnlyCache = new Map<string, { iconPath: string; width: number; height:
 const avatarCache = new Map<string, string>()
 const svgRasterCache = new Map<string, string>()
 const activeCompositeCache = new Map<string, { iconPath: string; width: number; height: number }>()
+const titleMarkerCache = new Map<string, { iconPath: string; width: number; height: number }>()
 const resolvedImageCache = new Map<string, any>()
 const normalizedPathCache = new Map<string, string>()
 const ACTIVE_BACKGROUND_RATIO = 735 / 817
@@ -348,6 +350,7 @@ export const clearMarkerCaches = () => {
   dataImagePathCache.clear()
   svgRasterCache.clear()
   activeCompositeCache.clear()
+  titleMarkerCache.clear()
   resolvedImageCache.clear()
   normalizedPathCache.clear()
 }
@@ -448,6 +451,106 @@ export const buildIconOnlyMarker = async (
   // so next refresh can retry composition instead of being stuck in fallback.
   if (asset.iconPath && (!isActive || composedSuccess || !safeActiveBackground)) {
     iconOnlyCache.set(key, asset)
+  }
+  return asset
+}
+
+export const buildStrokedTitleMarker = async (
+  title: string,
+  options?: {
+    fontSize?: number
+    lineHeight?: number
+    fontWeight?: string | number
+    fontFamily?: string
+    fontStyle?: 'normal' | 'italic'
+    strokeWidth?: number
+    strokeColor?: string
+    fillColor?: string
+    textAlign?: 'left' | 'center'
+    topOffset?: number
+    paddingX?: number
+    paddingY?: number
+  },
+): Promise<{ iconPath: string; width: number; height: number }> => {
+  const safeTitle = (title || '').trim()
+  if (!safeTitle) {
+    return { iconPath: '', width: 0, height: 0 }
+  }
+
+  const fontSize = Math.max(10, Math.round(options?.fontSize || 16))
+  const lineHeight = Math.max(fontSize, Math.round(options?.lineHeight || 22))
+  const fontWeight = String(options?.fontWeight ?? 500)
+  const fontFamily = (options?.fontFamily || 'PingFangSC, PingFang SC').trim()
+  const fontStyle = options?.fontStyle || 'normal'
+  const strokeWidth = Math.max(2, Math.round(options?.strokeWidth || 2))
+  const strokeColor = options?.strokeColor || '#DBDBDB'
+  const fillColor = options?.fillColor || '#000000'
+  const textAlign = options?.textAlign || 'left'
+  const topOffset = Math.max(0, Math.round(options?.topOffset || 0))
+  const paddingX = Math.max(2, Math.round(options?.paddingX || 2))
+  const paddingY = Math.max(1, Math.round(options?.paddingY || 1))
+  const key = `title::${safeTitle}::${fontStyle}::${fontWeight}::${fontFamily}::${fontSize}::${lineHeight}::${strokeWidth}::${strokeColor}::${fillColor}::${textAlign}::${topOffset}::${paddingX}::${paddingY}::${STYLE_VERSION}`
+  const cached = titleMarkerCache.get(key)
+  if (cached?.iconPath) return cached
+
+  const ctx = Taro.createCanvasContext(TITLE_MARKER_CANVAS_ID)
+  ctx.setFontSize(fontSize)
+  const ctxAny = ctx as any
+  try {
+    ctxAny.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`
+  } catch (error) {}
+
+  let textWidth = 0
+  try {
+    const metrics = ctxAny.measureText?.(safeTitle)
+    textWidth = Math.ceil(Number(metrics?.width) || 0)
+  } catch (error) {}
+  if (!textWidth) {
+    // Fallback width estimation when measureText is unavailable on some runtimes.
+    textWidth = Math.ceil(safeTitle.length * fontSize * 0.98)
+  }
+
+  const contentWidth = textWidth + paddingX * 2 + strokeWidth * 2
+  const contentHeight = lineHeight + paddingY * 2 + strokeWidth * 2
+  const width = Math.max(24, contentWidth)
+  const height = Math.max(18, topOffset + contentHeight)
+  const textX = textAlign === 'center'
+    ? width / 2
+    : (strokeWidth + paddingX)
+  const textY = topOffset + strokeWidth + paddingY + (lineHeight - fontSize) / 2
+
+  ctx.clearRect(0, 0, width, height)
+  ctx.setFontSize(fontSize)
+  try {
+    ctxAny.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`
+  } catch (error) {}
+  ctx.setTextAlign(textAlign)
+  ctxAny.setTextBaseline?.('top')
+
+  // Draw white outline by multi-pass offsets for broader runtime compatibility than strokeText.
+  ctx.setFillStyle(strokeColor)
+  const ring = Math.max(1, strokeWidth)
+  const outlineOffsets: Array<[number, number]> = [
+    [-ring, 0], [ring, 0], [0, -ring], [0, ring],
+    [-ring, -ring], [-ring, ring], [ring, -ring], [ring, ring],
+    [-Math.max(1, ring - 1), 0], [Math.max(1, ring - 1), 0], [0, -Math.max(1, ring - 1)], [0, Math.max(1, ring - 1)],
+  ]
+  outlineOffsets.forEach(([dx, dy]) => {
+    ctx.fillText(safeTitle, textX + dx, textY + dy)
+  })
+
+  ctx.setFillStyle(fillColor)
+  ctx.fillText(safeTitle, textX, textY)
+
+  let iconPath = await drawCanvasAndExport(ctx, TITLE_MARKER_CANVAS_ID, width, height, 3000)
+  if (!iconPath) {
+    await wait(120)
+    iconPath = await drawCanvasAndExport(ctx, TITLE_MARKER_CANVAS_ID, width, height, 3000)
+  }
+
+  const asset = { iconPath, width, height }
+  if (asset.iconPath) {
+    titleMarkerCache.set(key, asset)
   }
   return asset
 }
