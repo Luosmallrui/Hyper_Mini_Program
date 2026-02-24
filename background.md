@@ -223,3 +223,68 @@
 ### C. 额外操作细节（避免重复踩坑）
 - PowerShell 下不要把 `git diff` 输出误管道给 `cat`（会被当作 `Get-Content`，产生误导性错误）。
 - 需要查看 diff 时直接用 `git diff -- <file>`，或用 `Get-Content` 读取具体文件片段。
+
+## 本次新增上下文（追加，2026-02-23，续）
+
+### A. Square 频道编辑层（`src/pages/square/index.tsx` / `index.scss`）
+1. 频道编辑层视觉对齐（按设计图）
+- 编辑层背景改为纯黑（不再使用灰色透明蒙层）。
+- 编辑层不再铺满整页到底部，改为顶部下拉面板（高度随内容）。
+- 新增顶部向下展开动画（CSS-only，打开时下拉铺开）。
+- 增加 `maxHeight + overflow-y`，频道过多时面板内部可滚动。
+
+2. 交互与显示细节
+- 删除按钮被裁剪问题已修复（移除 chip 裁剪导致的截断）。
+- 删除图标文字做了居中微调（解决视觉偏移）。
+- 推荐频道长文本支持“`+` 固定、仅文字滚动”展示。
+- 后续已升级为“按真实渲染宽度测量后决定是否滚动”，避免本可完整显示的文案误滚动。
+- 滚动距离按真实溢出像素计算，避免滚过头（最后一个字完整露出后停住，再回到起点）。
+
+3. 初次进入频道栏定位
+- `square` 页首次进入时，顶部频道栏不再自动 `scrollIntoView` 到偏右位置。
+- 仅在用户手动点击 tab / 左右滑动后，才启用频道栏自动对齐逻辑。
+
+### B. Activity / Venue / Message / Activity-list 的 iOS 样式与滚动修复
+1. `activity` 页（`src/pages/activity/index.*`）
+- 页面原生背景色配置改为纯黑（`backgroundColor/backgroundColorTop/backgroundColorBottom`）。
+- 增加 `page { background: #000; }`，防止 iOS 回弹露白。
+- 分享弹层 `AtFloatLayout` 改为“关闭时不渲染内容”，修复未打开时 placeholder（如“说点什么吧...(可选)”）泄露到主页面的问题。
+
+2. `venue` 页（`src/pages/venue/index.config.ts`）
+- 补齐页面原生背景黑色配置，防止 iOS 回弹出现白底/样式异常。
+
+3. `activity-list` / `message` 页右侧滚动条遮挡内容
+- 根因：`ScrollView` 自身使用左右 `padding`，iOS 滚动条绘制在内容区域内侧。
+- 处理：将左右 `padding` 从滚动容器挪到内部包裹层（`list-content` / `message-scroll-content`），使滚动条回到最右边，不压卡片/消息内容。
+
+### C. 首页地图（`src/pages/index/index.tsx` / `map-marker.ts` / `index.less`）本轮调整
+1. 离屏 Canvas 误显示（左上角头像）
+- 左上角出现“用户定位头像点”实际不是地图 marker，而是离屏渲染用 Canvas 微弱显示。
+- 已将 `.avatar-marker-canvas` / `.icon-marker-canvas` 改为真正离屏隐藏（`left/top: -9999px`，`opacity: 0`）。
+
+2. marker 尺寸微调（派对/场地）
+- 地图 marker（选中态/非选中态）整体缩小约 30%。
+- 同步调整标题锚点间距，避免图标变小后标题离得过远。
+
+3. marker 名称样式（黑字 + 描边）
+- 原生 `label` 双层叠加方案会出现重影，已弃用。
+- 已升级为 Canvas 标题图方案：生成透明 PNG 标题（黑字 + 描边）后作为独立 marker 渲染。
+- 新增标题离屏 Canvas：`TITLE_MARKER_CANVAS_ID` + `.title-marker-canvas`。
+- 当前标题样式已按设计参数微调：
+  - `PingFangSC, PingFang SC`
+  - `font-weight: 500`
+  - `font-size: 16px`
+  - `line-height: 22px`
+  - `fill: #000000`
+  - 描边近似 `2px #DBDBDB`
+  - 文本左对齐（在标题图内部）
+
+4. 用户定位头像 marker 尺寸
+- 仅改地图 marker `width/height` 在真机上可能不明显（部分端表现不稳定）。
+- 已进一步改为缩小用户定位头像 marker 的 Canvas 生成尺寸，并 bump `STYLE_VERSION` 强制刷新缓存。
+- 该调整会直接影响用户定位头像图本身大小（比仅改 marker 宽高更稳）。
+
+### D. 提交流程补充踩坑（lint-staged）
+- “VSCode 弹窗卡在 `Preparing lint-staged...`”时，需要手动执行 `npx lint-staged` 看真实报错。
+- 本轮实测一个常见拦截源：`scripts/check-mojibake.js` 会拦截文档里出现的 replacement char（`�` / U+FFFD）。
+- 即使只是背景文档在描述乱码现象，也不要把该字符直接写进 `background.md`；建议写成 `U+FFFD` 文本描述。

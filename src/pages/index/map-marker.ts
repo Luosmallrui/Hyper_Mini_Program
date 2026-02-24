@@ -23,11 +23,11 @@ const INACTIVE_TEXT_HEIGHT = INACTIVE_LINE_HEIGHT * INACTIVE_TEXT_MAX_LINES + 8
 export const INACTIVE_MARKER_WIDTH = 220
 export const INACTIVE_MARKER_HEIGHT = INACTIVE_ICON_SIZE + INACTIVE_TEXT_GAP + INACTIVE_TEXT_HEIGHT
 
-export const USER_AVATAR_MARKER_SIZE = 31
+export const USER_AVATAR_MARKER_SIZE = 40
 const AVATAR_MARKER_SIZE = USER_AVATAR_MARKER_SIZE
 const AVATAR_CANVAS_SIZE = AVATAR_MARKER_SIZE
 
-const STYLE_VERSION = 'v16.icon.active-background.user-avatar-smaller'
+const STYLE_VERSION = 'v17.icon.active-background.user-avatar-larger'
 
 let renderQueue = Promise.resolve()
 const queueTask = <T>(task: () => Promise<T>): Promise<T> => {
@@ -183,6 +183,12 @@ const resolveImage = async (srcInput: unknown) => {
 
 const exportCanvas = (canvasId: string, width: number, height: number): Promise<string> => {
   return new Promise((resolve) => {
+    // 获取设备像素比，用于导出高清图片
+    let dpr = 2
+    try {
+      dpr = Taro.getSystemInfoSync().pixelRatio || 2
+    } catch (e) {}
+
     setTimeout(() => {
       Taro.canvasToTempFilePath({
         canvasId,
@@ -190,8 +196,8 @@ const exportCanvas = (canvasId: string, width: number, height: number): Promise<
         y: 0,
         width,
         height,
-        destWidth: width,
-        destHeight: height,
+        destWidth: width * dpr,     // 乘以 dpr 输出高清图
+        destHeight: height * dpr,   // 乘以 dpr 输出高清图
         fileType: 'png',
         success: (res) => resolve(res.tempFilePath),
         fail: (err) => {
@@ -482,7 +488,7 @@ export const buildStrokedTitleMarker = async (
   const fontWeight = String(options?.fontWeight ?? 500)
   const fontFamily = (options?.fontFamily || 'PingFangSC, PingFang SC').trim()
   const fontStyle = options?.fontStyle || 'normal'
-  const strokeWidth = Math.max(2, Math.round(options?.strokeWidth || 2))
+  const strokeWidth = Math.max(1, Math.round(options?.strokeWidth || 2))
   const strokeColor = options?.strokeColor || '#DBDBDB'
   const fillColor = options?.fillColor || '#000000'
   const textAlign = options?.textAlign || 'left'
@@ -527,17 +533,11 @@ export const buildStrokedTitleMarker = async (
   ctx.setTextAlign(textAlign)
   ctxAny.setTextBaseline?.('top')
 
-  // Draw white outline by multi-pass offsets for broader runtime compatibility than strokeText.
-  ctx.setFillStyle(strokeColor)
-  const ring = Math.max(1, strokeWidth)
-  const outlineOffsets: Array<[number, number]> = [
-    [-ring, 0], [ring, 0], [0, -ring], [0, ring],
-    [-ring, -ring], [-ring, ring], [ring, -ring], [ring, ring],
-    [-Math.max(1, ring - 1), 0], [Math.max(1, ring - 1), 0], [0, -Math.max(1, ring - 1)], [0, Math.max(1, ring - 1)],
-  ]
-  outlineOffsets.forEach(([dx, dy]) => {
-    ctx.fillText(safeTitle, textX + dx, textY + dy)
-  })
+  ctx.setStrokeStyle(strokeColor)
+  // lineWidth 设为描边宽度的 2 倍，因为 stroke 是居中绘制的，内部会被 fillText 覆盖
+  ctx.setLineWidth(strokeWidth * 2)
+  ctx.setLineJoin('round') // 圆滑的连接点，完全消除毛刺
+  ctx.strokeText(safeTitle, textX, textY)
 
   ctx.setFillStyle(fillColor)
   ctx.fillText(safeTitle, textX, textY)
@@ -624,4 +624,3 @@ export const buildCircularAvatarMarker = async (
 
   return fallbackIcon
 }
-

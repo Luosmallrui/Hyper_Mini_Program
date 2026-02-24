@@ -29,8 +29,8 @@ const CATEGORIES = ['全部分类', '滑板', '派对', '汽车', '纹身', '体
 const AREA_LEVEL1 = [{ key: 'dist', name: '距离' }, { key: 'region', name: '行政区/商圈' }]
 const MAP_KEY = 'Y7YBZ-3UUEN-Z3KFC-SH4QG-LH5RT-IAB4S'
 const USER_LOCATION_MARKER_ID = 99900001
-const MARKER_INACTIVE_HEIGHT = 32
-const MARKER_ACTIVE_HEIGHT = 67
+const MARKER_INACTIVE_HEIGHT = 30
+const MARKER_ACTIVE_HEIGHT = 65
 const MAP_FOCUS_PIXEL_OFFSET = 100
 const DEFAULT_MAP_SCALE = 14
 const EARTH_METERS_PER_PIXEL_AT_EQUATOR = 156543.03392
@@ -38,9 +38,9 @@ const METERS_PER_DEGREE_LAT = 111320
 const MARKER_LABEL_ANCHOR_Y_ACTIVE = 7
 const MARKER_LABEL_ANCHOR_Y_INACTIVE = 21
 const ACTIVE_BACKGROUND_RATIO = 735 / 817
-const ACTIVE_FOREGROUND_ICON_HEIGHT = 34
+const ACTIVE_FOREGROUND_ICON_HEIGHT = 33
 const ACTIVE_FOREGROUND_ICON_ANCHOR_Y = 1.55
-const USER_LOCATION_MARKER_DISPLAY_SIZE = Math.max(16, Math.round(USER_AVATAR_MARKER_SIZE * 0.6))
+const USER_LOCATION_MARKER_DISPLAY_SIZE = Math.max(16, Math.round(USER_AVATAR_MARKER_SIZE * 0.94))
 const MORE_TAGS: Array<{ id: number; name: string }> = []
 
 interface MerchantItem {
@@ -718,17 +718,17 @@ export default function IndexPage() {
         const markersForItem: any[] = [bgMarker, fgMarker]
         if (markerTitle) {
           const titleAsset = await buildStrokedTitleMarker(markerTitle, {
-            fontSize: 16,
-            lineHeight: 22,
+            fontSize: 11,
+            lineHeight: 15,
             fontWeight: 500,
             fontFamily: 'PingFangSC, PingFang SC',
             fontStyle: 'normal',
-            strokeWidth: 2,
+            strokeWidth: 1,
             strokeColor: '#DBDBDB',
             fillColor: '#000000',
             textAlign: 'left',
             topOffset: MARKER_LABEL_ANCHOR_Y_ACTIVE,
-            paddingX: 2,
+            paddingX: 1,
             paddingY: 1,
           })
           if (titleAsset.iconPath && titleAsset.width > 0 && titleAsset.height > 0) {
@@ -745,17 +745,17 @@ export default function IndexPage() {
             })
           } else {
             fgMarker.label = {
-              content: markerTitle,
+              content: ` ${markerTitle} `, // 增加前后空格增加呼吸感
               color: '#000000',
-              fontSize: 16,
+              fontSize: 12,
               anchorX: 0,
               anchorY: MARKER_LABEL_ANCHOR_Y_ACTIVE,
-              borderWidth: 2,
+              borderWidth: 1,
               borderColor: '#DBDBDB',
-              borderRadius: 4,
-              bgColor: 'transparent',
-              padding: 0,
-              textAlign: 'left',
+              borderRadius: 6,      // 圆角胶囊
+              bgColor: '#FFFFFF',   // 使用白色实体背景替代透明
+              padding: 4,
+              textAlign: 'center',
             }
           }
         }
@@ -780,17 +780,17 @@ export default function IndexPage() {
       const markersForItem: any[] = [markerItem]
       if (markerTitle) {
         const titleAsset = await buildStrokedTitleMarker(markerTitle, {
-          fontSize: 16,
-          lineHeight: 22,
+          fontSize: 11,
+          lineHeight: 15,
           fontWeight: 500,
           fontFamily: 'PingFangSC, PingFang SC',
           fontStyle: 'normal',
-          strokeWidth: 2,
+          strokeWidth: 1,
           strokeColor: '#DBDBDB',
           fillColor: '#000000',
           textAlign: 'left',
           topOffset: MARKER_LABEL_ANCHOR_Y_INACTIVE,
-          paddingX: 2,
+          paddingX: 1,
           paddingY: 1,
         })
         if (titleAsset.iconPath && titleAsset.width > 0 && titleAsset.height > 0) {
@@ -807,17 +807,17 @@ export default function IndexPage() {
           })
         } else {
           markerItem.label = {
-            content: markerTitle,
+            content: ` ${markerTitle} `,
             color: '#000000',
-            fontSize: 16,
+            fontSize: 12,
             anchorX: 0,
             anchorY: MARKER_LABEL_ANCHOR_Y_INACTIVE,
-            borderWidth: 2,
+            borderWidth: 1,
             borderColor: '#DBDBDB',
-            borderRadius: 4,
-            bgColor: 'transparent',
-            padding: 0,
-            textAlign: 'left',
+            borderRadius: 6,
+            bgColor: '#FFFFFF',
+            padding: 4,
+            textAlign: 'center',
           }
         }
       }
@@ -1346,7 +1346,7 @@ export default function IndexPage() {
           <Image className='map-pin' src={mapPinIcon} mode='aspectFit' />
         </View>
         <View className='capsule-btn list-btn' onClick={() => navigateTo('/pages/activity-list/index')}>
-          <AtIcon value='list' size='16' color='#fff' />
+          <AtIcon value='list' size='16' color='#fff' className='list-icon' />
           <Text className='txt'>查看列表</Text>
         </View>
       </View>
