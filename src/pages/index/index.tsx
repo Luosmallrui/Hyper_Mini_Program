@@ -1,6 +1,6 @@
 ﻿import { View, Text, Map as TaroMap, Swiper, SwiperItem, Image, ScrollView, Canvas } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import 'taro-ui/dist/style/components/slider.scss'
@@ -146,6 +146,8 @@ export default function IndexPage() {
   const mapScaleRef = useRef(DEFAULT_MAP_SCALE)
   const cameraAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cameraAnimTokenRef = useRef(0)
+  const cameraAnimTargetRef = useRef<{ lng: number; lat: number } | null>(null)
+  const mapFocusReqTokenRef = useRef(0)
   const districtLoadedRef = useRef(districtLoaded)
   const districtLoadingRef = useRef(districtLoading)
   const subscribePendingRef = useRef<Set<string | number>>(new Set())
@@ -239,11 +241,13 @@ export default function IndexPage() {
       clearTimeout(cameraAnimTimerRef.current)
       cameraAnimTimerRef.current = null
     }
+    cameraAnimTargetRef.current = null
     cameraAnimTokenRef.current += 1
   }
 
   const animateMapCenterTo = (targetLng: number, targetLat: number, duration = 360) => {
     stopCameraAnimation()
+    cameraAnimTargetRef.current = { lng: targetLng, lat: targetLat }
     const animToken = cameraAnimTokenRef.current
     const start = initialCenterRef.current
     const startAt = Date.now()
@@ -265,17 +269,31 @@ export default function IndexPage() {
       }
 
       cameraAnimTimerRef.current = null
-      const ctx = getMapContext()
-      ctx?.moveToLocation({ longitude: targetLng, latitude: targetLat })
+      cameraAnimTargetRef.current = null
     }
 
     tick()
   }
 
   const moveMapTo = async (longitude: number, latitude: number) => {
+    const reqToken = ++mapFocusReqTokenRef.current
     const latestScale = await getCurrentMapScale()
+    if (reqToken !== mapFocusReqTokenRef.current) return
     const focusCenter = getFocusCenter(longitude, latitude, latestScale)
-    animateMapCenterTo(focusCenter.longitude, focusCenter.latitude)
+    const targetLng = focusCenter.longitude
+    const targetLat = focusCenter.latitude
+    const animTarget = cameraAnimTargetRef.current
+    const currentCenter = initialCenterRef.current
+    const isNearlySamePoint = (aLng: number, aLat: number, bLng: number, bLat: number) =>
+      Math.abs(aLng - bLng) < 0.00001 && Math.abs(aLat - bLat) < 0.00001
+
+    if (animTarget && isNearlySamePoint(animTarget.lng, animTarget.lat, targetLng, targetLat)) {
+      return
+    }
+    if (isNearlySamePoint(currentCenter.lng, currentCenter.lat, targetLng, targetLat)) {
+      return
+    }
+    animateMapCenterTo(targetLng, targetLat)
   }
 
   const bySortOrderThenId = <T extends { sort_order?: number; id?: number }>(a: T, b: T) => {
@@ -428,6 +446,11 @@ export default function IndexPage() {
   useEffect(() => {
     currentRef.current = current
   }, [current])
+
+  const mapMarkers = useMemo(
+    () => (userLocationMarker ? [...markers, userLocationMarker] : markers),
+    [markers, userLocationMarker],
+  )
 
   useEffect(() => {
     hasTokenRef.current = hasToken
@@ -1277,7 +1300,7 @@ export default function IndexPage() {
         longitude={initialCenter.lng}
         latitude={initialCenter.lat}
         scale={DEFAULT_MAP_SCALE}
-        markers={userLocationMarker ? [...markers, userLocationMarker] : markers}
+        markers={mapMarkers}
         subkey={MAP_KEY}
         setting={{ enableSatellite: false, enableTraffic: false }}
         onMarkerTap={handleMarkerTap}
