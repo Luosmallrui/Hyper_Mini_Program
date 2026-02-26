@@ -288,3 +288,57 @@
 - “VSCode 弹窗卡在 `Preparing lint-staged...`”时，需要手动执行 `npx lint-staged` 看真实报错。
 - 本轮实测一个常见拦截源：`scripts/check-mojibake.js` 会拦截文档里出现的 replacement char（`�` / U+FFFD）。
 - 即使只是背景文档在描述乱码现象，也不要把该字符直接写进 `background.md`；建议写成 `U+FFFD` 文本描述。
+
+## 本次新增上下文（追加，2026-02-26）
+
+### A. 首页地图（`src/pages/index/index.tsx` / `map-marker.ts` / `index.less`）微调
+1. marker 标题尺寸继续缩小（贴近设计图）
+- 首页 marker 标题 Canvas 参数已从上一版继续下调，当前约为：
+  - `fontSize: 11`
+  - `lineHeight: 15`
+  - `strokeWidth: 1`
+- `map-marker.ts` 的标题描边参数下限已放开到 `1px`（原先最小为 `2px`），便于做更细标题效果。
+- 兜底原生 `label` 字号也同步缩小，避免 Canvas 失败时尺寸突变。
+
+2. 右下角【查看列表】按钮图标文字对齐
+- `src/pages/index/index.less` 已对 `.list-btn` 做局部对齐修复（`justify-content` / `gap` / 行高统一）。
+- 给 `AtIcon` 增加 `list-icon` 类名并做像素级 `translateY` 微调，解决图标与文字上下不居中的问题。
+
+3. 卡片切换触发地图聚焦抖动优化（重点）
+- 症状：切换底部卡片时，地图在不同 marker 间聚焦出现画面抖动。
+- 本轮处理：
+  - 为 `moveMapTo()` 增加异步请求 token，丢弃过期 `getScale()` 返回（避免快速切卡时旧请求抢焦点）。
+  - 为相机动画增加目标点去重（目标与当前动画目标/当前中心点近似相同则跳过）。
+  - 去掉动画结束后的额外 `moveToLocation` 指令，避免终点二次相机动作。
+  - `TaroMap` 的 `markers` 传参改为 `useMemo` 稳定引用，减少动画过程中因数组新引用导致的原生层重刷。
+- 当前结论：已完成一版低风险优化，需真机继续验证是否仍有轻微抖动。
+
+### B. `activity` 页（`src/pages/activity/index.tsx`）订阅活动功能补齐
+1. 详情接口字段接入
+- `/api/v1/merchant/{id}` 的 `is_subscribe` 已接入 `MerchantDetail` 本地类型。
+
+2. 【订阅活动】按钮功能
+- 已接入点击订阅/取消订阅：
+  - `POST /api/v1/merchant/subscribe`
+  - `POST /api/v1/merchant/unsubscribe`
+- 请求参数：`{ party_id: String(activity.id) }`
+- 已实现：
+  - 乐观更新（先切按钮状态）
+  - 失败回滚
+  - 防重复点击（`subscribePending`）
+
+3. 按钮文案状态切换
+- 按钮文案已按 `activity?.is_subscribe` 在【订阅活动】与【取消订阅】之间切换。
+
+4. 编码风险处理方式（延续）
+- `src/pages/activity/index.tsx` 仍属于高风险编码文件。
+- 本轮对该文件继续采用最小补丁策略：优先接功能与点击绑定，避免大段文本区域改动。
+
+### C. `square` 页频道编辑层交互补充（`src/pages/square/index.tsx`）
+1. 推荐频道添加交互放开
+- 在频道编辑层中，未点击【频道编辑】按钮时，下方【推荐频道】现在也支持直接点击添加到【我的频道】。
+- 仅放开“添加”能力；删除入口仍保持只有编辑态才显示。
+
+2. 实现方式（最小改动）
+- 去掉推荐频道 item 点击逻辑中对 `isChannelEditing` 的拦截。
+- 去掉未编辑态下推荐频道的 `disabled` 类挂载，避免视觉上误导为不可点击。
