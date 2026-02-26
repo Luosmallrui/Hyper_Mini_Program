@@ -1029,9 +1029,8 @@ export default function SquarePage() {
             return (
               <View
                 key={ch.id}
-                className={`channel-chip add-chip ${isChannelEditing ? '' : 'disabled'}`}
+                className='channel-chip add-chip'
                 onClick={() => {
-                  if (!isChannelEditing) return
                   subscribeChannel(ch)
                 }}
               >

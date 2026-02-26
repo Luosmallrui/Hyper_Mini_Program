@@ -42,6 +42,7 @@ interface MerchantDetail {
   user_name: string
   user_avatar: string
   is_follow: boolean
+  is_subscribe?: boolean
   business_hours: string
 }
 
@@ -92,6 +93,7 @@ export default function ActivityPage() {
   const [loadingSession, setLoadingSession] = useState(false)
   const [shareMsg, setShareMsg] = useState('')
   const [followPending, setFollowPending] = useState(false)
+  const [subscribePending, setSubscribePending] = useState(false)
   const viewerInitLoadedRef = useRef(false)
 
   const fallbackMapCenter = { latitude: 30.657, longitude: 104.066 }
@@ -329,6 +331,33 @@ export default function ActivityPage() {
     }
   }
 
+  const handleToggleSubscribe = async () => {
+    if (!activity || subscribePending) return
+
+    const nextSubscribed = !Boolean(activity.is_subscribe)
+    const endpoint = nextSubscribed ? '/api/v1/merchant/subscribe' : '/api/v1/merchant/unsubscribe'
+    setSubscribePending(true)
+    setActivity((prev) => (prev ? { ...prev, is_subscribe: nextSubscribed } : prev))
+
+    try {
+      const res = await request({
+        url: endpoint,
+        method: 'POST',
+        data: { party_id: String(activity.id) },
+      })
+      const code = Number((res as any)?.data?.code)
+      if (code !== 200) {
+        throw new Error((res as any)?.data?.msg || '操作失败')
+      }
+      Taro.showToast({ title: nextSubscribed ? '订阅成功' : '已取消订阅', icon: 'none' })
+    } catch (error) {
+      setActivity((prev) => (prev ? { ...prev, is_subscribe: !nextSubscribed } : prev))
+      Taro.showToast({ title: nextSubscribed ? '订阅失败' : '取消订阅失败', icon: 'none' })
+    } finally {
+      setSubscribePending(false)
+    }
+  }
+
   const priceRange = useMemo(() => {
     if (activity?.goods && activity.goods.length > 0) {
       const prices = activity.goods.map((item) => Math.round(item.price / 100))
@@ -483,8 +512,8 @@ export default function ActivityPage() {
 
           <View className='price-row'>
             <Text className='price-range'>{priceRange}</Text>
-            <View className='subscribe-pill'>
-              <Text className='subscribe-text'>订阅活动</Text>
+            <View className='subscribe-pill' onClick={handleToggleSubscribe}>
+              <Text className='subscribe-text'>{activity?.is_subscribe ? '取消订阅' : '订阅活动'}</Text>
             </View>
             <View className='share-pill' onClick={handleOpenShare}>
               <Text className='share-text'>分享活动</Text>
