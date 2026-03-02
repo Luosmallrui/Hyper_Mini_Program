@@ -33,6 +33,20 @@ if (typeof console.time !== 'function') {
 function App({ children }: PropsWithChildren<any>) {
   const [isSwitching, setIsSwitching] = useState(false)
 
+  const enableWeappShareMenu = () => {
+    if (process.env.TARO_ENV !== 'weapp') return
+    if (typeof Taro.showShareMenu !== 'function') return
+    try {
+      const shareMenuOptions: any = {
+        withShareTicket: true,
+        menus: ['shareAppMessage', 'shareTimeline'],
+      }
+      Taro.showShareMenu(shareMenuOptions)
+    } catch (error) {
+      console.warn('showShareMenu failed', error)
+    }
+  }
+
   const isAuthPage = () => {
     const pages = Taro.getCurrentPages()
     const current: any = pages[pages.length - 1]
@@ -69,6 +83,7 @@ function App({ children }: PropsWithChildren<any>) {
 
   useLaunch(() => {
     appUpdate()
+    enableWeappShareMenu()
 
     console.log(
       `\n %c 电子科技大学${process.env.NODE_ENV} %c ${process.env.YDY_APP_API} \n`,
