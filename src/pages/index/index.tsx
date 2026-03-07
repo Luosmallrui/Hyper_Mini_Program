@@ -25,7 +25,8 @@ import {
 } from './map-marker'
 import './index.less'
 
-const CATEGORIES = ['全部分类', '滑板', '派对', '汽车', '纹身', '体育运动', '活动', '露营', '酒吧/场地', '篮球']
+const ALL_CATEGORY_ID = 0
+const ALL_CATEGORY_NAME = '全部分类'
 const AREA_LEVEL1 = [{ key: 'dist', name: '距离' }, { key: 'region', name: '行政区/商圈' }]
 const MAP_KEY = 'Y7YBZ-3UUEN-Z3KFC-SH4QG-LH5RT-IAB4S'
 const USER_LOCATION_MARKER_ID = 99900001
@@ -107,6 +108,11 @@ interface MerchantTag {
   name: string
 }
 
+interface CategoryItem {
+  id: number
+  name: string
+}
+
 export default function IndexPage() {
   const [current, setCurrent] = useState(0)
   const [markers, setMarkers] = useState<any[]>([])
@@ -116,7 +122,12 @@ export default function IndexPage() {
   const isEmpty = partyList.length === 0
 
   const [filterOpen, setFilterOpen] = useState<'none' | 'all' | 'area' | 'more'>('none')
-  const [selectedCategory, setSelectedCategory] = useState('全部分类')
+  const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY_NAME)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number>(ALL_CATEGORY_ID)
+  const [categoryOptions, setCategoryOptions] = useState<CategoryItem[]>([])
+  const [categoryLoading, setCategoryLoading] = useState(false)
+  const [categoryLoaded, setCategoryLoaded] = useState(false)
+  const [categoryError, setCategoryError] = useState('')
   const [areaL1, setAreaL1] = useState('region')
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([])
   const [draftTagIds, setDraftTagIds] = useState<number[]>([])
@@ -148,6 +159,9 @@ export default function IndexPage() {
   const cameraAnimTokenRef = useRef(0)
   const cameraAnimTargetRef = useRef<{ lng: number; lat: number } | null>(null)
   const mapFocusReqTokenRef = useRef(0)
+  const isFirstScreenInitRef = useRef(true)
+  const hasManualMapSelectionRef = useRef(false)
+  const hasUserInitialFocusRef = useRef(false)
   const districtLoadedRef = useRef(districtLoaded)
   const districtLoadingRef = useRef(districtLoading)
   const subscribePendingRef = useRef<Set<string | number>>(new Set())
@@ -155,8 +169,12 @@ export default function IndexPage() {
   const selectedTagIdsRef = useRef<number[]>(selectedTagIds)
   const selectedDistrictIdRef = useRef<number | null>(selectedDistrictId)
   const selectedAreaIdRef = useRef<number | null>(selectedAreaId)
+  const selectedCategoryIdRef = useRef<number>(selectedCategoryId)
+  const categoryOptionsRef = useRef<CategoryItem[]>(categoryOptions)
   const merchantTagsLoadedRef = useRef(merchantTagsLoaded)
   const merchantTagsLoadingRef = useRef(merchantTagsLoading)
+  const categoryLoadedRef = useRef(categoryLoaded)
+  const categoryLoadingRef = useRef(categoryLoading)
   const syncAuthState = () => {
     const next = Boolean(Taro.getStorageSync('access_token'))
     hasTokenRef.current = next
@@ -185,10 +203,27 @@ export default function IndexPage() {
     setSelectedAreaName('')
     setSelectedTagIds([])
     setDraftTagIds([])
+    setSelectedCategory(ALL_CATEGORY_NAME)
+    setSelectedCategoryId(ALL_CATEGORY_ID)
+    selectedCategoryIdRef.current = ALL_CATEGORY_ID
+    setCategoryOptions([])
+    categoryOptionsRef.current = []
+    setCategoryLoaded(false)
+    setCategoryLoading(false)
+    setCategoryError('')
     setMerchantTags(MORE_TAGS)
     setMerchantTagsLoaded(false)
     setMerchantTagsLoading(false)
     setMerchantTagsError('')
+    isFirstScreenInitRef.current = true
+    hasManualMapSelectionRef.current = false
+    hasUserInitialFocusRef.current = false
+  }
+
+  const resetFirstScreenInitState = () => {
+    isFirstScreenInitRef.current = true
+    hasManualMapSelectionRef.current = false
+    hasUserInitialFocusRef.current = false
   }
 
   const getMapContext = () => {
@@ -399,6 +434,46 @@ export default function IndexPage() {
     }
   }
 
+  const fetchCategoryOptions = async () => {
+    if (categoryLoadingRef.current) return
+    categoryLoadingRef.current = true
+    setCategoryLoading(true)
+    setCategoryError('')
+    try {
+      const res = await request({
+        url: '/api/v1/category/list',
+        method: 'GET',
+      })
+      const body: any = res?.data
+      const source = Array.isArray(body?.data) ? body.data : []
+      const normalized: CategoryItem[] = source
+        .map((item: any) => ({
+          id: Number(item?.id) || 0,
+          name: String(item?.name || ''),
+        }))
+        .filter((item: CategoryItem) => item.id > 0 && Boolean(item.name))
+        .sort((a, b) => a.id - b.id)
+
+      setCategoryOptions(normalized)
+      categoryOptionsRef.current = normalized
+      setCategoryLoaded(true)
+      categoryLoadedRef.current = true
+
+      if (selectedCategoryIdRef.current !== ALL_CATEGORY_ID && !normalized.some((item) => item.id === selectedCategoryIdRef.current)) {
+        setSelectedCategory(ALL_CATEGORY_NAME)
+        setSelectedCategoryId(ALL_CATEGORY_ID)
+        selectedCategoryIdRef.current = ALL_CATEGORY_ID
+      }
+    } catch (error) {
+      setCategoryLoaded(false)
+      categoryLoadedRef.current = false
+      setCategoryError('加载失败，点击重试')
+    } finally {
+      categoryLoadingRef.current = false
+      setCategoryLoading(false)
+    }
+  }
+
   const handleRegionChange = (e: any) => {
     const detail = e?.detail || {}
     if (detail.type !== 'end') return
@@ -415,13 +490,32 @@ export default function IndexPage() {
       resetIndexState()
       return
     }
+    resetFirstScreenInitState()
     clearMarkerCaches()
     Taro.nextTick(() => {
-      void syncPartyData()
-      void refreshUserLocationMarker()
+      void (async () => {
+        if (!categoryLoadedRef.current && !categoryLoadingRef.current) {
+          await fetchCategoryOptions()
+        }
+        const location = await refreshUserLocationMarker()
+        if (!hasTokenRef.current) return
+        if (location) {
+          const latestScale = await getCurrentMapScale()
+          const focusCenter = getFocusCenter(location.longitude, location.latitude, latestScale)
+          setInitialCenter({ lng: focusCenter.longitude, lat: focusCenter.latitude })
+          hasUserInitialFocusRef.current = true
+          await syncPartyData({ skipAutoFocusToMerchant: true, initialMarkerActiveIndex: -1 })
+          return
+        }
+        isFirstScreenInitRef.current = false
+        await syncPartyData()
+      })()
     })
     if (!districtLoadedRef.current && !districtLoadingRef.current) {
       void fetchDistrictTree()
+    }
+    if (!categoryLoadedRef.current && !categoryLoadingRef.current) {
+      void fetchCategoryOptions()
     }
     if (!merchantTagsLoadedRef.current && !merchantTagsLoadingRef.current) {
       void fetchMerchantTags()
@@ -485,6 +579,22 @@ export default function IndexPage() {
   }, [merchantTagsLoading])
 
   useEffect(() => {
+    selectedCategoryIdRef.current = selectedCategoryId
+  }, [selectedCategoryId])
+
+  useEffect(() => {
+    categoryOptionsRef.current = categoryOptions
+  }, [categoryOptions])
+
+  useEffect(() => {
+    categoryLoadedRef.current = categoryLoaded
+  }, [categoryLoaded])
+
+  useEffect(() => {
+    categoryLoadingRef.current = categoryLoading
+  }, [categoryLoading])
+
+  useEffect(() => {
     if (!districtTree.length) {
       if (selectedDistrictId !== null) setSelectedDistrictId(null)
       return
@@ -514,13 +624,32 @@ export default function IndexPage() {
     const onLoginSuccess = () => {
       const authed = syncAuthState()
       if (!authed) return
+      resetFirstScreenInitState()
       clearMarkerCaches()
       Taro.nextTick(() => {
-        void syncPartyData()
-        void refreshUserLocationMarker()
+        void (async () => {
+          if (!categoryLoadedRef.current && !categoryLoadingRef.current) {
+            await fetchCategoryOptions()
+          }
+          const location = await refreshUserLocationMarker()
+          if (!hasTokenRef.current) return
+          if (location) {
+            const latestScale = await getCurrentMapScale()
+            const focusCenter = getFocusCenter(location.longitude, location.latitude, latestScale)
+            setInitialCenter({ lng: focusCenter.longitude, lat: focusCenter.latitude })
+            hasUserInitialFocusRef.current = true
+            await syncPartyData({ skipAutoFocusToMerchant: true, initialMarkerActiveIndex: -1 })
+            return
+          }
+          isFirstScreenInitRef.current = false
+          await syncPartyData()
+        })()
       })
       if (!districtLoadedRef.current && !districtLoadingRef.current) {
         void fetchDistrictTree()
+      }
+      if (!categoryLoadedRef.current && !categoryLoadingRef.current) {
+        void fetchCategoryOptions()
       }
       if (!merchantTagsLoadedRef.current && !merchantTagsLoadingRef.current) {
         void fetchMerchantTags()
@@ -557,6 +686,9 @@ export default function IndexPage() {
   const syncPartyData = async (options?: {
     tagIds?: number[]
     districtId?: number | null
+    categoryId?: number
+    skipAutoFocusToMerchant?: boolean
+    initialMarkerActiveIndex?: number
   }) => {
     if (!hasTokenRef.current) return
 
@@ -568,6 +700,14 @@ export default function IndexPage() {
     listLoadingRef.current = true
     try {
       const activeTagIds = Array.isArray(options?.tagIds) ? options?.tagIds : selectedTagIdsRef.current
+      const resolvedCategoryId =
+        typeof options?.categoryId === 'number' ? options.categoryId : selectedCategoryIdRef.current
+      let allCategoryIds = categoryOptionsRef.current.map((item) => item.id)
+      if (resolvedCategoryId === ALL_CATEGORY_ID && allCategoryIds.length === 0 && !categoryLoadingRef.current) {
+        await fetchCategoryOptions()
+        allCategoryIds = categoryOptionsRef.current.map((item) => item.id)
+      }
+      const activeCategoryIds = resolvedCategoryId === ALL_CATEGORY_ID ? allCategoryIds : [resolvedCategoryId]
       const hasAreaSelected = selectedAreaIdRef.current !== null
       const activeDistrictId = options && 'districtId' in options
         ? options.districtId
@@ -575,6 +715,9 @@ export default function IndexPage() {
       const queryParts: string[] = []
       if (activeTagIds.length > 0) {
         queryParts.push(`tags=${activeTagIds.map((id) => encodeURIComponent(String(id))).join(',')}`)
+      }
+      if (activeCategoryIds.length > 0) {
+        queryParts.push(`category=${activeCategoryIds.map((id) => encodeURIComponent(String(id))).join(',')}`)
       }
       if (activeDistrictId !== null && activeDistrictId !== undefined) {
         queryParts.push(`district_id=${encodeURIComponent(String(activeDistrictId))}`)
@@ -624,6 +767,11 @@ export default function IndexPage() {
       })
 
       const nextIndex = mappedList.length > 0 ? Math.min(currentRef.current, mappedList.length - 1) : 0
+      const skipAutoFocusToMerchant = Boolean(options?.skipAutoFocusToMerchant)
+      const hasInitialMarkerActiveIndex = typeof options?.initialMarkerActiveIndex === 'number'
+      const markerActiveIndex = hasInitialMarkerActiveIndex
+        ? (options?.initialMarkerActiveIndex as number)
+        : nextIndex
       console.log('[index] party list loaded', { count: mappedList.length, nextIndex })
 
       // Cards can render as soon as list is ready.
@@ -632,7 +780,7 @@ export default function IndexPage() {
       setCurrent(nextIndex)
       currentRef.current = nextIndex
 
-      if (mappedList[nextIndex]) {
+      if (!skipAutoFocusToMerchant && mappedList[nextIndex]) {
         const focusCenter = getFocusCenter(
           mappedList[nextIndex].lng,
           mappedList[nextIndex].lat,
@@ -641,7 +789,7 @@ export default function IndexPage() {
         setInitialCenter({ lng: focusCenter.longitude, lat: focusCenter.latitude })
       }
 
-      await updateMarkers(mappedList, nextIndex)
+      await updateMarkers(mappedList, markerActiveIndex)
     } catch (error) {
       console.error('Party list load failed:', error)
     } finally {
@@ -928,6 +1076,8 @@ export default function IndexPage() {
 
   const handleSwiperChange = (e: any) => {
     if (e.detail.source === 'touch' || e.detail.source === '') {
+      hasManualMapSelectionRef.current = true
+      isFirstScreenInitRef.current = false
       const nextIndex = e.detail.current
       setCurrent(nextIndex)
       currentRef.current = nextIndex
@@ -936,6 +1086,7 @@ export default function IndexPage() {
   }
 
   const handleSwiperAnimationFinish = (e: any) => {
+    if (isFirstScreenInitRef.current && !hasManualMapSelectionRef.current) return
     const index = e.detail.current
     const target = partyList[index]
     if (!target) return
@@ -969,6 +1120,8 @@ export default function IndexPage() {
     const targetIndex = markerIndexMapRef.current.get(markerId)
     if (typeof targetIndex !== 'number') return
 
+    hasManualMapSelectionRef.current = true
+    isFirstScreenInitRef.current = false
     setCurrent(targetIndex)
     currentRef.current = targetIndex
     const target = partyList[targetIndex]
@@ -1086,6 +1239,9 @@ export default function IndexPage() {
     if (next === 'area' && !districtLoadedRef.current && !districtLoadingRef.current) {
       void fetchDistrictTree()
     }
+    if (next === 'all' && !categoryLoadedRef.current && !categoryLoadingRef.current) {
+      void fetchCategoryOptions()
+    }
     if (next === 'more') {
       setDraftTagIds(selectedTagIdsRef.current)
       if (!merchantTagsLoadedRef.current && !merchantTagsLoadingRef.current) {
@@ -1095,7 +1251,7 @@ export default function IndexPage() {
   }
 
   const isHighlight = (type: string) => {
-    if (type === 'all') return selectedCategory !== '全部分类'
+    if (type === 'all') return selectedCategory !== ALL_CATEGORY_NAME
     if (type === 'area') return selectedAreaId !== null
     if (type === 'more') return selectedTagIds.length > 0
     return false
@@ -1108,16 +1264,34 @@ export default function IndexPage() {
       <View className='dropdown-content'>
         {filterOpen === 'all' && (
           <ScrollView scrollY className='list-scroll'>
-            {CATEGORIES.map(cat => (
-              <View
-                key={cat}
-                className={`list-item ${selectedCategory === cat ? 'active' : ''}`}
-                onClick={() => { setSelectedCategory(cat); setFilterOpen('none') }}
-              >
-                <Text>{cat}</Text>
-                {selectedCategory === cat && <AtIcon value='check' size='16' color='#FF2E4D' />}
+            {categoryLoading && (
+              <View className='list-item'>
+                <Text>加载中...</Text>
               </View>
-            ))}
+            )}
+            {!categoryLoading && categoryError && (
+              <View className='list-item active' onClick={() => { void fetchCategoryOptions() }}>
+                <Text>{categoryError}</Text>
+              </View>
+            )}
+            {!categoryLoading && !categoryError && (
+              [{ id: ALL_CATEGORY_ID, name: ALL_CATEGORY_NAME }, ...categoryOptions].map((cat) => (
+                <View
+                  key={cat.id}
+                  className={`list-item ${selectedCategoryId === cat.id ? 'active' : ''}`}
+                  onClick={() => {
+                    setSelectedCategory(cat.name)
+                    setSelectedCategoryId(cat.id)
+                    selectedCategoryIdRef.current = cat.id
+                    setFilterOpen('none')
+                    void syncPartyData({ categoryId: cat.id })
+                  }}
+                >
+                  <Text>{cat.name}</Text>
+                  {selectedCategoryId === cat.id && <AtIcon value='check' size='16' color='#FF2E4D' />}
+                </View>
+              ))
+            )}
           </ScrollView>
         )}
 
@@ -1258,6 +1432,9 @@ export default function IndexPage() {
               <View
                 className='btn reset'
                 onClick={() => {
+                  setSelectedCategory(ALL_CATEGORY_NAME)
+                  setSelectedCategoryId(ALL_CATEGORY_ID)
+                  selectedCategoryIdRef.current = ALL_CATEGORY_ID
                   setSelectedDistrictId(null)
                   setSelectedAreaId(null)
                   setSelectedAreaName('')
@@ -1266,7 +1443,7 @@ export default function IndexPage() {
                   setSelectedTagIds([])
                   selectedTagIdsRef.current = []
                   setDraftTagIds([])
-                  void syncPartyData({ tagIds: [], districtId: null })
+                  void syncPartyData({ categoryId: ALL_CATEGORY_ID, tagIds: [], districtId: null })
                 }}
               >
                 重置
@@ -1331,7 +1508,7 @@ export default function IndexPage() {
             onClick={() => toggleFilter('all')}
           >
             <Text className={isHighlight('all') || filterOpen === 'all' ? 'highlight-text' : ''}>
-              {selectedCategory === '全部分类' ? '全部' : selectedCategory}
+              {selectedCategory === ALL_CATEGORY_NAME ? '全部' : selectedCategory}
             </Text>
             <View
               className={`triangle-icon ${isHighlight('all') || filterOpen === 'all' ? 'active' : ''} ${filterOpen === 'all' ? 'up' : 'down'}`}

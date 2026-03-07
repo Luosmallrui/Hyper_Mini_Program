@@ -32,6 +32,21 @@ interface UserStats {
   notes: number;
 }
 
+interface SubscribedActivityItem {
+  id: number;
+  title: string;
+  type: string;
+  cover_image: string;
+  location_name: string;
+  lat: number;
+  lng: number;
+}
+
+interface StackPosterItem {
+  id: number;
+  cover?: string;
+}
+
 const normalizeUserInfo = (user: any) => {
   if (!user || typeof user !== 'object') return {};
   const avatarUrl = user.avatar_url || user.avatar || user.headimgurl || user.head_img || '';
@@ -63,6 +78,9 @@ export default function UserPage() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'activity' | 'dynamic'>('activity');
   const [activitySubTab, setActivitySubTab] = useState<'joined' | 'subscribed'>('joined');
+  const [subscribedActivityList, setSubscribedActivityList] = useState<StackPosterItem[]>([]);
+  const [subscribedActivityLoading, setSubscribedActivityLoading] = useState(false);
+  const [subscribedActivityError, setSubscribedActivityError] = useState('');
 
   useEffect(() => {
     setTabBarIndex(4);
@@ -96,6 +114,7 @@ export default function UserPage() {
     const accessToken = Taro.getStorageSync('access_token');
     if (accessToken) {
       fetchLatestUserInfo();
+      fetchSubscribedActivities();
     }
   });
 
@@ -104,6 +123,15 @@ export default function UserPage() {
       loadMyNotes();
     }
   }, [isLogin]);
+
+  useEffect(() => {
+    if (!isLogin) return;
+    if (activitySubTab !== 'subscribed') return;
+    if (subscribedActivityList.length > 0) return;
+    if (subscribedActivityLoading) return;
+    if (subscribedActivityError) return;
+    fetchSubscribedActivities();
+  }, [isLogin, activitySubTab, subscribedActivityList.length, subscribedActivityLoading, subscribedActivityError]);
 
   const initLoginState = () => {
     const accessToken = Taro.getStorageSync('access_token');
@@ -121,6 +149,9 @@ export default function UserPage() {
     } else {
       setIsLogin(false);
       setNeedPhoneAuth(false);
+      setSubscribedActivityList([]);
+      setSubscribedActivityError('');
+      setSubscribedActivityLoading(false);
     }
   };
 
@@ -210,6 +241,35 @@ export default function UserPage() {
     }
   };
 
+  const fetchSubscribedActivities = async () => {
+    setSubscribedActivityLoading(true);
+    setSubscribedActivityError('');
+    try {
+      const res = await request({
+        url: '/api/v1/subscribe/list',
+        method: 'GET'
+      });
+      const body: any = res?.data;
+      if (body?.code !== 200 || !Array.isArray(body?.data)) {
+        setSubscribedActivityList([]);
+        setSubscribedActivityError('加载失败，点击重试');
+        return;
+      }
+      const mapped: StackPosterItem[] = body.data
+        .map((item: SubscribedActivityItem) => ({
+          id: Number(item?.id) || 0,
+          cover: item?.cover_image || ''
+        }))
+        .filter((item: StackPosterItem) => item.id > 0);
+      setSubscribedActivityList(mapped);
+    } catch (error) {
+      setSubscribedActivityList([]);
+      setSubscribedActivityError('加载失败，点击重试');
+    } finally {
+      setSubscribedActivityLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     Taro.setStorageSync('__force_auth_gate__', 1);
     Taro.removeStorageSync('access_token');
@@ -223,6 +283,9 @@ export default function UserPage() {
     setNoteList([]);
     setCursor('');
     setHasMore(false);
+    setSubscribedActivityList([]);
+    setSubscribedActivityError('');
+    setSubscribedActivityLoading(false);
   };
 
   const handleLogoutClick = () => {
@@ -469,9 +532,11 @@ export default function UserPage() {
 
   const hasData = isLogin || needPhoneAuth;
   const joinDate = userInfo?.created_at ? String(userInfo.created_at).split('T')[0] : '';
-  const joinedActivityList: Array<{ id: number; cover?: string }> = [];
-  const subscribedActivityList: Array<{ id: number; cover?: string }> = [];
+  const joinedActivityList: Array<StackPosterItem> = [];
   const currentActivityList = activitySubTab === 'joined' ? joinedActivityList : subscribedActivityList;
+  const subscribedStackCovers = subscribedActivityList.slice(0, 5);
+  const subscribedRemainCount = Math.max(subscribedActivityList.length - 5, 0);
+  const subscribedRemainLabel = subscribedRemainCount > 99 ? '99+' : `${subscribedRemainCount}+`;
 
   const stats = [
     { label: '获赞/收藏', value: hasData ? userStats?.likes || 0 : '-', type: null },
@@ -611,10 +676,39 @@ export default function UserPage() {
               className={`activity-title ${activitySubTab === 'subscribed' ? 'active' : ''}`}
               onClick={() => setActivitySubTab('subscribed')}
             >
-              {'\u6211\u8ba2\u9605\u7684\u6d3b\u52a8'}
+              {`\u6211\u8ba2\u9605\u7684\u6d3b\u52a8\uff08${subscribedActivityList.length}\uff09`}
             </Text>
           </View>
-          {currentActivityList.length > 0 ? (
+          {activitySubTab === 'subscribed' ? (
+            subscribedActivityLoading ? (
+              <View className="activity-stack-state">加载中...</View>
+            ) : subscribedActivityError ? (
+              <View className="activity-stack-state error" onClick={() => { void fetchSubscribedActivities(); }}>
+                {subscribedActivityError}
+              </View>
+            ) : subscribedActivityList.length > 0 ? (
+              <View className="activity-stack">
+                {subscribedStackCovers.map((item, index) => (
+                  <View key={item.id} className="activity-stack-item" style={{ zIndex: 100 - index }}>
+                    {!!item.cover && <Image className="activity-stack-img" src={item.cover} mode="aspectFill" />}
+                  </View>
+                ))}
+                {subscribedRemainCount > 0 && (
+                  <View className="activity-stack-item activity-stack-more" style={{ zIndex: 90 - subscribedStackCovers.length }}>
+                    <Text className="activity-stack-more-text">{subscribedRemainLabel}</Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View className="activity-empty">
+                <View className="activity-empty-icon">
+                  <AtIcon value="calendar" size="20" color="rgba(255,255,255,0.45)" />
+                </View>
+                <Text className="activity-empty-title">{'\u6682\u65e0\u8ba2\u9605\u7684\u6d3b\u52a8'}</Text>
+                <Text className="activity-empty-tip">{'\u53bb\u9996\u9875\u6216\u6d3b\u52a8\u5217\u8868\u770b\u770b\u5427'}</Text>
+              </View>
+            )
+          ) : currentActivityList.length > 0 ? (
             <ScrollView className="activity-scroll" scrollX enableFlex>
               {currentActivityList.map((item) => (
                 <View key={item.id} className="activity-poster">
@@ -627,9 +721,7 @@ export default function UserPage() {
               <View className="activity-empty-icon">
                 <AtIcon value="calendar" size="20" color="rgba(255,255,255,0.45)" />
               </View>
-              <Text className="activity-empty-title">
-                {activitySubTab === 'joined' ? '\u6682\u65e0\u53c2\u52a0\u8fc7\u7684\u6d3b\u52a8' : '\u6682\u65e0\u8ba2\u9605\u7684\u6d3b\u52a8'}
-              </Text>
+              <Text className="activity-empty-title">{'\u6682\u65e0\u53c2\u52a0\u8fc7\u7684\u6d3b\u52a8'}</Text>
               <Text className="activity-empty-tip">{'\u53bb\u9996\u9875\u6216\u6d3b\u52a8\u5217\u8868\u770b\u770b\u5427'}</Text>
             </View>
           )}

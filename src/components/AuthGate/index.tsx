@@ -408,6 +408,13 @@ export default function AuthGate(props: AuthGateProps) {
 
       {mode === 'quick' ? (
         <View className='auth-gate__quick-content'>
+          <View className='auth-gate__bottom-logo-wrap'>
+            {!logoLoadFailed ? (
+              <Image className='auth-gate__bottom-logo' src={hyperIcon} mode='aspectFit' onError={() => setLogoLoadFailed(true)} />
+            ) : (
+              <Text className='auth-gate__top-logo-fallback'>HYPER</Text>
+            )}
+          </View>
           <Button className='auth-gate__quick-btn' loading={loggingIn} disabled={loggingIn} onClick={handlePrimaryClick}>
             一键快速登录
           </Button>
@@ -416,8 +423,8 @@ export default function AuthGate(props: AuthGateProps) {
             使用验证码登录
           </View>
 
-          <View className='auth-gate__agreement-row'>
-            <View className='auth-gate__checkbox' onClick={() => setAgreeProtocol((prev) => !prev)}>
+          <View className='auth-gate__agreement-row' onClick={() => setAgreeProtocol((prev) => !prev)}>
+            <View className='auth-gate__checkbox'>
               <View className={`auth-gate__checkbox-circle ${agreeProtocol ? 'checked' : ''}`}>
                 {agreeProtocol && <View className='auth-gate__checkbox-dot' />}
               </View>
@@ -501,8 +508,8 @@ export default function AuthGate(props: AuthGateProps) {
             </>
           )}
 
-          <View className='auth-gate__agreement-row auth-gate__agreement-row--code'>
-            <View className='auth-gate__checkbox' onClick={() => setAgreeProtocol((prev) => !prev)}>
+          <View className='auth-gate__agreement-row auth-gate__agreement-row--code' onClick={() => setAgreeProtocol((prev) => !prev)}>
+            <View className='auth-gate__checkbox'>
               <View className={`auth-gate__checkbox-circle ${agreeProtocol ? 'checked' : ''}`}>
                 {agreeProtocol && <View className='auth-gate__checkbox-dot' />}
               </View>

@@ -270,6 +270,38 @@ const pickDefaultActiveChannelId = (channels: ChannelApiItem[]): number | null =
   return channels[0].id
 }
 
+interface TabRectMeta {
+  left: number
+  width: number
+  right: number
+}
+
+const TAB_WINDOW_SIZE = 6
+const TAB_WINDOW_LEFT_PREVIEW_COUNT = 3
+const TAB_RIGHT_RESERVED_WIDTH = 100
+
+const clampWindowStart = (start: number, total: number) => {
+  const maxStart = Math.max(total - TAB_WINDOW_SIZE, 0)
+  return Math.max(0, Math.min(start, maxStart))
+}
+
+const getDirectWindowStart = (activeIndex: number, total: number) => {
+  if (total <= TAB_WINDOW_SIZE) return 0
+  return clampWindowStart(activeIndex - TAB_WINDOW_LEFT_PREVIEW_COUNT, total)
+}
+
+const nextWindowStartOnSwipe = (prevStart: number, prevActive: number, nextActive: number, total: number) => {
+  if (total <= TAB_WINDOW_SIZE) return 0
+  let start = clampWindowStart(prevStart, total)
+  const anchorIndex = start + TAB_WINDOW_LEFT_PREVIEW_COUNT
+  if (nextActive > prevActive && nextActive > anchorIndex) {
+    start += 1
+  } else if (nextActive < prevActive && nextActive < anchorIndex) {
+    start -= 1
+  }
+  return clampWindowStart(start, total)
+}
+
 export default function SquarePage() {
   const [channelChipMarqueeMeta, setChannelChipMarqueeMeta] = useState<Record<number, {
     shouldScroll: boolean
@@ -282,6 +314,10 @@ export default function SquarePage() {
   const [isChannelEditOpen, setIsChannelEditOpen] = useState(false)
   const [isChannelEditing, setIsChannelEditing] = useState(false)
   const [hasTabBarInteracted, setHasTabBarInteracted] = useState(false)
+  const [tabScrollLeft, setTabScrollLeft] = useState(0)
+  const [windowStartIdx, setWindowStartIdx] = useState(0)
+  const [tabViewportWidth, setTabViewportWidth] = useState(0)
+  const [tabRects, setTabRects] = useState<TabRectMeta[]>([])
 
   const [noteList, setNoteList] = useState<NoteItem[]>([])
   const [leftCol, setLeftCol] = useState<NoteItem[]>([])
@@ -311,6 +347,8 @@ export default function SquarePage() {
   const itemWidthRef = useRef(0)
   const activeIdxRef = useRef(activeIdx)
   const activeChannelIdRef = useRef<number | null>(activeChannelId)
+  const tabScrollLeftRef = useRef(tabScrollLeft)
+  const windowStartIdxRef = useRef(windowStartIdx)
 
   const editableMyChannels = myChannels.filter(channel => !isDefaultChannelId(channel.id))
   const editableOtherChannels = otherChannels.filter(channel => !isDefaultChannelId(channel.id))
@@ -335,6 +373,14 @@ export default function SquarePage() {
   }, [activeChannelId])
 
   useEffect(() => {
+    tabScrollLeftRef.current = tabScrollLeft
+  }, [tabScrollLeft])
+
+  useEffect(() => {
+    windowStartIdxRef.current = windowStartIdx
+  }, [windowStartIdx])
+
+  useEffect(() => {
     setTabBarIndex(1)
     const screenWidth = Taro.getWindowInfo().screenWidth
     const itemWidth = (screenWidth - 20 - 10) / 2
@@ -353,6 +399,68 @@ export default function SquarePage() {
       channelMarqueeMeasureTimerRef.current = null
     }
   }, [])
+
+  const measureTabLayout = () => {
+    if (!displayChannels.length) return
+
+    const query = Taro.createSelectorQuery()
+    query.select('.channel-scroll-view').boundingClientRect()
+    query.selectAll('.channel-scroll-view .tab-item').boundingClientRect()
+    query.exec((result) => {
+      const scrollRect = result?.[0] as WechatMiniprogram.BoundingClientRectCallbackResult | undefined
+      const tabRectList = result?.[1] as WechatMiniprogram.BoundingClientRectCallbackResult[] | undefined
+      if (!scrollRect || !Array.isArray(tabRectList) || !tabRectList.length) return
+
+      const viewportWidth = Math.max(Math.floor((scrollRect.width || 0) - TAB_RIGHT_RESERVED_WIDTH), 0)
+      const currentScrollLeft = tabScrollLeftRef.current
+      const normalizedRects: TabRectMeta[] = tabRectList.map((rect) => {
+        const left = Math.max((rect.left || 0) - (scrollRect.left || 0) + currentScrollLeft, 0)
+        const width = Math.max(rect.width || 0, 0)
+        return {
+          left,
+          width,
+          right: left + width
+        }
+      })
+
+      setTabViewportWidth(viewportWidth)
+      setTabRects(normalizedRects)
+    })
+  }
+
+  const applyTabWindowLayout = () => {
+    if (!hasTabBarInteracted) return
+    if (!displayChannels.length || tabRects.length !== displayChannels.length || tabViewportWidth <= 0) return
+
+    const total = displayChannels.length
+    const start = clampWindowStart(windowStartIdxRef.current, total)
+    const startLeft = Math.max(tabRects[start]?.left || 0, 0)
+    const contentWidth = Math.max(tabRects[total - 1]?.right || 0, 0)
+    const maxScroll = Math.max(contentWidth - tabViewportWidth, 0)
+    const nextScrollLeft = Math.max(0, Math.min(startLeft, maxScroll))
+    setTabScrollLeft(Math.round(nextScrollLeft))
+  }
+
+  useEffect(() => {
+    if (!displayChannels.length || !hasTabBarInteracted) return
+    const timer = setTimeout(() => {
+      measureTabLayout()
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [
+    hasTabBarInteracted,
+    activeIdx,
+    windowStartIdx,
+    displayChannels.map(channel => `${channel.id}:${channel.name}`).join('|')
+  ])
+
+  useEffect(() => {
+    applyTabWindowLayout()
+  }, [tabRects, tabViewportWidth, hasTabBarInteracted, windowStartIdx, displayChannels.length])
+
+  useEffect(() => {
+    setWindowStartIdx(prev => clampWindowStart(prev, displayChannels.length))
+  }, [displayChannels.length])
 
   Taro.useDidShow(() => {
     setTabBarIndex(1)
@@ -613,6 +721,7 @@ export default function SquarePage() {
 
   const handleTabClick = (index: number) => {
     setHasTabBarInteracted(true)
+    setWindowStartIdx(getDirectWindowStart(index, displayChannels.length))
     if (index === activeIdx) {
       setIsChannelEditOpen(false)
       setIsChannelEditing(false)
@@ -624,8 +733,10 @@ export default function SquarePage() {
   const handleSwiperChange = (e: any) => {
     if (e.detail.source !== 'touch') return
     setHasTabBarInteracted(true)
+    const prevIndex = activeIdxRef.current
     const nextIndex = e.detail.current
-    if (nextIndex === activeIdxRef.current) return
+    if (nextIndex === prevIndex) return
+    setWindowStartIdx(prev => nextWindowStartOnSwipe(prev, prevIndex, nextIndex, displayChannels.length))
     switchToChannel(nextIndex)
   }
 
@@ -661,6 +772,7 @@ export default function SquarePage() {
       activeIdxRef.current = nextIndex
       setActiveChannelId(nextActiveId)
       activeChannelIdRef.current = nextActiveId
+      setWindowStartIdx(getDirectWindowStart(nextIndex, nextDisplay.length))
 
       if (typeof nextActiveId === 'number') {
         const tabKey = getTabKeyByChannelId(nextActiveId)
@@ -742,6 +854,7 @@ export default function SquarePage() {
       activeIdxRef.current = nextIndex
       setActiveChannelId(nextActiveId)
       activeChannelIdRef.current = nextActiveId
+      setWindowStartIdx(getDirectWindowStart(nextIndex, nextDisplay.length))
 
       const tabKey = getTabKeyByChannelId(nextActiveId)
       if (!applyTabData(tabKey)) {
@@ -1078,7 +1191,7 @@ export default function SquarePage() {
               <ScrollView
                 scrollX
                 className='channel-scroll-view'
-                scrollIntoView={hasTabBarInteracted && activeIdx > 0 ? `tab-${Math.max(activeIdx - 1, 0)}` : undefined}
+                scrollLeft={tabScrollLeft}
                 showScrollbar={false}
                 enableFlex
               >

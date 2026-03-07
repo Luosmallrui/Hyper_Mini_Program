@@ -1,31 +1,29 @@
 .search-page-dark {
-  background-color: #000000;
+  background-color: #000;
   min-height: 100vh;
   width: 100vw;
-  color: #ffffff;
+  color: #fff;
   display: flex;
   flex-direction: column;
 }
 
-/* 1. 顶部导航栏 */
 .custom-navbar {
   position: fixed;
   left: 0;
   right: 0;
   z-index: 100;
-  background-color: #000000;
+  background-color: #000;
   display: flex;
   align-items: center;
-  /* 左右间距调整，避开胶囊按钮区域 */
   padding-left: 12px;
   padding-right: 12px;
 
   .nav-left {
-    width: 44px; /* 增大点击热区 */
+    width: 44px;
     height: 100%;
     display: flex;
     align-items: center;
-    justify-content: flex-start; /* 左对齐 */
+    justify-content: flex-start;
   }
 
   .nav-center {
@@ -33,32 +31,30 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    
+
     .nav-logo {
-      height: 32px; /* 调整 Logo 高度，使其与首页一致 */
-      width: 120px; /* 宽度由 mode='heightFix' 自动控制，这里给个基准 */
+      height: 32px;
+      width: 120px;
     }
   }
 
   .nav-right {
-    width: 44px; /* 与左侧等宽，保持中间 Logo 居中 */
+    width: 44px;
   }
 }
 
-/* 内容滚动区 */
 .search-content {
   flex: 1;
   padding: 0 24px;
   box-sizing: border-box;
 }
 
-/* 2. 搜索框 */
 .search-bar-wrapper {
   margin-top: 10px;
   margin-bottom: 40px;
 
   .search-input-box {
-    background-color: #1C1C1E;
+    background-color: #1c1c1e;
     height: 72px;
     border-radius: 36px;
     display: flex;
@@ -66,10 +62,19 @@
     justify-content: center;
     padding: 0 24px;
 
+    .search-icon-btn {
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
     .search-input {
       flex: 1;
       margin-left: 16px;
-      font-size: 22px; /* 稍微增大字号 */
+      font-size: 22px;
       color: #fff;
     }
 
@@ -80,14 +85,13 @@
   }
 }
 
-/* 通用板块样式 */
 .section-block {
   margin-bottom: 50px;
 
   .section-title {
     font-size: 28px;
     font-weight: bold;
-    color: #ffffff;
+    color: #fff;
     display: block;
     margin-bottom: 24px;
   }
@@ -97,22 +101,56 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 24px;
-    
+
     .section-title {
       margin-bottom: 0;
     }
-    
+
     .trash-btn {
-      padding: 10px;
+      width: 48px;
+      height: 48px;
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #2a2a2c;
+
+      &.active {
+        border-color: #ff4d4f;
+        background: rgba(255, 77, 79, 0.08);
+      }
     }
   }
 }
 
-/* 3. 我的订阅列表 */
+.search-state-text {
+  font-size: 22px;
+  color: #8f8f93;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+
+  &.error {
+    color: #ff7a7a;
+  }
+}
+
 .subscription-list {
   display: flex;
   gap: 32px;
-  overflow-x: auto; 
+  overflow-x: auto;
+  min-height: 124px;
+
+  .subscription-state-text {
+    font-size: 20px;
+    color: #8f8f93;
+    line-height: 124px;
+    white-space: nowrap;
+
+    &.error {
+      color: #ff7a7a;
+    }
+  }
 
   .sub-item {
     display: flex;
@@ -136,10 +174,10 @@
         width: 100%;
         height: 100%;
       }
-      
+
       .mock-logo-text {
         font-size: 20px;
-        color: rgba(255,255,255,0.5);
+        color: rgba(255, 255, 255, 0.5);
       }
     }
 
@@ -155,7 +193,6 @@
   }
 }
 
-/* 4. 历史搜索标签 */
 .history-tags {
   display: flex;
   flex-wrap: wrap;
@@ -168,5 +205,112 @@
     padding: 12px 30px;
     font-size: 24px;
     color: #ccc;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 96px;
+
+    .tag-pill-text {
+      display: block;
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
+}
+
+.history-tags.editing {
+  .tag-pill {
+    padding-right: 42px;
+  }
+}
+
+.history-tag-del-icon {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #666;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  z-index: 2;
+
+  text {
+    display: block;
+    transform: translateY(-1px);
+  }
+}
+
+.search-result-section {
+  margin-top: 8px;
+}
+
+.search-result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  border-radius: 16px;
+  background: #1c1c1e;
+}
+
+.result-cover-wrap {
+  width: 112px;
+  height: 112px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #2b2b2d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.result-cover {
+  width: 100%;
+  height: 100%;
+}
+
+.result-cover-placeholder {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.result-info {
+  margin-left: 18px;
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-title {
+  font-size: 28px;
+  color: #fff;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-meta {
+  font-size: 22px;
+  color: #9a9a9f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

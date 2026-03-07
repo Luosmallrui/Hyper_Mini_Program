@@ -50,8 +50,23 @@ interface PartyItem {
   isSubscribed?: boolean
 }
 
-const FILTER_CATS = ['全部', '滑板', '派对', '汽车', '纹身', '体育运动', '活动', '露营', '酒吧/场地', '篮球']
-const FILTER_SORTS = ['智能推荐', '距离优先', '人气优先', '高分优先']
+interface CategoryItem {
+  id: number
+  name: string
+}
+
+type SortLabel = '智能推荐' | '距离优先' | '人气优先' | '高分优先'
+type UserCoord = { lat: number; lng: number }
+
+const ALL_CATEGORY_ID = 0
+const ALL_CATEGORY_NAME = '全部'
+const FILTER_SORTS: SortLabel[] = ['智能推荐', '距离优先', '人气优先', '高分优先']
+const SORT_PARAM_MAP: Record<SortLabel, '' | 'distance' | 'popularity' | 'rating'> = {
+  智能推荐: '',
+  距离优先: 'distance',
+  人气优先: 'popularity',
+  高分优先: 'rating',
+}
 
 export default function ActivityListPage() {
   const [list, setList] = useState<PartyItem[]>([])
@@ -60,10 +75,18 @@ export default function ActivityListPage() {
   const followPendingRef = useRef<Set<string | number>>(new Set())
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [filterOpen, setFilterOpen] = useState<'none' | 'cat' | 'sort'>('none')
-  const [selectedCat, setSelectedCat] = useState('全部')
-  const [selectedSort, setSelectedSort] = useState('智能推荐')
+  const [selectedCat, setSelectedCat] = useState(ALL_CATEGORY_NAME)
+  const [selectedCatId, setSelectedCatId] = useState<number>(ALL_CATEGORY_ID)
+  const [categoryOptions, setCategoryOptions] = useState<CategoryItem[]>([])
+  const [categoryLoading, setCategoryLoading] = useState(false)
+  const [categoryError, setCategoryError] = useState('')
+  const [selectedSort, setSelectedSort] = useState<SortLabel>('智能推荐')
   const refreshStartRef = useRef(0)
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hasInitRef = useRef(false)
+  const [userCoord, setUserCoord] = useState<UserCoord | null>(null)
+  const userCoordRef = useRef<UserCoord | null>(null)
+  const isLocatingRef = useRef(false)
 
   const { statusBarHeight, navBarHeight } = useNavBarMetrics()
   const filterBarGap = 14
@@ -79,13 +102,87 @@ export default function ActivityListPage() {
     Taro.navigateTo({ url: '/pages/search/index' })
   }, [])
 
-  const fetchList = useCallback(async (options?: { isRefresh?: boolean; silentError?: boolean }) => {
+  const ensureUserCoord = useCallback(async () => {
+    if (userCoordRef.current) return userCoordRef.current
+    if (isLocatingRef.current) return null
+    isLocatingRef.current = true
+    try {
+      const location = await Taro.getLocation({ type: 'gcj02' })
+      const coord = { lat: location.latitude, lng: location.longitude }
+      userCoordRef.current = coord
+      setUserCoord(coord)
+      return coord
+    } catch (error) {
+      console.warn('activity-list getLocation failed:', error)
+      return null
+    } finally {
+      isLocatingRef.current = false
+    }
+  }, [])
+
+  const fetchCategoryOptions = useCallback(async () => {
+    if (categoryLoading) return
+    setCategoryLoading(true)
+    setCategoryError('')
+    try {
+      const res = await request({
+        url: '/api/v1/category/list',
+        method: 'GET',
+      })
+      const body: any = res?.data
+      const source = Array.isArray(body?.data) ? body.data : []
+      const normalized: CategoryItem[] = source
+        .map((item: any) => ({
+          id: Number(item?.id) || 0,
+          name: String(item?.name || ''),
+        }))
+        .filter((item: CategoryItem) => item.id > 0 && Boolean(item.name))
+        .sort((a, b) => a.id - b.id)
+      setCategoryOptions(normalized)
+      if (selectedCatId !== ALL_CATEGORY_ID && !normalized.some((item) => item.id === selectedCatId)) {
+        setSelectedCat(ALL_CATEGORY_NAME)
+        setSelectedCatId(ALL_CATEGORY_ID)
+      }
+      return normalized
+    } catch (error) {
+      setCategoryError('加载失败，点击重试')
+      return null
+    } finally {
+      setCategoryLoading(false)
+    }
+  }, [categoryLoading, selectedCatId])
+
+  const fetchList = useCallback(async (options?: {
+    isRefresh?: boolean
+    silentError?: boolean
+    categoryId?: number
+    sortLabel?: SortLabel
+    forceLoadCoord?: boolean
+  }) => {
     const { isRefresh = false, silentError = false } = options || {}
     if (isFetchingRef.current) return false
     isFetchingRef.current = true
     try {
+      const activeCategoryId = typeof options?.categoryId === 'number' ? options.categoryId : selectedCatId
+      const activeSortLabel = options?.sortLabel || selectedSort
+      const sortParam = SORT_PARAM_MAP[activeSortLabel]
+      const allCategoryIds = categoryOptions.map((item) => item.id)
+      const activeCategoryIds = activeCategoryId === ALL_CATEGORY_ID ? allCategoryIds : [activeCategoryId]
+      const queryParts: string[] = []
+      if (activeCategoryIds.length > 0) {
+        queryParts.push(`category=${activeCategoryIds.map((id) => encodeURIComponent(String(id))).join(',')}`)
+      }
+      if (sortParam) {
+        queryParts.push(`sort=${encodeURIComponent(sortParam)}`)
+      }
+      const coord = userCoordRef.current || (options?.forceLoadCoord ? await ensureUserCoord() : await ensureUserCoord())
+      if (coord) {
+        queryParts.push(`lat=${encodeURIComponent(String(coord.lat))}`)
+        queryParts.push(`lng=${encodeURIComponent(String(coord.lng))}`)
+      }
+      const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : ''
       const res = await request({
-        url: '/api/v1/merchant/list',
+        url: `/api/v1/merchant/list${query}`,
         method: 'GET',
       })
       const dataList = res?.data?.data?.list || []
@@ -128,7 +225,7 @@ export default function ActivityListPage() {
     } finally {
       isFetchingRef.current = false
     }
-  }, [])
+  }, [selectedCatId, selectedSort, categoryOptions, ensureUserCoord])
 
   const handleRefresh = useCallback(async () => {
     if (isFetchingRef.current) return
@@ -163,8 +260,13 @@ export default function ActivityListPage() {
   }, [fetchList])
 
   useEffect(() => {
-    fetchList({ silentError: true })
-  }, [fetchList])
+    if (hasInitRef.current) return
+    hasInitRef.current = true
+    void (async () => {
+      await fetchCategoryOptions()
+      await fetchList({ silentError: true, categoryId: selectedCatId })
+    })()
+  }, [fetchCategoryOptions, fetchList, selectedCatId])
 
   useEffect(() => () => {
     if (refreshTimerRef.current) {
@@ -172,6 +274,10 @@ export default function ActivityListPage() {
       refreshTimerRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    userCoordRef.current = userCoord
+  }, [userCoord])
 
   const toggleFollow = (id: string | number) => {
     const target = list.find((item) => item.id === id)
@@ -243,6 +349,9 @@ export default function ActivityListPage() {
   }
 
   const handleFilterClick = (type: 'cat' | 'sort') => {
+    if (type === 'cat' && !categoryLoading && categoryOptions.length === 0 && !categoryError) {
+      void fetchCategoryOptions()
+    }
     setFilterOpen(filterOpen === type ? 'none' : type)
   }
 
@@ -280,7 +389,7 @@ export default function ActivityListPage() {
       <View className='filter-bar' style={{ top: `${filterBarTop}px` }}>
         <View className='filter-actions'>
           <View className={`filter-item ${filterOpen === 'cat' ? 'active' : ''}`} onClick={() => handleFilterClick('cat')}>
-            <Text className='txt'>{selectedCat === '全部' ? '全部' : selectedCat}</Text>
+            <Text className='txt'>{selectedCat === ALL_CATEGORY_NAME ? '全部' : selectedCat}</Text>
             <AtIcon value={filterOpen === 'cat' ? 'chevron-up' : 'chevron-down'} size='10' color={filterOpen === 'cat' ? '#FF2E4D' : '#999'} />
           </View>
           <View className={`filter-item ${filterOpen === 'sort' ? 'active' : ''}`} onClick={() => handleFilterClick('sort')}>
@@ -299,18 +408,33 @@ export default function ActivityListPage() {
           <View className='mask' onClick={() => setFilterOpen('none')} />
           <View className='dropdown-content'>
             {filterOpen === 'cat' &&
-              FILTER_CATS.map((cat) => (
-                <View
-                  key={cat}
-                  className={`dd-item ${selectedCat === cat ? 'selected' : ''}`}
-                  onClick={() => {
-                    setSelectedCat(cat)
-                    setFilterOpen('none')
-                  }}
-                >
-                  {cat}
-                </View>
-              ))}
+              (
+                <>
+                  {categoryLoading && (
+                    <View className='dd-item'>加载中...</View>
+                  )}
+                  {!categoryLoading && categoryError && (
+                    <View className='dd-item selected' onClick={() => { void fetchCategoryOptions() }}>
+                      {categoryError}
+                    </View>
+                  )}
+                  {!categoryLoading && !categoryError &&
+                    [{ id: ALL_CATEGORY_ID, name: ALL_CATEGORY_NAME }, ...categoryOptions].map((cat) => (
+                      <View
+                        key={cat.id}
+                        className={`dd-item ${selectedCatId === cat.id ? 'selected' : ''}`}
+                        onClick={() => {
+                          setSelectedCat(cat.name)
+                          setSelectedCatId(cat.id)
+                          setFilterOpen('none')
+                          void fetchList({ categoryId: cat.id })
+                        }}
+                      >
+                        {cat.name}
+                      </View>
+                    ))}
+                </>
+              )}
             {filterOpen === 'sort' &&
               FILTER_SORTS.map((sort) => (
                 <View
@@ -319,6 +443,7 @@ export default function ActivityListPage() {
                   onClick={() => {
                     setSelectedSort(sort)
                     setFilterOpen('none')
+                    void fetchList({ sortLabel: sort, isRefresh: false, forceLoadCoord: true })
                   }}
                 >
                   {sort}
@@ -426,4 +551,3 @@ export default function ActivityListPage() {
     </View>
   )
 }
-
