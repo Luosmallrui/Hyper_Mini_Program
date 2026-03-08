@@ -87,7 +87,7 @@ export default defineAppConfig({
       },
     ],
   },
-  requiredPrivateInfos: ['getLocation'],
+  requiredPrivateInfos: ['getLocation', 'chooseLocation'],
   lazyCodeLoading: 'requiredComponents',
   permission: {
     'scope.userLocation': {

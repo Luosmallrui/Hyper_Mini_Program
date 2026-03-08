@@ -318,3 +318,230 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* ==========================================
+   位置选择相关样式
+   追加到你现有的 index.scss 文件末尾
+   ========================================== */
+
+/* 位置提示文字 */
+.location-hint-text {
+  font-size: 24px;
+  color: #999;
+  padding: 8px 0;
+}
+
+/* tag 内关闭图标间距 */
+.tag-close-icon {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+/* ========== 半屏弹窗遮罩 ========== */
+.location-picker-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+}
+
+/* ========== 弹窗主体 ========== */
+.location-picker-sheet {
+  width: 100%;
+  max-height: 70vh;
+  background: #fff;
+  border-radius: 24px 24px 0 0;
+  display: flex;
+  flex-direction: column;
+  animation: sheetSlideUp 0.3s ease-out;
+}
+
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* 顶部拖拽条 */
+.picker-drag-bar {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 8px;
+}
+
+.drag-indicator {
+  width: 64px;
+  height: 6px;
+  border-radius: 3px;
+  background: #e0e0e0;
+}
+
+/* 标题栏 */
+.picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 8px 32px 20px;
+}
+
+.picker-title {
+  font-size: 32px;
+  font-weight: 600;
+  color: #333;
+}
+
+.picker-close {
+  position: absolute;
+  right: 32px;
+  top: 8px;
+  padding: 8px;
+}
+
+/* 搜索框 */
+.picker-search {
+  display: flex;
+  align-items: center;
+  margin: 0 24px 16px;
+  padding: 14px 20px;
+  background: #f5f5f5;
+  border-radius: 40px;
+  gap: 12px;
+}
+
+.picker-search-input {
+  flex: 1;
+  font-size: 28px;
+  color: #333;
+  background: transparent;
+}
+
+.ph-search {
+  color: #bbb;
+  font-size: 28px;
+}
+
+/* 快捷操作区 */
+.picker-actions {
+  display: flex;
+  padding: 0 24px;
+  gap: 0;
+}
+
+.picker-action-item {
+  display: flex;
+  align-items: center;
+  padding: 16px 24px;
+  gap: 10px;
+  border-radius: 8px;
+
+  &:active {
+    background: #f5f5f5;
+  }
+}
+
+.picker-action-text {
+  font-size: 26px;
+  color: #666;
+}
+
+/* 分隔线 */
+.picker-divider {
+  height: 1px;
+  background: #f0f0f0;
+  margin: 8px 24px;
+}
+
+/* 分区标题 */
+.picker-section-title {
+  padding: 12px 32px 8px;
+  font-size: 24px;
+  color: #999;
+}
+
+/* 地点列表 */
+.picker-list {
+  flex: 1;
+  max-height: 45vh;
+}
+
+.picker-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+
+  &:active {
+    background: #fafafa;
+  }
+
+  &.selected {
+    background: #fff5f6;
+  }
+}
+
+.picker-item-info {
+  flex: 1;
+  overflow: hidden;
+  margin-right: 16px;
+}
+
+.picker-item-name {
+  font-size: 28px;
+  color: #333;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.picker-item-address {
+  font-size: 22px;
+  color: #999;
+  display: block;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 加载中 */
+.picker-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  gap: 12px;
+}
+
+.picker-loading-text {
+  font-size: 26px;
+  color: #999;
+}
+
+/* 空状态 */
+.picker-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+}
+
+.picker-empty-text {
+  font-size: 26px;
+  color: #ccc;
+}
+
+/* 旋转动画（给 loading 图标用） */
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
