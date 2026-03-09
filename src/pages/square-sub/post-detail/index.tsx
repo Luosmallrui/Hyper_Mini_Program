@@ -1,10 +1,12 @@
-import { View, Text, Image, Swiper, SwiperItem, ScrollView, Input } from '@tarojs/components'
+﻿import { View, Text, Image, Swiper, SwiperItem, ScrollView, Input } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { AtIcon, AtActivityIndicator, AtFloatLayout } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import 'taro-ui/dist/style/components/activity-indicator.scss'
 import 'taro-ui/dist/style/components/float-layout.scss'
+import lightningFilledIcon from '@/assets/icons/lightning.svg'
+import lightningOutlineIcon from '@/assets/icons/lightning-outline.svg'
 import { request } from '../../../utils/request'
 import './index.scss'
 
@@ -13,10 +15,20 @@ const BASE_URL = 'https://www.hypercn.cn'
 interface NoteMedia { url: string; thumbnail_url: string; width: number; height: number; type?: number }
 interface NoteLocation { lat: number; lng: number; name: string }
 interface UserInfo { user_id: string; nickname: string; avatar: string }
+interface NoteTopic { id: number; name: string }
+interface NoteActivity {
+  id: string
+  name: string
+  location_name?: string
+  images?: string[]
+  business_hours?: string
+  is_subscribe?: boolean
+}
 
 interface NoteDetail {
   id: string; user_id: string; title: string; content: string;
   location: NoteLocation; media_data: NoteMedia[]; type: number; topic_ids: number[];
+  topic?: NoteTopic[]; activity?: NoteActivity | null;
   status: number; visible_conf: number; created_at: string;
   nickname: string; avatar: string;
   like_count: number; coll_count: number; comment_count: number;
@@ -77,7 +89,6 @@ export default function PostDetailPage() {
   const [inputFocus, setInputFocus] = useState(false)
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null)
 
-  // 分享功能相关状态
   const [showShareModal, setShowShareModal] = useState(false)
   const [sessionList, setSessionList] = useState<SessionItem[]>([])
   const [loadingSession, setLoadingSession] = useState(false)
@@ -95,6 +106,8 @@ export default function PostDetailPage() {
     if (id) {
       fetchNoteDetail(id)
       fetchComments(id, true)
+    } else {
+      setLoading(false)
     }
   }, [id])
 
@@ -124,10 +137,35 @@ export default function PostDetailPage() {
           if (Array.isArray(data.media_data)) mediaList = data.media_data
           else if (typeof data.media_data === 'object') mediaList = [data.media_data]
         }
-        setNote({ ...data, id: String(data.id), media_data: mediaList, topic_ids: data.topic_ids || [] })
+        const topicList: NoteTopic[] = Array.isArray(data.topic)
+          ? data.topic
+            .map((item: any) => ({
+              id: Number(item?.id) || 0,
+              name: String(item?.name || '').trim()
+            }))
+            .filter((item: NoteTopic) => item.id > 0 && item.name)
+          : []
+        const activity = data.activity && typeof data.activity === 'object'
+          ? {
+            id: String(data.activity.id || ''),
+            name: String(data.activity.name || '').trim(),
+            location_name: String(data.activity.location_name || '').trim(),
+            images: Array.isArray(data.activity.images) ? data.activity.images.filter(Boolean) : [],
+            business_hours: String(data.activity.business_hours || '').trim(),
+            is_subscribe: Boolean(data.activity.is_subscribe)
+          }
+          : null
+        setNote({
+          ...data,
+          id: String(data.id),
+          media_data: mediaList,
+          topic: topicList,
+          activity: activity?.id && activity.name ? activity : null,
+          topic_ids: Array.isArray(data.topic_ids) ? data.topic_ids : []
+        })
       }
     } catch (e) {
-      console.error('获取详情失败', e)
+      console.error('鑾峰彇璇︽儏澶辫触', e)
     } finally {
       setLoading(false)
     }
@@ -161,7 +199,7 @@ export default function PostDetailPage() {
         setHasMoreComments(has_more)
       }
     } catch (e) {
-      console.error('获取评论失败', e)
+      console.error('鑾峰彇璇勮澶辫触', e)
     } finally {
       setIsCommentLoading(false)
     }
@@ -338,6 +376,11 @@ export default function PostDetailPage() {
     Taro.navigateTo({ url: `/pages/user-sub/profile/index?userId=${note.user_id}` })
   }
 
+  const handleOpenActivity = () => {
+    if (!note?.activity?.id) return
+    Taro.navigateTo({ url: `/pages/activity/index?id=${note.activity.id}` })
+  }
+
   const handleToggleFollow = async (e) => {
     e?.stopPropagation?.()
     if (!note) return
@@ -362,7 +405,7 @@ export default function PostDetailPage() {
     }
   }
 
-  // 获取会话列表
+  // 鑾峰彇浼氳瘽鍒楄〃
   const fetchSessionList = async () => {
     setLoadingSession(true)
     try {
@@ -387,7 +430,7 @@ export default function PostDetailPage() {
     }
   }
 
-  // 打开分享弹窗
+  // 鎵撳紑鍒嗕韩寮圭獥
   const handleOpenShare = () => {
     setShowShareModal(true)
     setShareMsg('')
@@ -481,18 +524,45 @@ export default function PostDetailPage() {
         <View className='content-body'>
           <Text className='post-title'>{note.title}</Text>
           <Text className='post-desc' selectable>{note.content}</Text>
-          {note.topic_ids && note.topic_ids.length > 0 && (<View className='tags'>{note.topic_ids.map(tid => <Text key={tid} className='tag'>#话题{tid}</Text>)}</View>)}
+          {!!note.topic?.length && (
+            <View className='tags'>
+              {note.topic.map((item) => (
+                <Text key={item.id} className='tag'>#{item.name}</Text>
+              ))}
+            </View>
+          )}
           <View className='post-meta'>
             <Text className='time'>{formatTime(note.created_at)}</Text>
             {note.location && note.location.name && <Text className='loc'>{note.location.name}</Text>}
           </View>
+          {note.activity && (
+            <View className='activity-preview-card' onClick={handleOpenActivity}>
+              {!!note.activity.images?.[0] && (
+                <Image
+                  src={note.activity.images[0]}
+                  mode='aspectFill'
+                  className='activity-preview-cover'
+                />
+              )}
+              <View className='activity-preview-body'>
+                <Text className='activity-preview-title'>{note.activity.name}</Text>
+                {!!note.activity.location_name && (
+                  <Text className='activity-preview-location'>{note.activity.location_name}</Text>
+                )}
+                <View className='activity-preview-footer'>
+                  <Text className='activity-preview-hours'>{note.activity.business_hours || '活动详情'}</Text>
+                  <Text className='activity-preview-status'>{note.activity.is_subscribe ? '已订阅' : '查看活动'}</Text>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
 
         <View className='divider' />
 
-        {/* 评论区 */}
+        {/* 璇勮鍖?*/}
         <View className='comment-section'>
-          <Text className='comment-count'>共{note.comment_count} 条评论</Text>
+          <Text className='comment-count'>共{note.comment_count}条评论</Text>
 
           {commentList.map(comment => (
             <View key={comment.id} className='comment-item'>
@@ -507,11 +577,10 @@ export default function PostDetailPage() {
                     className='c-like-wrap'
                     onClick={(e) => { e.stopPropagation(); handleLikeItem('comment', comment.id, comment.is_liked); }}
                   >
-                    <AtIcon
-                      value={comment.is_liked ? 'heart-2' : 'heart'}
-                      size='12'
-                      color={comment.is_liked ? '#FF2E4D' : '#666'}
-                      className={comment.is_liked ? 'liked-anim' : ''}
+                    <Image
+                      src={comment.is_liked ? lightningFilledIcon : lightningOutlineIcon}
+                      className={`like-icon comment-like ${comment.is_liked ? 'liked-anim' : ''}`}
+                      mode='aspectFit'
                     />
                     {comment.like_count > 0 && <Text className='num'>{comment.like_count}</Text>}
                   </View>
@@ -548,11 +617,10 @@ export default function PostDetailPage() {
                               handleLikeItem('reply', reply.id, reply.is_liked, comment.id);
                             }}
                           >
-                            <AtIcon
-                              value={reply.is_liked?'heart-2':'heart'}
-                              size='10'
-                              color={reply.is_liked?'#FF2E4D':'#666'}
-                              className={reply.is_liked ? 'liked-anim' : ''}
+                            <Image
+                              src={reply.is_liked ? lightningFilledIcon : lightningOutlineIcon}
+                              className={`like-icon reply-like ${reply.is_liked ? 'liked-anim' : ''}`}
+                              mode='aspectFit'
                             />
                             {reply.like_count > 0 && <Text className='num'>{reply.like_count}</Text>}
                           </View>
@@ -598,7 +666,7 @@ export default function PostDetailPage() {
         <View style={{height: '120px'}} />
       </ScrollView>
 
-      {/* 底部 */}
+      {/* 搴曢儴 */}
       <View className='bottom-bar'>
         <View className='input-box' onClick={() => onClickReply('note', {id: note.id})}>
           <AtIcon value='edit' size='14' color='#999' style={{marginRight: '8px'}}/>
@@ -606,7 +674,11 @@ export default function PostDetailPage() {
         </View>
         <View className='icons'>
           <View className='icon-item' onClick={handleToggleLike}>
-            <AtIcon value={note.is_liked ? 'heart-2' : 'heart'} size='24' color={note.is_liked ? '#FF2E4D' : '#fff'} className={note.is_liked ? 'liked-anim' : ''} />
+            <Image
+              src={note.is_liked ? lightningFilledIcon : lightningOutlineIcon}
+              className={`like-icon bottom-like ${note.is_liked ? 'liked-anim' : ''}`}
+              mode='aspectFit'
+            />
             <Text className='num'>{note.like_count}</Text>
           </View>
           <View className='icon-item'>
@@ -616,13 +688,13 @@ export default function PostDetailPage() {
         </View>
       </View>
 
-      {/* 评论输入框 */}
+      {/* 璇勮杈撳叆妗?*/}
       {inputFocus && (
         <View className='comment-input-mask' onClick={() => setInputFocus(false)}>
           <View className='real-input-bar' onClick={e => e.stopPropagation()}>
             <Input
               className='real-input'
-              placeholder={replyTarget ? `回复 ${replyTarget.user.nickname}` : '说点什么...'}
+              placeholder={replyTarget ? `回复 ${replyTarget.user.nickname}` : '说点什么吧...'}
               focus={inputFocus}
               value={inputText}
               onInput={e => setInputText(e.detail.value)}
@@ -636,7 +708,7 @@ export default function PostDetailPage() {
         </View>
       )}
 
-      {/* 分享弹窗 */}
+      {/* 鍒嗕韩寮圭獥 */}
       <AtFloatLayout
         isOpened={showShareModal}
         title='分享到'
@@ -646,7 +718,7 @@ export default function PostDetailPage() {
           <View className='share-input-box'>
             <Input
               className='share-input'
-              placeholder='说点什么...(可选)'
+              placeholder='说点什么吧...（可选）'
               value={shareMsg}
               onInput={e => setShareMsg(e.detail.value)}
               maxlength={100}
@@ -678,7 +750,7 @@ export default function PostDetailPage() {
                   mode='aspectFill'
                 />
                 <View className='session-info'>
-                  <Text className='session-name'>{session.peer_name || '未命名'}</Text>
+                  <Text className='session-name'>{session.peer_name || '未命名会话'}</Text>
                   <Text className='session-type'>
                     {session.session_type === 2 ? '群聊' : '私聊'}
                   </Text>

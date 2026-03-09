@@ -6,6 +6,23 @@
   flex-direction: column;
 }
 
+.drag-follow-ghost {
+  position: fixed;
+  z-index: 999;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(1.04);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+}
+
+.drag-follow-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .custom-nav {
   position: fixed;
   top: 0;
@@ -89,6 +106,16 @@
     &.active {
       border-color: #fff;
     }
+
+    &.is-dragging {
+      opacity: 0.55;
+      transform: scale(0.95);
+    }
+
+    &.is-drop-target {
+      border-color: #ff2e4d;
+      box-shadow: 0 0 0 2px rgba(255, 46, 77, 0.24);
+    }
   }
 
   .thumb-image {
@@ -156,6 +183,15 @@
     flex-shrink: 0;
     margin-right: 16px;
     background: #121212;
+
+    &.is-dragging {
+      opacity: 0.55;
+      transform: scale(0.95);
+    }
+
+    &.is-drop-target {
+      box-shadow: 0 0 0 2px rgba(255, 46, 77, 0.24);
+    }
   }
 
   .mini-thumb-image {
@@ -281,6 +317,12 @@
     border: 1px solid #2c2c2e;
     color: #888;
   }
+
+  .tag-item.ghost.active {
+    background: #ffffff;
+    border-color: #ffffff;
+    color: #000000;
+  }
 }
 
 .bottom-bar {
@@ -344,7 +386,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.62);
   z-index: 1000;
   display: flex;
   align-items: flex-end;
@@ -354,7 +396,7 @@
 .location-picker-sheet {
   width: 100%;
   max-height: 70vh;
-  background: #fff;
+  background: #0b0b0d;
   border-radius: 24px 24px 0 0;
   display: flex;
   flex-direction: column;
@@ -377,7 +419,7 @@
   width: 64px;
   height: 6px;
   border-radius: 3px;
-  background: #e0e0e0;
+  background: rgba(255, 255, 255, 0.22);
 }
 
 /* 标题栏 */
@@ -392,7 +434,7 @@
 .picker-title {
   font-size: 32px;
   font-weight: 600;
-  color: #333;
+  color: #f5f5f5;
 }
 
 .picker-close {
@@ -408,7 +450,7 @@
   align-items: center;
   margin: 0 24px 16px;
   padding: 14px 20px;
-  background: #f5f5f5;
+  background: #16181d;
   border-radius: 40px;
   gap: 12px;
 }
@@ -416,12 +458,12 @@
 .picker-search-input {
   flex: 1;
   font-size: 28px;
-  color: #333;
+  color: #f0f0f0;
   background: transparent;
 }
 
 .ph-search {
-  color: #bbb;
+  color: #6f7683;
   font-size: 28px;
 }
 
@@ -440,19 +482,19 @@
   border-radius: 8px;
 
   &:active {
-    background: #f5f5f5;
+    background: #181b21;
   }
 }
 
 .picker-action-text {
   font-size: 26px;
-  color: #666;
+  color: #c6cbd4;
 }
 
 /* 分隔线 */
 .picker-divider {
   height: 1px;
-  background: #f0f0f0;
+  background: #20242b;
   margin: 8px 24px;
 }
 
@@ -460,7 +502,7 @@
 .picker-section-title {
   padding: 12px 32px 8px;
   font-size: 24px;
-  color: #999;
+  color: #8e96a3;
 }
 
 /* 地点列表 */
@@ -476,11 +518,11 @@
   padding: 20px 32px;
 
   &:active {
-    background: #fafafa;
+    background: #15181d;
   }
 
   &.selected {
-    background: #fff5f6;
+    background: rgba(255, 46, 77, 0.14);
   }
 }
 
@@ -492,7 +534,7 @@
 
 .picker-item-name {
   font-size: 28px;
-  color: #333;
+  color: #eef1f5;
   display: block;
   white-space: nowrap;
   overflow: hidden;
@@ -501,7 +543,7 @@
 
 .picker-item-address {
   font-size: 22px;
-  color: #999;
+  color: #8f96a1;
   display: block;
   margin-top: 4px;
   white-space: nowrap;
@@ -520,7 +562,7 @@
 
 .picker-loading-text {
   font-size: 26px;
-  color: #999;
+  color: #9aa2af;
 }
 
 /* 空状态 */
@@ -533,7 +575,7 @@
 
 .picker-empty-text {
   font-size: 26px;
-  color: #ccc;
+  color: #7f8793;
 }
 
 /* 旋转动画（给 loading 图标用） */

@@ -1,4 +1,4 @@
-import { View, Text, Input, Textarea, Image, ScrollView } from '@tarojs/components'
+﻿import { View, Text, Input, Textarea, Image, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, useEffect, useRef } from 'react'
 import { AtIcon } from 'taro-ui'
@@ -15,6 +15,18 @@ interface MediaItem {
   isUploading: boolean
   width: number
   height: number
+  tags?: TopicItem[]
+}
+
+interface TopicItem {
+  id: number
+  name: string
+}
+
+interface SubscribedActivityItem {
+  id: number
+  title: string
+  type: string
 }
 
 type StepKey = 'photo' | 'text'
@@ -25,6 +37,14 @@ export default function PostCreatePage() {
   const [content, setContent] = useState('')
   const [mediaList, setMediaList] = useState<MediaItem[]>([])
   const [activeIndex, setActiveIndex] = useState(0)
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const [dragScope, setDragScope] = useState<'thumb' | 'mini' | null>(null)
+  const [dragPointer, setDragPointer] = useState<{ x: number; y: number } | null>(null)
+  const [dragPreviewPath, setDragPreviewPath] = useState('')
+  const suppressClickRef = useRef(false)
+  const dragRectsRef = useRef<Array<{ index: number; left: number; right: number; center: number }>>([])
+  const dragAutoResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
@@ -37,8 +57,13 @@ export default function PostCreatePage() {
   const [searchResults, setSearchResults] = useState<POIItem[]>([])
   const [isLoadingLocation, setIsLoadingLocation] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
+  const [subscribedActivities, setSubscribedActivities] = useState<SubscribedActivityItem[]>([])
+  const [selectedActivityId, setSelectedActivityId] = useState<number | null>(null)
+  const [activityLoading, setActivityLoading] = useState(false)
+  const [activityError, setActivityError] = useState('')
+  const [topicCandidates, setTopicCandidates] = useState<TopicItem[]>([])
+  const [selectedTopics, setSelectedTopics] = useState<number[]>([])
 
-  // 保存用户坐标供后续搜索使用
   const userLatRef = useRef(0)
   const userLngRef = useRef(0)
 
@@ -67,9 +92,13 @@ export default function PostCreatePage() {
     }
   }, [])
 
-  // 页面加载 → 获取定位 → 逆地址解析拿附近 POI
+  // 页面加载 -> 获取定位 -> 逆地址解析附近 POI
   useEffect(() => {
     fetchNearbyPois()
+  }, [])
+
+  useEffect(() => {
+    fetchSubscribedActivities()
   }, [])
 
   useEffect(() => {
@@ -78,28 +107,39 @@ export default function PostCreatePage() {
     }
   }, [mediaList, activeIndex])
 
+  useEffect(() => {
+    const topicMap = new Map<number, TopicItem>()
+    mediaList
+      .flatMap(item => item.tags || [])
+      .forEach((tag) => {
+        if (!tag || tag.id <= 0 || !tag.name.trim()) return
+        topicMap.set(tag.id, tag)
+      })
+    const nextTopics = Array.from(topicMap.values())
+    setTopicCandidates(nextTopics)
+    setSelectedTopics(prev => prev.filter(id => topicMap.has(id)))
+  }, [mediaList])
+
   // ========== 核心：获取附近地点 ==========
   const fetchNearbyPois = async () => {
     setIsLoadingLocation(true)
     try {
       // 第一步：获取用户当前位置
       const locRes = await Taro.getLocation({
-        type: 'gcj02',   // 腾讯地图使用 gcj02 坐标系
+        type: 'gcj02',
         isHighAccuracy: false,
       })
 
       userLatRef.current = locRes.latitude
       userLngRef.current = locRes.longitude
 
-      // 第二步：逆地址解析 → 拿到附近 POI 列表
-      // 这个接口不需要传关键词，会自动返回附近的地标/商铺/景点等
+      // 第二步：逆地址解析，拿到附近 POI 列表
       const result = await reverseGeocode(locRes.latitude, locRes.longitude)
 
       setNearbyPois(result.pois)
     } catch (err: any) {
       console.warn('获取附近地点失败:', err)
 
-      // 用户拒绝定位授权时，引导开启
       if (err?.errMsg?.includes('deny') || err?.errMsg?.includes('auth')) {
         Taro.showModal({
           title: '需要位置权限',
@@ -144,11 +184,7 @@ export default function PostCreatePage() {
 
   // ========== 位置选择操作 ==========
   const handleSelectLocation = (poi: POIItem) => {
-    if (selectedLocation?.id === poi.id) {
-      setSelectedLocation(null) // 取消选中
-    } else {
-      setSelectedLocation(poi)
-    }
+    setSelectedLocation(poi)
     setShowLocationPicker(false)
   }
 
@@ -163,7 +199,7 @@ export default function PostCreatePage() {
     setShowLocationPicker(true)
   }
 
-  // 备选：用微信原生地图选点
+  // 备选：使用微信原生地图选点
   const handleChooseLocationNative = async () => {
     try {
       const res = await Taro.chooseLocation({})
@@ -183,7 +219,58 @@ export default function PostCreatePage() {
     }
   }
 
-  // ========== 以下为原有逻辑（图片/上传/发布等，保持不变） ==========
+  const fetchSubscribedActivities = async () => {
+    setActivityLoading(true)
+    setActivityError('')
+    try {
+      const res = await request({
+        url: '/api/v1/subscribe/list',
+        method: 'GET',
+      })
+      const body: any = res?.data
+      const source = body?.code === 200 && Array.isArray(body?.data) ? body.data : null
+      if (!source) {
+        setSubscribedActivities([])
+        setActivityError('加载失败，点击重试')
+        return
+      }
+
+      const activityTypeSet = new Set(['活动', '派对', 'activity', 'event'])
+      const mapped: SubscribedActivityItem[] = source
+        .map((item: any) => ({
+          id: Number(item?.id) || 0,
+          title: String(item?.title || ''),
+          type: String(item?.type || '').toLowerCase(),
+        }))
+        .filter((item: SubscribedActivityItem) => item.id > 0 && item.title)
+        .filter((item: SubscribedActivityItem) => activityTypeSet.has(item.type) || activityTypeSet.has(item.type.toLowerCase()))
+
+      setSubscribedActivities(mapped)
+      if (mapped.length === 0) {
+        setSelectedActivityId(null)
+      } else if (selectedActivityId !== null && !mapped.some(item => item.id === selectedActivityId)) {
+        setSelectedActivityId(null)
+      }
+    } catch (_error) {
+      setSubscribedActivities([])
+      setSelectedActivityId(null)
+      setActivityError('加载失败，点击重试')
+    } finally {
+      setActivityLoading(false)
+    }
+  }
+
+  const handleSelectActivity = (activityId: number) => {
+    setSelectedActivityId(activityId)
+  }
+
+  const handleToggleTopic = (topicId: number) => {
+    setSelectedTopics((prev) => (
+      prev.includes(topicId) ? prev.filter(item => item !== topicId) : [...prev, topicId]
+    ))
+  }
+
+  // ========== 以下为原有逻辑（图片/上传/发布等） ==========
 
   const handleChooseImage = async () => {
     const remaining = 9 - mediaList.length
@@ -230,9 +317,36 @@ export default function PostCreatePage() {
       }
       if (data.code === 200 && data.data?.url) {
         const { url, width, height } = data.data
+        const normalizeTag = (raw: any): string => {
+          const value = String(raw || '').trim()
+          if (!value) return ''
+          try {
+            if (/[ÃÂåäöüç]/.test(value)) {
+              return decodeURIComponent(escape(value))
+            }
+          } catch (_e) {}
+          return value
+        }
+        const tags = Array.isArray(data.data?.tags)
+          ? data.data.tags
+            .map((tag: any) => {
+              const id = Number(tag?.id || 0)
+              const name = normalizeTag(tag?.name)
+              if (!id || !name) return null
+              return { id, name }
+            })
+            .filter(Boolean) as TopicItem[]
+          : []
         setMediaList(prev => prev.map((item) =>
           item.tempPath === filePath
-            ? { ...item, serverUrl: url, isUploading: false, width: width || item.width, height: height || item.height }
+            ? {
+              ...item,
+              serverUrl: url,
+              isUploading: false,
+              width: width || item.width,
+              height: height || item.height,
+              tags,
+            }
             : item
         ))
       } else {
@@ -247,9 +361,125 @@ export default function PostCreatePage() {
   }
 
   const handleDeleteImage = (index: number) => {
+    if (mediaList.length <= 1) {
+      Taro.showToast({ title: '至少保留一张图片', icon: 'none' })
+      return
+    }
     const newList = [...mediaList]
     newList.splice(index, 1)
     setMediaList(newList)
+  }
+
+  const moveMediaItem = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return
+    const source = mediaList[fromIndex]
+    if (!source) return
+
+    const activeMediaPath = mediaList[activeIndex]?.tempPath || ''
+    const reordered = [...mediaList]
+    const [movedItem] = reordered.splice(fromIndex, 1)
+    reordered.splice(toIndex, 0, movedItem)
+    setMediaList(reordered)
+
+    const nextActiveIndex = reordered.findIndex(item => item.tempPath === activeMediaPath)
+    if (nextActiveIndex >= 0) {
+      setActiveIndex(nextActiveIndex)
+    }
+  }
+
+  const measureDragRects = (scope: 'thumb' | 'mini') => {
+    const selector = scope === 'thumb'
+      ? '.thumb-scroll .thumb-item'
+      : '.mini-thumb-scroll .mini-thumb-item'
+
+    const query = Taro.createSelectorQuery()
+    query.selectAll(selector).boundingClientRect()
+    query.exec((res) => {
+      const rects = (res?.[0] || []) as Array<{ left: number; width: number }>
+      dragRectsRef.current = rects.map((rect, index) => {
+        const left = rect.left || 0
+        const right = left + (rect.width || 0)
+        return {
+          index,
+          left,
+          right,
+          center: left + ((rect.width || 0) / 2)
+        }
+      })
+    })
+  }
+
+  const startDrag = (e: any, index: number, scope: 'thumb' | 'mini') => {
+    if (mediaList.length <= 1) return
+    if (dragAutoResetTimerRef.current) {
+      clearTimeout(dragAutoResetTimerRef.current)
+      dragAutoResetTimerRef.current = null
+    }
+    const touch = e?.touches?.[0] || e?.changedTouches?.[0]
+    setDragScope(scope)
+    setDraggingIndex(index)
+    setDragOverIndex(index)
+    setDragPreviewPath(mediaList[index]?.tempPath || '')
+    if (touch) {
+      setDragPointer({ x: touch.clientX, y: touch.clientY })
+    }
+    measureDragRects(scope)
+    dragAutoResetTimerRef.current = setTimeout(() => {
+      endDrag()
+    }, 4000)
+  }
+
+  const updateDragTarget = (touchX: number) => {
+    if (draggingIndex === null) return
+    const rects = dragRectsRef.current
+    if (!rects.length) return
+    let nextIndex = rects[0].index
+    let minDistance = Math.abs(touchX - rects[0].center)
+    for (let i = 1; i < rects.length; i += 1) {
+      const distance = Math.abs(touchX - rects[i].center)
+      if (distance < minDistance) {
+        minDistance = distance
+        nextIndex = rects[i].index
+      }
+    }
+    if (dragOverIndex !== nextIndex) {
+      setDragOverIndex(nextIndex)
+    }
+  }
+
+  const handleDragMove = (e: any) => {
+    if (draggingIndex === null) return
+    const touch = e?.touches?.[0]
+    if (!touch) return
+    if (dragAutoResetTimerRef.current) {
+      clearTimeout(dragAutoResetTimerRef.current)
+      dragAutoResetTimerRef.current = null
+    }
+    dragAutoResetTimerRef.current = setTimeout(() => {
+      endDrag()
+    }, 4000)
+    setDragPointer({ x: touch.clientX, y: touch.clientY })
+    updateDragTarget(touch.clientX)
+  }
+
+  const endDrag = () => {
+    if (dragAutoResetTimerRef.current) {
+      clearTimeout(dragAutoResetTimerRef.current)
+      dragAutoResetTimerRef.current = null
+    }
+    if (draggingIndex !== null && dragOverIndex !== null && draggingIndex !== dragOverIndex) {
+      moveMediaItem(draggingIndex, dragOverIndex)
+      suppressClickRef.current = true
+      setTimeout(() => {
+        suppressClickRef.current = false
+      }, 120)
+    }
+    setDraggingIndex(null)
+    setDragOverIndex(null)
+    setDragScope(null)
+    setDragPointer(null)
+    setDragPreviewPath('')
+    dragRectsRef.current = []
   }
 
   const handleBack = () => {
@@ -262,7 +492,7 @@ export default function PostCreatePage() {
       Taro.showToast({ title: '请先选择照片', icon: 'none' }); return
     }
     if (mediaList.some(m => m.isUploading)) {
-      Taro.showToast({ title: '图片上传中，请稍候...', icon: 'none' }); return
+      Taro.showToast({ title: '图片上传中，请稍候', icon: 'none' }); return
     }
     setStep('text')
   }
@@ -272,7 +502,7 @@ export default function PostCreatePage() {
       Taro.showToast({ title: '请输入标题', icon: 'none' }); return
     }
     if (mediaList.some(m => m.isUploading)) {
-      Taro.showToast({ title: '图片上传中，请稍候...', icon: 'none' }); return
+      Taro.showToast({ title: '图片上传中，请稍候', icon: 'none' }); return
     }
     if (mediaList.length === 0) {
       Taro.showToast({ title: '请至少添加一张图片', icon: 'none' }); return
@@ -283,7 +513,8 @@ export default function PostCreatePage() {
       const payload = {
         title,
         content,
-        topic_ids: [],
+        activity_id: selectedActivityId ?? null,
+        topic_ids: selectedTopics,
         location: selectedLocation
           ? {
             name: selectedLocation.name,
@@ -325,15 +556,21 @@ export default function PostCreatePage() {
   const canProceed = mediaList.length > 0 && !mediaList.some(m => m.isUploading)
   const canPublish = canProceed && title.trim().length > 0
 
-  // 弹窗列表：有搜索词 → 搜索结果；无搜索词 → 附近列表
+  // 弹窗列表：有搜索词显示搜索结果，否则显示附近列表
   const pickerDisplayList = locationSearchKey.trim() ? searchResults : nearbyPois
 
-  // 主页面默认展示前 3 个附近地点
   const defaultPois = nearbyPois.slice(0, 3)
+  const locationDisplayList = selectedLocation && !defaultPois.some(poi => poi.id === selectedLocation.id)
+    ? [selectedLocation, ...defaultPois]
+    : defaultPois
 
   return (
-    <View className='post-create-page'>
-      {/* 自定义导航栏 */}
+    <View
+      className='post-create-page'
+      onTouchMove={handleDragMove}
+      onTouchEnd={endDrag}
+      onTouchCancel={endDrag}
+    >
       <View
         className='custom-nav'
         style={{ paddingTop: `${statusBarHeight}px`, height: `${navBarHeight}px` }}
@@ -363,12 +600,23 @@ export default function PostCreatePage() {
               )}
             </View>
 
-            <ScrollView scrollX className='thumb-scroll' enableFlex>
+            <ScrollView
+              scrollX
+              className='thumb-scroll'
+              enableFlex
+              onTouchMove={handleDragMove}
+              onTouchEnd={endDrag}
+              onTouchCancel={endDrag}
+            >
               {mediaList.map((item, idx) => (
                 <View
                   key={item.tempPath}
-                  className={`thumb-item ${activeIndex === idx ? 'active' : ''}`}
-                  onClick={() => setActiveIndex(idx)}
+                  className={`thumb-item ${activeIndex === idx ? 'active' : ''} ${draggingIndex === idx ? 'is-dragging' : ''} ${dragOverIndex === idx && draggingIndex !== null && draggingIndex !== idx ? 'is-drop-target' : ''}`}
+                  onClick={() => {
+                    if (suppressClickRef.current) return
+                    setActiveIndex(idx)
+                  }}
+                  onLongPress={(e) => startDrag(e, idx, 'thumb')}
                 >
                   <Image src={item.tempPath} mode='aspectFill' className='thumb-image' />
                   <View className='thumb-close' onClick={(e) => { e.stopPropagation(); handleDeleteImage(idx) }}>
@@ -393,9 +641,20 @@ export default function PostCreatePage() {
 
           /* ===== 文字步骤 ===== */
           <View className='text-step'>
-            <ScrollView scrollX className='mini-thumb-scroll' enableFlex>
+            <ScrollView
+              scrollX
+              className='mini-thumb-scroll'
+              enableFlex
+              onTouchMove={handleDragMove}
+              onTouchEnd={endDrag}
+              onTouchCancel={endDrag}
+            >
               {mediaList.map((item, idx) => (
-                <View key={item.tempPath} className='mini-thumb-item'>
+                <View
+                  key={item.tempPath}
+                  className={`mini-thumb-item ${draggingIndex === idx ? 'is-dragging' : ''} ${dragOverIndex === idx && draggingIndex !== null && draggingIndex !== idx ? 'is-drop-target' : ''}`}
+                  onLongPress={(e) => startDrag(e, idx, 'mini')}
+                >
                   <Image src={item.tempPath} mode='aspectFill' className='mini-thumb-image' />
                   <View className='mini-thumb-close' onClick={(e) => { e.stopPropagation(); handleDeleteImage(idx) }}>
                     <AtIcon value='close' size='12' color='#fff' />
@@ -422,7 +681,7 @@ export default function PostCreatePage() {
               <View className='content-box'>
                 <Textarea
                   className='content-input'
-                  placeholder='添加正文（记录此时此地的美好）'
+                  placeholder='添加正文，记录此时此地的美好'
                   placeholderClass='ph-content'
                   maxlength={1000}
                   value={content}
@@ -439,11 +698,24 @@ export default function PostCreatePage() {
               <View className='section-header'>
                 <Text className='section-title'>#话题</Text>
                 <Text className='section-sub'>可多选</Text>
-                <Text className='section-action'>添加</Text>
+                {selectedTopics.length > 0 && (
+                  <Text className='section-action' onClick={() => setSelectedTopics([])}>清除</Text>
+                )}
               </View>
               <View className='tag-list'>
-                <View className='tag-item active'>骑行</View>
-                <View className='tag-item'>周末去哪玩</View>
+                {topicCandidates.length > 0 ? (
+                  topicCandidates.map((topic) => (
+                    <View
+                      key={`topic-${topic.id}`}
+                      className={`tag-item ${selectedTopics.includes(topic.id) ? 'active' : ''}`}
+                      onClick={() => handleToggleTopic(topic.id)}
+                    >
+                      {topic.name}
+                    </View>
+                  ))
+                ) : (
+                  <Text className='location-hint-text'>上传图片后自动识别话题</Text>
+                )}
               </View>
             </View>
 
@@ -452,41 +724,31 @@ export default function PostCreatePage() {
               <View className='section-header'>
                 <Text className='section-title'>位置</Text>
                 <Text className='section-sub'>添加位置让更多人看到你</Text>
-                <Text className='section-action' onClick={handleOpenLocationPicker}>
-                  {selectedLocation ? '更换' : '添加'}
+                <Text
+                  className='section-action'
+                  onClick={selectedLocation ? handleClearLocation : handleOpenLocationPicker}
+                >
+                  {selectedLocation ? '清除' : '添加'}
                 </Text>
               </View>
 
-              {/* 已选中：高亮展示，点击可取消 */}
-              {selectedLocation && (
-                <View className='tag-list'>
-                  <View className='tag-item active' onClick={() => setSelectedLocation(null)}>
-                    <Text>{selectedLocation.name}</Text>
-                    <AtIcon value='close' size='10' color='#fff' className='tag-close-icon' />
-                  </View>
-                </View>
-              )}
-
-              {/* 未选中：展示前 3 个附近地点，快速选择 */}
-              {!selectedLocation && (
-                <View className='tag-list'>
-                  {isLoadingLocation ? (
-                    <Text className='location-hint-text'>定位中...</Text>
-                  ) : defaultPois.length > 0 ? (
-                    defaultPois.map((poi) => (
-                      <View
-                        key={poi.id}
-                        className='tag-item'
-                        onClick={() => handleSelectLocation(poi)}
-                      >
-                        {poi.name}
-                      </View>
-                    ))
-                  ) : (
-                    <Text className='location-hint-text'>暂无附近地点，点击添加</Text>
-                  )}
-                </View>
-              )}
+              <View className='tag-list'>
+                {isLoadingLocation ? (
+                  <Text className='location-hint-text'>定位中...</Text>
+                ) : locationDisplayList.length > 0 ? (
+                  locationDisplayList.map((poi) => (
+                    <View
+                      key={poi.id}
+                      className={`tag-item ghost ${selectedLocation?.id === poi.id ? 'active' : ''}`}
+                      onClick={() => handleSelectLocation(poi)}
+                    >
+                      {poi.name}
+                    </View>
+                  ))
+                ) : (
+                  <Text className='location-hint-text'>暂无附近地点，点击添加</Text>
+                )}
+              </View>
             </View>
 
             {/* 活动 */}
@@ -494,11 +756,29 @@ export default function PostCreatePage() {
               <View className='section-header'>
                 <Text className='section-title'>活动</Text>
                 <Text className='section-sub'>关联已订阅活动</Text>
+                {selectedActivityId !== null && (
+                  <Text className='section-action' onClick={() => setSelectedActivityId(null)}>清除</Text>
+                )}
               </View>
               <View className='tag-list'>
-                <View className='tag-item ghost'>PURE LOOP</View>
-                <View className='tag-item ghost'>嘻哈盛典</View>
-                <View className='tag-item ghost'>HYPER新年典礼</View>
+                {activityLoading && (
+                  <Text className='location-hint-text'>加载中...</Text>
+                )}
+                {!activityLoading && activityError && (
+                  <Text className='location-hint-text' onClick={fetchSubscribedActivities}>{activityError}</Text>
+                )}
+                {!activityLoading && !activityError && subscribedActivities.length === 0 && (
+                  <Text className='location-hint-text'>暂无已订阅活动</Text>
+                )}
+                {!activityLoading && !activityError && subscribedActivities.map((item) => (
+                  <View
+                    key={`activity-${item.id}`}
+                    className={`tag-item ghost ${selectedActivityId === item.id ? 'active' : ''}`}
+                    onClick={() => handleSelectActivity(item.id)}
+                  >
+                    {item.title}
+                  </View>
+                ))}
               </View>
             </View>
           </View>
@@ -520,7 +800,7 @@ export default function PostCreatePage() {
         )}
       </View>
 
-      {/* ===== 位置选择弹窗（半屏 bottom sheet） ===== */}
+      {/* ===== 位置选择弹窗（半屏 Bottom Sheet） ===== */}
       {showLocationPicker && (
         <View className='location-picker-mask' onClick={() => setShowLocationPicker(false)}>
           <View className='location-picker-sheet' onClick={(e) => e.stopPropagation()}>
@@ -594,7 +874,7 @@ export default function PostCreatePage() {
                   <View className='picker-item-info'>
                     <Text className='picker-item-name'>{poi.name}</Text>
                     <Text className='picker-item-address'>
-                      {poi.distance ? `${poi.distance}m · ` : ''}{poi.address}
+                      {poi.distance ? `${poi.distance}m 路 ` : ''}{poi.address}
                     </Text>
                   </View>
                   {selectedLocation?.id === poi.id && (
@@ -615,6 +895,21 @@ export default function PostCreatePage() {
           </View>
         </View>
       )}
+
+      {draggingIndex !== null && dragPointer && dragPreviewPath && (
+        <View
+          className='drag-follow-ghost'
+          style={{
+            left: `${dragPointer.x}px`,
+            top: `${dragPointer.y}px`,
+            width: dragScope === 'thumb' ? '120px' : '104px',
+            height: dragScope === 'thumb' ? '120px' : '104px',
+          }}
+        >
+          <Image src={dragPreviewPath} mode='aspectFill' className='drag-follow-image' />
+        </View>
+      )}
     </View>
+
   )
 }

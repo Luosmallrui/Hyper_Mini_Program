@@ -29,6 +29,15 @@ interface ActivityCardExt {
     title?: string
     cover?: string
     cover_image?: string
+    images?: string[]
+    location_name?: string
+  }
+  party?: {
+    id?: string | number
+    title?: string
+    cover?: string
+    cover_image?: string
+    images?: string[]
     location_name?: string
   }
 }
@@ -655,7 +664,7 @@ export default function ChatPage() {
       return
     }
     if (msg.msg_type === 9 && msg.ext?.card_type === 'activity_forward') {
-      const activityId = String(msg.ext.activity_id || msg.ext.activity?.id || '')
+      const activityId = String(msg.ext.activity_id || msg.ext.activity?.id || msg.ext.party?.id || '')
       if (activityId) {
         Taro.navigateTo({ url: `/pages/activity/index?id=${activityId}` })
       }
@@ -695,9 +704,13 @@ export default function ChatPage() {
     }
 
     if (msg.msg_type === 9 && msg.ext?.card_type === 'activity_forward') {
-      const activityTitle = msg.ext?.activity?.name || msg.ext?.activity?.title || '活动转发'
-      const activityLocation = msg.ext?.activity?.location_name || ''
-      const activityCover = msg.ext?.activity?.cover || msg.ext?.activity?.cover_image || ''
+      const activitySource = msg.ext?.activity || msg.ext?.party
+      const activityTitle = activitySource?.name || activitySource?.title || '活动转发'
+      const activityLocation = activitySource?.location_name || ''
+      const activityCover = activitySource?.cover
+        || activitySource?.cover_image
+        || activitySource?.images?.[0]
+        || ''
       return (
         <View className='card-bubble' onClick={() => handleCardClick(msg)}>
           <View className='card-header'>
@@ -835,4 +848,3 @@ export default function ChatPage() {
     </View>
   )
 }
-

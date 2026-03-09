@@ -124,8 +124,19 @@ page {
   }
 
   .tags {
-     display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;
-     .tag { color: #1E80FF; font-size: 30rpx; }
+     display: flex;
+     flex-wrap: wrap;
+     gap: 10px;
+     margin-bottom: 16px;
+
+     .tag {
+       padding: 6px 16px;
+       border-radius: 999px;
+       background: rgba(34, 118, 255, 0.12);
+       color: #69a2ff;
+       font-size: 24rpx;
+       line-height: 1.4;
+     }
   }
 
   .post-meta {
@@ -133,6 +144,66 @@ page {
       font-size: 24rpx;
       color: #666;
       gap: 10px;
+  }
+
+  .activity-preview-card {
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(28, 28, 30, 0.98) 0%, rgba(18, 18, 20, 0.98) 100%);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+  }
+
+  .activity-preview-cover {
+      width: 140rpx;
+      height: 140rpx;
+      border-radius: 18px;
+      background: #1c1c1e;
+      flex-shrink: 0;
+  }
+
+  .activity-preview-body {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+  }
+
+  .activity-preview-title {
+      font-size: 28rpx;
+      color: #fff;
+      font-weight: 600;
+      line-height: 1.4;
+  }
+
+  .activity-preview-location {
+      font-size: 22rpx;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.5;
+  }
+
+  .activity-preview-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+  }
+
+  .activity-preview-hours {
+      font-size: 22rpx;
+      color: #8d8d93;
+  }
+
+  .activity-preview-status {
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      font-size: 22rpx;
+      flex-shrink: 0;
   }
 }
 
@@ -372,6 +443,26 @@ page {
 /* 应用动画的类 */
 .liked-anim {
   animation: likeBounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.like-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.comment-like {
+  width: 24rpx;
+  height: 24rpx;
+}
+
+.reply-like {
+  width: 20rpx;
+  height: 20rpx;
+}
+
+.bottom-like {
+  width: 44rpx;
+  height: 44rpx;
 }
 
 /* 分享弹窗样式 */
