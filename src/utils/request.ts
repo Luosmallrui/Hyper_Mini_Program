@@ -129,7 +129,10 @@ export const request = async (options: Taro.request.Option) => {
 
   const header = {
     ...options.header,
-    Authorization: accessToken ? `Bearer ${accessToken}` : '',
+  }
+
+  if (accessToken) {
+    header.Authorization = `Bearer ${accessToken}`
   }
 
   const res = await Taro.request({

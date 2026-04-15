@@ -56,6 +56,13 @@ const normalizeUserInfo = (user: any) => {
   };
 };
 
+const ALLOW_ORGANIZER_DEBUG = true;
+
+const isMerchantUser = (user: any) => {
+  if (ALLOW_ORGANIZER_DEBUG) return true;
+  return Boolean(user?.is_merchant || user?.merchant_id);
+};
+
 const parseJSONWithBigInt = (jsonStr: string) => {
   if (typeof jsonStr !== 'string') return jsonStr;
   try {
@@ -526,6 +533,15 @@ export default function UserPage() {
       handleLogin(false);
       return;
     }
+
+    if (item.route === '/pages/user-sub/organizer/index' && !isMerchantUser(userInfo)) {
+      Taro.showToast({
+        title: '当前账号未开通主办中心',
+        icon: 'none'
+      });
+      return;
+    }
+
     if (item.route) {
       Taro.navigateTo({ url: item.route });
     }
@@ -566,7 +582,8 @@ export default function UserPage() {
     },
     {
       icon: require('../../assets/images/Event_Organizing_Center.png'),
-      label: '主办中心'
+      label: '主办中心',
+      route: '/pages/user-sub/organizer/index'
     }
   ];
 
@@ -840,4 +857,3 @@ export default function UserPage() {
     </ScrollView>
   );
 }
-

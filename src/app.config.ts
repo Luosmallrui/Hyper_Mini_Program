@@ -45,7 +45,8 @@ export default defineAppConfig({
       pages: [
         'follow-list/index',
         'profile/index',
-        'points/index'
+        'points/index',
+        'organizer/index'
       ]
     },
     {

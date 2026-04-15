@@ -205,7 +205,10 @@ export default function AuthGate(props: AuthGateProps) {
       await fetchLatestUser()
     } catch (error) {}
 
-    Taro.eventCenter.trigger('AUTH_LOGIN_SUCCESS')
+    // Defer route changes so the current login flow can finish cleanly first.
+    setTimeout(() => {
+      Taro.eventCenter.trigger('AUTH_LOGIN_SUCCESS')
+    }, 0)
   }
 
   const doQuickLogin = async () => {
