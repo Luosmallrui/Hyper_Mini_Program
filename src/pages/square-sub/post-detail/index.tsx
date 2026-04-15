@@ -165,7 +165,7 @@ export default function PostDetailPage() {
         })
       }
     } catch (e) {
-      console.error('鑾峰彇璇︽儏澶辫触', e)
+      console.error('获取详情失败', e)
     } finally {
       setLoading(false)
     }
@@ -199,7 +199,7 @@ export default function PostDetailPage() {
         setHasMoreComments(has_more)
       }
     } catch (e) {
-      console.error('鑾峰彇璇勮澶辫触', e)
+      console.error('获取评论失败', e)
     } finally {
       setIsCommentLoading(false)
     }
@@ -405,7 +405,7 @@ export default function PostDetailPage() {
     }
   }
 
-  // 鑾峰彇浼氳瘽鍒楄〃
+  // 获取会话列表
   const fetchSessionList = async () => {
     setLoadingSession(true)
     try {
@@ -560,7 +560,7 @@ export default function PostDetailPage() {
 
         <View className='divider' />
 
-        {/* 璇勮鍖?*/}
+        {/* 评论区 */}
         <View className='comment-section'>
           <Text className='comment-count'>共{note.comment_count}条评论</Text>
 
@@ -688,7 +688,7 @@ export default function PostDetailPage() {
         </View>
       </View>
 
-      {/* 璇勮杈撳叆妗?*/}
+      {/* 评论输入框 */}
       {inputFocus && (
         <View className='comment-input-mask' onClick={() => setInputFocus(false)}>
           <View className='real-input-bar' onClick={e => e.stopPropagation()}>

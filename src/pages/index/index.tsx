@@ -271,6 +271,28 @@ export default function IndexPage() {
     }
   }
 
+  const getCurrentMapCenter = async () => {
+    const ctx = getMapContext()
+    if (!ctx || typeof ctx.getCenterLocation !== 'function') return null
+
+    try {
+      const res: any = await new Promise((resolve) => {
+        ctx.getCenterLocation({
+          success: (ret) => resolve(ret),
+          fail: () => resolve(null),
+        })
+      })
+      const longitude = Number(res?.longitude)
+      const latitude = Number(res?.latitude)
+      if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
+        return null
+      }
+      return { lng: longitude, lat: latitude }
+    } catch (error) {
+      return null
+    }
+  }
+
   const stopCameraAnimation = () => {
     if (cameraAnimTimerRef.current) {
       clearTimeout(cameraAnimTimerRef.current)
@@ -474,12 +496,23 @@ export default function IndexPage() {
     }
   }
 
-  const handleRegionChange = (e: any) => {
+  const handleRegionChange = async (e: any) => {
     const detail = e?.detail || {}
     if (detail.type !== 'end') return
     if (typeof detail.scale === 'number' && Number.isFinite(detail.scale)) {
       mapScaleRef.current = detail.scale
     }
+
+    if (cameraAnimTargetRef.current) return
+
+    const center = await getCurrentMapCenter()
+    if (!center) return
+
+    initialCenterRef.current = center
+    setInitialCenter((prev) => {
+      const isSameCenter = Math.abs(prev.lng - center.lng) < 0.00001 && Math.abs(prev.lat - center.lat) < 0.00001
+      return isSameCenter ? prev : center
+    })
   }
 
   Taro.useDidShow(() => {

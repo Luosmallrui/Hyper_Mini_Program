@@ -189,7 +189,7 @@ export default function UserPage() {
         setNeedPhoneAuth(!normalizedUser.phone_number);
       }
     } catch (error) {
-      console.error('鑾峰彇鐢ㄦ埛淇℃伅澶辫触:', error);
+      console.error('获取用户信息失败:', error);
     }
   };
 
@@ -227,14 +227,14 @@ export default function UserPage() {
         setHasMore(has_more || false);
       } else {
         Taro.showToast({
-          title: resBody?.msg || '鍔犺浇澶辫触',
+          title: resBody?.msg || '加载失败',
           icon: 'none'
         });
       }
     } catch (error) {
-      console.error('鍔犺浇绗旇澶辫触:', error);
+      console.error('加载笔记失败:', error);
       Taro.showToast({
-        title: '鍔犺浇澶辫触',
+        title: '加载失败',
         icon: 'none'
       });
     } finally {
@@ -292,8 +292,8 @@ export default function UserPage() {
   const handleLogoutClick = () => {
     setTimeout(() => {
       Taro.showModal({
-        title: '鎻愮ず',
-        content: '?????????',
+        title: '提示',
+        content: '确定要退出登录吗？',
         confirmColor: '#FF2E4D',
         success: function (modalRes) {
           if (modalRes.confirm) {
@@ -306,7 +306,7 @@ export default function UserPage() {
 
   const handleOpenSettings = () => {
     Taro.showActionSheet({
-      itemList: ['????'],
+      itemList: ['退出登录'],
       success: res => {
         if (res.tapIndex === 0) {
           handleLogoutClick();
@@ -316,7 +316,7 @@ export default function UserPage() {
   };
 
   const handleLogin = async (isSilent = false) => {
-    if (!isSilent) Taro.showLoading({ title: '鐧诲綍涓?..' });
+    if (!isSilent) Taro.showLoading({ title: '登录中...' });
 
     try {
       const loginRes = await Taro.login();
@@ -333,7 +333,7 @@ export default function UserPage() {
         try {
           resBody = JSON.parse(resBody);
         } catch (e) {
-          console.error('瑙ｆ瀽鍝嶅簲澶辫触:', e);
+          console.error('解析响应失败:', e);
         }
       }
 
@@ -345,25 +345,25 @@ export default function UserPage() {
         await fetchLatestUserInfo();
         if (!isSilent) {
           Taro.hideLoading();
-          Taro.showToast({ title: '鐧诲綍鎴愬姛', icon: 'success' });
+          Taro.showToast({ title: '登录成功', icon: 'success' });
         }
       } else if (!isSilent) {
         Taro.hideLoading();
-        const errorMsg = resBody?.msg || '鐧诲綍澶辫触';
+        const errorMsg = resBody?.msg || '登录失败';
         Taro.showToast({ title: errorMsg, icon: 'none' });
       }
     } catch (error) {
       if (!isSilent) {
         Taro.hideLoading();
-        Taro.showToast({ title: '璇锋眰澶辫触', icon: 'none' });
+        Taro.showToast({ title: '请求失败', icon: 'none' });
       }
-      console.error('鐧诲綍澶辫触:', error);
+      console.error('登录失败:', error);
     }
   };
 
   const onGetPhoneNumber = async (e: any) => {
     if (!e.detail?.code) return;
-    Taro.showLoading({ title: '缁戝畾涓?..' });
+    Taro.showLoading({ title: '绑定中...' });
 
     try {
       const res = await request({
@@ -376,15 +376,15 @@ export default function UserPage() {
 
       const resBody: any = res.data;
       if (resBody && resBody.code === 200) {
-        Taro.showToast({ title: '缁戝畾鎴愬姛', icon: 'success' });
+        Taro.showToast({ title: '绑定成功', icon: 'success' });
         fetchLatestUserInfo();
       } else {
-        Taro.showToast({ title: resBody?.msg || '缁戝畾澶辫触', icon: 'none' });
+        Taro.showToast({ title: resBody?.msg || '绑定失败', icon: 'none' });
       }
     } catch (error) {
       Taro.hideLoading();
-      Taro.showToast({ title: '缃戠粶璇锋眰澶辫触', icon: 'none' });
-      console.error('缁戝畾鎵嬫満鍙峰け璐?', error);
+      Taro.showToast({ title: '网络请求失败', icon: 'none' });
+      console.error('绑定手机号失败:', error);
     }
   };
 
@@ -413,10 +413,10 @@ export default function UserPage() {
 
   const handleSubmitProfile = async () => {
     if (!tempNickname) {
-      Taro.showToast({ title: '?????', icon: 'none' });
+      Taro.showToast({ title: '请输入昵称', icon: 'none' });
       return;
     }
-    Taro.showLoading({ title: '淇濆瓨涓?..' });
+    Taro.showLoading({ title: '保存中...' });
     const accessToken = Taro.getStorageSync('access_token');
 
     try {
@@ -437,14 +437,14 @@ export default function UserPage() {
         try {
           uploadData = JSON.parse(uploadRes.data);
         } catch (e) {
-          throw new Error('澶村儚涓婁紶瑙ｆ瀽澶辫触');
+          throw new Error('头像上传解析失败');
         }
 
         if (uploadData.code === 200) {
           finalAvatarUrl =
             typeof uploadData.data === 'string' ? uploadData.data : uploadData.data?.url;
         } else {
-          throw new Error(uploadData.msg || '澶村儚涓婁紶澶辫触');
+          throw new Error(uploadData.msg || '头像上传失败');
         }
       } else if (tempAvatar !== userInfo.avatar_url) {
         finalAvatarUrl = tempAvatar;
@@ -461,15 +461,15 @@ export default function UserPage() {
       const resBody: any = updateRes.data;
       if (resBody && resBody.code === 200) {
         setShowAuthModal(false);
-        Taro.showToast({ title: '淇濆瓨鎴愬姛', icon: 'success' });
+        Taro.showToast({ title: '保存成功', icon: 'success' });
         fetchLatestUserInfo();
       } else {
-        Taro.showToast({ title: resBody?.msg || '淇濆瓨澶辫触', icon: 'none' });
+        Taro.showToast({ title: resBody?.msg || '保存失败', icon: 'none' });
       }
     } catch (error: any) {
       Taro.hideLoading();
-      Taro.showToast({ title: error.message || '鎿嶄綔澶辫触', icon: 'none' });
-      console.error('淇濆瓨璧勬枡澶辫触:', error);
+      Taro.showToast({ title: error.message || '操作失败', icon: 'none' });
+      console.error('保存资料失败:', error);
     }
   };
 
@@ -833,7 +833,8 @@ export default function UserPage() {
             openType="getPhoneNumber"
             onGetPhoneNumber={onGetPhoneNumber}
           >
-            缁戝畾鎵嬫満鍙?          </Button>
+            绑定手机号
+          </Button>
         </View>
       )}
     </ScrollView>
