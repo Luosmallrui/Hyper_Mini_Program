@@ -6,6 +6,8 @@ export type OrganizerDashboardView =
   | 'createWizard'
   | 'nonMerchant'
 
+export type OrganizerDashboardTab = Exclude<OrganizerDashboardView, 'createWizard' | 'nonMerchant'>
+
 export type OrganizerActivityTab = 'activities' | 'sales' | 'orders' | 'verifiers'
 
 export type OrganizerActivityStatus = 'published' | 'pending' | 'removed' | 'rejected'
