@@ -1,4 +1,4 @@
-﻿import { View, Text, Image, Swiper, SwiperItem, ScrollView, Input } from '@tarojs/components'
+import { View, Text, Image, Swiper, SwiperItem, ScrollView, Input } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { AtIcon, AtActivityIndicator, AtFloatLayout } from 'taro-ui'
@@ -8,13 +8,14 @@ import 'taro-ui/dist/style/components/float-layout.scss'
 import lightningFilledIcon from '@/assets/icons/lightning.svg'
 import lightningOutlineIcon from '@/assets/icons/lightning-outline.svg'
 import { request } from '../../../utils/request'
+import { requireLogin } from '../../../utils/auth'
 import './index.scss'
 
 const BASE_URL = 'https://www.hypercn.cn'
 
 interface NoteMedia { url: string; thumbnail_url: string; width: number; height: number; type?: number }
 interface NoteLocation { lat: number; lng: number; name: string }
-interface UserInfo { user_id: string; nickname: string; avatar: string }
+interface UserInfo { user_id: string; user_hash_id?: string; nickname: string; avatar: string }
 interface NoteTopic { id: number; name: string }
 interface NoteActivity {
   id: string
@@ -22,7 +23,11 @@ interface NoteActivity {
   location_name?: string
   images?: string[]
   business_hours?: string
+  detail_url?: string
   is_subscribe?: boolean
+  organizer_id?: string
+  organizer_name?: string
+  organizer_logo?: string
 }
 
 interface NoteDetail {
@@ -42,7 +47,7 @@ interface ReplyItem {
 }
 
 interface CommentItem {
-  id: string; note_id: string; user_id: string; content: string;
+  id: string; note_id: string; user_id: string | number; user_hash_id?: string; content: string;
   like_count: number; reply_count: number; ip_location: string; is_liked: boolean; created_at: string;
   user: UserInfo;
   latest_replies: ReplyItem[];
@@ -68,6 +73,36 @@ interface SessionItem {
   peer_name: string;
 }
 
+const readText = (value: unknown) => String(value ?? '').trim()
+
+const readImageSource = (value: any): string[] => {
+  if (!value) return []
+  if (Array.isArray(value)) return value.flatMap(readImageSource)
+  if (typeof value === 'object') return [value.url, value.thumbnail_url, value.poster_url].map(readText).filter(Boolean)
+
+  const text = readText(value)
+  if (!text) return []
+  if (text.startsWith('[')) {
+    try {
+      return readImageSource(JSON.parse(text))
+    } catch (_e) {}
+  }
+  return text.split(',').map(item => item.trim()).filter(Boolean)
+}
+
+const normalizeActivityImages = (activity: any): string[] => Array.from(new Set([
+  ...readImageSource(activity?.poster_list),
+  ...readImageSource(activity?.poster_detail),
+  ...readImageSource(activity?.images),
+]))
+
+const formatActivityTimeRange = (startTime: unknown, endTime: unknown) => {
+  const start = readText(startTime)
+  const end = readText(endTime)
+  if (start && end) return `${start} - ${end}`
+  return start || end
+}
+
 export default function PostDetailPage() {
   const router = useRouter()
   const { id } = router.params
@@ -84,6 +119,7 @@ export default function PostDetailPage() {
   const [commentCursor, setCommentCursor] = useState<string>('0')
   const [hasMoreComments, setHasMoreComments] = useState(true)
   const [isCommentLoading, setIsCommentLoading] = useState(false)
+  const [collectPending, setCollectPending] = useState(false)
 
   const [inputText, setInputText] = useState('')
   const [inputFocus, setInputFocus] = useState(false)
@@ -93,6 +129,7 @@ export default function PostDetailPage() {
   const [sessionList, setSessionList] = useState<SessionItem[]>([])
   const [loadingSession, setLoadingSession] = useState(false)
   const [shareMsg, setShareMsg] = useState('')
+  const [selectedShareSession, setSelectedShareSession] = useState<SessionItem | null>(null)
 
   useEffect(() => {
     const sysInfo = Taro.getWindowInfo()
@@ -126,7 +163,7 @@ export default function PostDetailPage() {
       const res = await Taro.request({
         url: `${BASE_URL}/api/v1/note/${noteId}`,
         method: 'GET',
-        header: { 'Authorization': `Bearer ${token}` },
+        header: token ? { 'Authorization': `Bearer ${token}` } : {},
         dataType: 'string', responseType: 'text'
       })
       const resBody = parseJSONWithBigInt(res.data as string)
@@ -149,10 +186,14 @@ export default function PostDetailPage() {
           ? {
             id: String(data.activity.id || ''),
             name: String(data.activity.name || '').trim(),
-            location_name: String(data.activity.location_name || '').trim(),
-            images: Array.isArray(data.activity.images) ? data.activity.images.filter(Boolean) : [],
-            business_hours: String(data.activity.business_hours || '').trim(),
-            is_subscribe: Boolean(data.activity.is_subscribe)
+            location_name: String(data.activity.address || data.activity.location_name || '').trim(),
+            images: normalizeActivityImages(data.activity),
+            business_hours: formatActivityTimeRange(data.activity.start_time, data.activity.end_time) || String(data.activity.business_hours || '').trim(),
+            detail_url: String(data.activity.detail_url || '').trim(),
+            is_subscribe: Boolean(data.activity.is_subscribe),
+            organizer_id: String(data.activity.organizer_id || '').trim(),
+            organizer_name: String(data.activity.organizer_name || '').trim(),
+            organizer_logo: String(data.activity.organizer_logo || '').trim()
           }
           : null
         setNote({
@@ -181,7 +222,7 @@ export default function PostDetailPage() {
         url: `${BASE_URL}/api/v1/comments/list/${noteId}`,
         method: 'GET',
         data: { cursor, page_size: 20 },
-        header: { 'Authorization': `Bearer ${token}` },
+        header: token ? { 'Authorization': `Bearer ${token}` } : {},
         dataType: 'string', responseType: 'text'
       })
       const resBody = parseJSONWithBigInt(res.data as string)
@@ -189,6 +230,7 @@ export default function PostDetailPage() {
         const { comments, next_cursor, has_more } = resBody.data
         const newComments = (comments || []).map((item: CommentItem) => ({
           ...item,
+          latest_replies: Array.isArray(item.latest_replies) ? item.latest_replies : [],
           reply_has_more: item.reply_count > (item.latest_replies?.length || 0),
           reply_cursor: '0',
           reply_loading: false
@@ -224,7 +266,7 @@ export default function PostDetailPage() {
         url: `${BASE_URL}/api/v1/comments/replies/${rootId}`,
         method: 'GET',
         data: { cursor, page_size: 10 },
-        header: { 'Authorization': `Bearer ${token}` },
+        header: token ? { 'Authorization': `Bearer ${token}` } : {},
         dataType: 'string', responseType: 'text'
       })
       const resBody = parseJSONWithBigInt(res.data as string)
@@ -234,12 +276,14 @@ export default function PostDetailPage() {
         setCommentList(prev => {
           const newList = [...prev]
           const target = newList[commentIndex]
-          const existingIds = new Set(target.latest_replies.map(r => r.id))
+          if (!target) return prev
+          const currentReplies = Array.isArray(target.latest_replies) ? target.latest_replies : []
+          const existingIds = new Set(currentReplies.map(r => r.id))
           const uniqueNewReplies = newReplies.filter((r: ReplyItem) => !existingIds.has(r.id))
 
           newList[commentIndex] = {
             ...target,
-            latest_replies: isRefresh ? newReplies : [...target.latest_replies, ...uniqueNewReplies],
+            latest_replies: isRefresh ? newReplies : [...currentReplies, ...uniqueNewReplies],
             reply_cursor: String(next_cursor),
             reply_has_more: has_more,
             reply_loading: false
@@ -273,14 +317,80 @@ export default function PostDetailPage() {
     setInputFocus(true)
   }
 
+  const getCurrentCommentUser = (): UserInfo => {
+    const userInfo = Taro.getStorageSync('userInfo') || {}
+    const uid = userInfo.user_id ?? userInfo.id ?? userInfo.uid ?? ''
+    return {
+      user_id: String(uid),
+      user_hash_id: String(userInfo.user_hash_id || userInfo.user_id || ''),
+      nickname: String(userInfo.nickname || userInfo.nickName || '我'),
+      avatar: String(userInfo.avatar_url || userInfo.avatar || '')
+    }
+  }
+
+  const appendSentComment = (target: ReplyTarget | { type: string; id: string; root_id: string; parent_id: string; user: null }, responseData: any, content: string) => {
+    const currentUser = getCurrentCommentUser()
+    const createdAt = responseData?.created_at || new Date().toISOString()
+    const newId = String(responseData?.id || responseData?.comment_id || responseData?.reply_id || `local_${Date.now()}`)
+
+    if (target.root_id === '0') {
+      const nextComment: CommentItem = {
+        id: newId,
+        note_id: String(note?.id || ''),
+        user_id: currentUser.user_id,
+        content,
+        like_count: 0,
+        reply_count: 0,
+        ip_location: '',
+        is_liked: false,
+        created_at: createdAt,
+        user: currentUser,
+        latest_replies: [],
+        reply_cursor: '0',
+        reply_has_more: false,
+        reply_loading: false
+      }
+      setCommentList(prev => [nextComment, ...prev.filter(item => String(item.id) !== newId)])
+      setNote(prev => prev ? ({ ...prev, comment_count: prev.comment_count + 1 }) : prev)
+      return
+    }
+
+    const nextReply: ReplyItem = {
+      id: newId,
+      root_id: target.root_id,
+      parent_id: target.parent_id,
+      content,
+      like_count: 0,
+      is_liked: false,
+      ip_location: '',
+      created_at: createdAt,
+      user: currentUser,
+      reply_to_user: target.user || currentUser
+    }
+
+    setCommentList(prev => prev.map(comment => {
+      if (String(comment.id) !== String(target.root_id)) return comment
+      const currentReplies = Array.isArray(comment.latest_replies) ? comment.latest_replies : []
+      const exists = currentReplies.some(reply => String(reply.id) === newId)
+      return {
+        ...comment,
+        reply_count: comment.reply_count + (exists ? 0 : 1),
+        latest_replies: exists ? currentReplies : [...currentReplies, nextReply]
+      }
+    }))
+    setNote(prev => prev ? ({ ...prev, comment_count: prev.comment_count + 1 }) : prev)
+  }
+
   const handleSend = async () => {
-    if (!inputText.trim()) { Taro.showToast({ title: '说点什么吧', icon: 'none' }); return }
+    if (!requireLogin()) return
+    const contentToSend = inputText.trim()
+    if (!contentToSend) { Taro.showToast({ title: '说点什么吧', icon: 'none' }); return }
     if (!note) return
     Taro.showLoading({ title: '发送中' })
     try {
       const target = replyTarget || { type: 'note', id: note.id, root_id: '0', parent_id: '0', user: null }
       const payload = {
-        note_id: note.id, content: inputText, root_id: target.root_id, parent_id: target.parent_id,
+        note_id: note.id, content: contentToSend, root_id: target.root_id, parent_id: target.parent_id,
         reply_to_user_id: target.user ? target.user.user_id : '0'
       }
       const res = await request({ url: '/api/v1/comments/create', method: 'POST', data: payload })
@@ -288,11 +398,14 @@ export default function PostDetailPage() {
       const resData: any = res.data
       if (resData && resData.code === 200) {
         Taro.showToast({ title: '评论成功', icon: 'success' })
+        appendSentComment(target, resData.data, contentToSend)
         setInputText('')
         setInputFocus(false)
         setReplyTarget(null)
-        if (target.root_id === '0') fetchComments(note.id, true)
-        else fetchReplies(target.root_id, true)
+        setTimeout(() => {
+          if (target.root_id === '0') fetchComments(note.id, true)
+          else fetchReplies(target.root_id, true)
+        }, 600)
       } else {
         Taro.showToast({ title: resData?.msg || '失败', icon: 'none' })
       }
@@ -309,6 +422,7 @@ export default function PostDetailPage() {
     isLiked: boolean,
     parentCommentId?: string
   ) => {
+    if (!requireLogin()) return
     const url = isLiked ? '/api/v1/comments/unlike' : '/api/v1/comments/like'
 
     if (type === 'comment') {
@@ -322,10 +436,10 @@ export default function PostDetailPage() {
     } else if (type === 'reply' && parentCommentId) {
       setCommentList(prev =>
         prev.map(c =>
-          c.id === parentCommentId
-            ? {
-              ...c,
-              latest_replies: c.latest_replies.map(r =>
+            c.id === parentCommentId
+              ? {
+                ...c,
+              latest_replies: (Array.isArray(c.latest_replies) ? c.latest_replies : []).map(r =>
                 r.id === commentId
                   ? { ...r, is_liked: !isLiked, like_count: isLiked ? r.like_count - 1 : r.like_count + 1 }
                   : r
@@ -344,6 +458,7 @@ export default function PostDetailPage() {
   }
 
   const handleToggleLike = async () => {
+    if (!requireLogin()) return
     if (!note) return
     const oldIsLiked = note.is_liked
     const oldLikeCount = note.like_count
@@ -354,9 +469,41 @@ export default function PostDetailPage() {
 
     try {
       const method = newIsLiked ? 'POST' : 'DELETE'
-      await request({ url: `/api/v1/note/${note.id}/like`, method: method })
+      const res = await request({ url: `/api/v1/note/${note.id}/like`, method: method })
+      const code = Number((res as any)?.data?.code)
+      if (code !== 200) throw new Error((res as any)?.data?.msg || '操作失败')
     } catch (e) {
       setNote(prev => prev ? ({ ...prev, is_liked: oldIsLiked, like_count: oldLikeCount }) : null)
+      Taro.showToast({ title: '操作失败', icon: 'none' })
+    }
+  }
+
+  const handleToggleCollect = async () => {
+    if (!requireLogin()) return
+    if (!note || collectPending) return
+    const oldIsCollected = note.is_collected
+    const oldCollCount = note.coll_count
+    const newIsCollected = !oldIsCollected
+    const newCollCount = Math.max(0, oldIsCollected ? oldCollCount - 1 : oldCollCount + 1)
+
+    setCollectPending(true)
+    setNote(prev => prev ? ({ ...prev, is_collected: newIsCollected, coll_count: newCollCount }) : null)
+
+    try {
+      const method = newIsCollected ? 'POST' : 'DELETE'
+      const res = await request({ url: `/api/v1/note/${note.id}/collect`, method })
+      const code = Number((res as any)?.data?.code)
+      if (code !== 200) throw new Error((res as any)?.data?.msg || '操作失败')
+      // 收藏接口幂等（见 docs/note_collection_api_20260804.md），以服务端返回的最终状态为准
+      const serverCollected = (res as any)?.data?.data?.collected
+      if (typeof serverCollected === 'boolean' && serverCollected !== newIsCollected) {
+        setNote(prev => prev ? ({ ...prev, is_collected: serverCollected }) : null)
+      }
+    } catch (e) {
+      setNote(prev => prev ? ({ ...prev, is_collected: oldIsCollected, coll_count: oldCollCount }) : null)
+      Taro.showToast({ title: '操作失败', icon: 'none' })
+    } finally {
+      setCollectPending(false)
     }
   }
 
@@ -381,7 +528,19 @@ export default function PostDetailPage() {
     Taro.navigateTo({ url: `/pages/activity/index?id=${note.activity.id}` })
   }
 
+  const handleBack = () => {
+    const pages = Taro.getCurrentPages?.() || []
+    if (pages.length > 1) {
+      Taro.navigateBack()
+      return
+    }
+    Taro.switchTab({ url: '/pages/square/index' }).catch(() => {
+      Taro.reLaunch({ url: '/pages/square/index' })
+    })
+  }
+
   const handleToggleFollow = async (e) => {
+    if (!requireLogin()) return
     e?.stopPropagation?.()
     if (!note) return
 
@@ -430,10 +589,12 @@ export default function PostDetailPage() {
     }
   }
 
-  // 鎵撳紑鍒嗕韩寮圭獥
+  // 打开分享弹窗
   const handleOpenShare = () => {
+    if (!requireLogin()) return
     setShowShareModal(true)
     setShareMsg('')
+    setSelectedShareSession(null)
     fetchSessionList()
   }
 
@@ -470,6 +631,7 @@ export default function PostDetailPage() {
         Taro.showToast({ title: '分享成功', icon: 'success' })
         setShowShareModal(false)
         setShareMsg('')
+        setSelectedShareSession(null)
       } else {
         Taro.showToast({ title: resData?.msg || '分享失败', icon: 'none' })
       }
@@ -480,14 +642,114 @@ export default function PostDetailPage() {
     }
   }
 
+  const handleConfirmShare = () => {
+    if (!selectedShareSession) {
+      Taro.showToast({ title: '请选择会话', icon: 'none' })
+      return
+    }
+    void handleShareToSession(selectedShareSession)
+  }
+
+  const handleDeleteNote = (e?: any) => {
+    if (!requireLogin()) return
+    e?.stopPropagation?.()
+    if (!note) return
+    Taro.showModal({
+      title: '删除动态',
+      content: '确认删除这条动态吗？删除后不可恢复。',
+      confirmText: '删除',
+      confirmColor: '#FF2E4D',
+      success: async (modalRes) => {
+        if (!modalRes.confirm) return
+        try {
+          const res = await request({
+            url: `/api/v1/note/${note.id}`,
+            method: 'DELETE'
+          })
+          const body: any = res?.data
+          if (body && body.code !== 200) throw new Error(body.msg || '删除失败')
+          Taro.showToast({ title: body?.msg || '删除成功', icon: 'success' })
+          handleBack()
+        } catch (error: any) {
+          Taro.showToast({ title: error?.message || '删除失败', icon: 'none' })
+        }
+      }
+    })
+  }
+
+  const handleDeleteComment = (
+    commentId: string,
+    type: 'comment' | 'reply',
+    parentCommentId?: string,
+    e?: any
+  ) => {
+    if (!requireLogin()) return
+    e?.stopPropagation?.()
+    if (!commentId) return
+    Taro.showModal({
+      title: type === 'reply' ? '删除回复' : '删除评论',
+      content: '确认删除这条内容吗？',
+      confirmText: '删除',
+      confirmColor: '#FF2E4D',
+      success: async (modalRes) => {
+        if (!modalRes.confirm) return
+        try {
+          const res = await request({
+            url: '/api/v1/comments/delete',
+            method: 'POST',
+            data: { comment_id: commentId }
+          })
+          const body: any = res?.data
+          if (body && body.code !== 200) throw new Error(body.msg || '删除失败')
+
+          if (type === 'comment') {
+            setCommentList(prev => prev.filter(comment => String(comment.id) !== String(commentId)))
+          } else if (parentCommentId) {
+            setCommentList(prev => prev.map(comment => {
+              if (String(comment.id) !== String(parentCommentId)) return comment
+              const currentReplies = Array.isArray(comment.latest_replies) ? comment.latest_replies : []
+              return {
+                ...comment,
+                reply_count: Math.max(comment.reply_count - 1, 0),
+                latest_replies: currentReplies.filter(reply => String(reply.id) !== String(commentId))
+              }
+            }))
+          }
+          setNote(prev => prev ? ({ ...prev, comment_count: Math.max(prev.comment_count - 1, 0) }) : prev)
+          setReplyTarget(prev => prev && String(prev.id) === String(commentId) ? null : prev)
+          Taro.showToast({ title: type === 'reply' ? '回复已删除' : '评论已删除', icon: 'success' })
+        } catch (error: any) {
+          Taro.showToast({ title: error?.message || '删除失败', icon: 'none' })
+        }
+      }
+    })
+  }
+
   if (loading) return <View className='post-detail-page loading-center'><AtActivityIndicator content='加载中...' color='#999' mode='center'/></View>
   if (!note) return <View className='post-detail-page loading-center'><Text style={{color: '#999'}}>内容不存在</Text></View>
+  const currentUser = getCurrentCommentUser()
+  const currentUserId = currentUser.user_id
+  const isOwnNote = Boolean(currentUserId) && (
+    String(note.user_id) === String(currentUserId) ||
+    (note as any).user_hash_id === currentUser.user_hash_id
+  )
+
+  const isCommentOwner = (commentUserId: string | number, commentUser?: UserInfo) => {
+    if (!currentUserId) return false
+    // 优先用 user_hash_id 比对（后端统一的字符串 ID）
+    if (commentUser?.user_hash_id && currentUser.user_hash_id && commentUser.user_hash_id === currentUser.user_hash_id) return true
+    if (String(commentUserId) === String(currentUserId)) return true
+    if (String(commentUserId) === String(currentUser.user_hash_id)) return true
+    // 兜底：nickname
+    if (commentUser?.nickname && currentUser.nickname && commentUser.nickname === currentUser.nickname) return true
+    return false
+  }
 
   return (
     <View className='post-detail-page'>
       <View className='custom-nav' style={{ paddingTop: `${statusBarHeight}px`, height: `${navBarHeight}px`, paddingRight: `${navBarPaddingRight}px` }}>
         <View className='left-area'>
-          <View className='back-btn' onClick={() => Taro.navigateBack()}>
+          <View className='back-btn' onClick={handleBack}>
             <AtIcon value='chevron-left' size='24' color='#fff' />
           </View>
           <View className='user-mini' onClick={handleOpenUserProfile}>
@@ -496,9 +758,13 @@ export default function PostDetailPage() {
           </View>
         </View>
         <View className='right-area'>
-          <View className={`follow-btn ${note.is_followed ? 'followed' : ''}`} onClick={handleToggleFollow}>
-            {note.is_followed ? '已关注' : '关注'}
-          </View>
+          {isOwnNote ? (
+            <View className='delete-note-btn' onClick={handleDeleteNote}>删除</View>
+          ) : (
+            <View className={`follow-btn ${note.is_followed ? 'followed' : ''}`} onClick={handleToggleFollow}>
+              {note.is_followed ? '已关注' : '关注'}
+            </View>
+          )}
           <View onClick={handleOpenShare}>
             <AtIcon value='share' size='20' color='#fff' style={{marginLeft: '15px'}} />
           </View>
@@ -590,6 +856,11 @@ export default function PostDetailPage() {
                 <View className='c-footer'>
                   <Text className='c-time'>{formatTime(comment.created_at)} {comment.ip_location}</Text>
                   <View className='c-action' onClick={(e) => { e.stopPropagation(); onClickReply('comment', comment, comment.id) }}><Text>回复</Text></View>
+                  {isCommentOwner(comment.user_id, comment.user) && (
+                    <View className='c-action delete' onClick={(e) => handleDeleteComment(comment.id, 'comment', undefined, e)}>
+                      <Text>删除</Text>
+                    </View>
+                  )}
                 </View>
 
                 <View className='sub-reply-container'>
@@ -630,6 +901,14 @@ export default function PostDetailPage() {
                         <View className='sub-footer-row'>
                           <Text className='sub-time'>{formatTime(reply.created_at)} {reply.ip_location}</Text>
                           <Text className='sub-reply-btn'>回复</Text>
+                          {isCommentOwner(reply.user?.user_id ?? '', reply.user) && (
+                            <Text
+                              className='sub-delete-btn'
+                              onClick={(e) => handleDeleteComment(reply.id, 'reply', comment.id, e)}
+                            >
+                              删除
+                            </Text>
+                          )}
                         </View>
                       </View>
                     </View>
@@ -666,7 +945,7 @@ export default function PostDetailPage() {
         <View style={{height: '120px'}} />
       </ScrollView>
 
-      {/* 搴曢儴 */}
+      {/* 底部 */}
       <View className='bottom-bar'>
         <View className='input-box' onClick={() => onClickReply('note', {id: note.id})}>
           <AtIcon value='edit' size='14' color='#999' style={{marginRight: '8px'}}/>
@@ -681,7 +960,7 @@ export default function PostDetailPage() {
             />
             <Text className='num'>{note.like_count}</Text>
           </View>
-          <View className='icon-item'>
+          <View className='icon-item' onClick={handleToggleCollect}>
             <AtIcon value={note.is_collected ? 'star-2' : 'star'} size='24' color={note.is_collected ? '#FFCC00' : '#fff'} className={note.is_collected ? 'liked-anim' : ''}/>
             <Text className='num'>{note.coll_count}</Text>
           </View>
@@ -708,11 +987,14 @@ export default function PostDetailPage() {
         </View>
       )}
 
-      {/* 鍒嗕韩寮圭獥 */}
+      {/* 分享弹窗 */}
       <AtFloatLayout
         isOpened={showShareModal}
         title='分享到'
-        onClose={() => setShowShareModal(false)}
+        onClose={() => {
+          setShowShareModal(false)
+          setSelectedShareSession(null)
+        }}
       >
         <View className='share-modal'>
           <View className='share-input-box'>
@@ -741,8 +1023,8 @@ export default function PostDetailPage() {
             {!loadingSession && sessionList.map(session => (
               <View
                 key={`${session.session_type}_${session.peer_id}`}
-                className='session-item'
-                onClick={() => handleShareToSession(session)}
+                className={`session-item ${selectedShareSession?.peer_id === session.peer_id && selectedShareSession?.session_type === session.session_type ? 'selected' : ''}`}
+                onClick={() => setSelectedShareSession(session)}
               >
                 <Image
                   src={session.peer_avatar ? decodeURIComponent(session.peer_avatar) : ''}
@@ -755,10 +1037,13 @@ export default function PostDetailPage() {
                     {session.session_type === 2 ? '群聊' : '私聊'}
                   </Text>
                 </View>
-                <AtIcon value='chevron-right' size='20' color='#999' />
+                <AtIcon value={selectedShareSession?.peer_id === session.peer_id && selectedShareSession?.session_type === session.session_type ? 'check' : 'chevron-right'} size='20' color='#999' />
               </View>
             ))}
           </ScrollView>
+          <View className={`share-confirm-btn ${selectedShareSession ? 'enabled' : ''}`} onClick={handleConfirmShare}>
+            确认分享
+          </View>
         </View>
       </AtFloatLayout>
     </View>

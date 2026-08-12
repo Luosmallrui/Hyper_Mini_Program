@@ -6,10 +6,6 @@ const KEY_ACCESS_TOKEN = 'access_token'
 const KEY_REFRESH_TOKEN = 'refresh_token'
 const KEY_ACCESS_EXPIRE = 'access_expire'
 const KEY_USER_INFO = 'userInfo'
-const KEY_FORCE_AUTH_GATE = '__force_auth_gate__'
-const AUTH_PAGE_ROUTE = 'pages/auth/index'
-const AUTH_CODE_PAGE_ROUTE = 'pages/auth-code/index'
-const AUTH_PAGE_URL = '/pages/auth/index'
 
 let isRefreshing = false
 let requestQueue: Array<(token: string) => void> = []
@@ -23,19 +19,15 @@ const clearRefreshTimer = () => {
   }
 }
 
+// 会话真的过期（有 token 但刷新失败）时广播一次，各页面自行降级为游客态，
+// 不再强制跳转登录页——是否登录由用户操作触发 requireLogin 决定。
 const emitForceLogoutOnce = () => {
   if (forceLogoutEmitted) return
   forceLogoutEmitted = true
   Taro.eventCenter.trigger('FORCE_LOGOUT')
-  const pages = Taro.getCurrentPages()
-  const current: any = pages[pages.length - 1]
-  if (current?.route !== AUTH_PAGE_ROUTE && current?.route !== AUTH_CODE_PAGE_ROUTE) {
-    Taro.reLaunch({ url: AUTH_PAGE_URL })
-  }
 }
 
 const clearAuthStorage = () => {
-  Taro.setStorageSync(KEY_FORCE_AUTH_GATE, 1)
   Taro.removeStorageSync(KEY_ACCESS_TOKEN)
   Taro.removeStorageSync(KEY_REFRESH_TOKEN)
   Taro.removeStorageSync(KEY_ACCESS_EXPIRE)
@@ -45,7 +37,6 @@ const clearAuthStorage = () => {
 
 export const saveTokens = (access: string, refresh?: string, expire?: number) => {
   forceLogoutEmitted = false
-  Taro.removeStorageSync(KEY_FORCE_AUTH_GATE)
 
   if (access) Taro.setStorageSync(KEY_ACCESS_TOKEN, access)
   if (refresh) Taro.setStorageSync(KEY_REFRESH_TOKEN, refresh)
@@ -160,6 +151,12 @@ export const request = async (options: Taro.request.Option) => {
   }
 
   if (res.statusCode === 401 || data?.code === 401) {
+    // 游客（无 token）调用需登录接口：不清理、不踢登录页，
+    // 按失败返回，由页面通过 requireLogin 自行引导。
+    if (!accessToken) {
+      return { ...res, data: { code: 401, msg: '请先登录' } }
+    }
+
     if (isRefreshing) {
       return new Promise((resolve) => {
         requestQueue.push((newToken: string) => {

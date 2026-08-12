@@ -77,7 +77,7 @@ page {
   margin-top: 14px;
   display: flex;
   flex-direction: row;
-  align-items: center;
+  align-items: flex-start;
   column-gap: 6px;
 }
 
@@ -86,6 +86,15 @@ page {
   color: #fff;
   font-size: 22px;
   line-height: 30px;
+}
+
+.time-label {
+  flex-shrink: 0;
+}
+
+.time-value {
+  flex: 1;
+  word-break: break-all;
 }
 
 .location-row {
@@ -181,7 +190,8 @@ page {
 }
 
 .host-info {
-  width: 138px;
+  flex: 1;
+  min-width: 0;
   margin-left: 10px;
   display: flex;
   justify-content: flex-start;
@@ -192,12 +202,16 @@ page {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .host-name {
   color: #b7b7b7;
   font-size: 22px;
   line-height: 30px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .host-fans {
@@ -292,18 +306,63 @@ page {
   line-height: 30px;
 }
 
-.dynamic-item {
-  display: block;
-  color: #888;
-  font-size: 22px;
-  line-height: 36px;
-  margin-bottom: 8px;
-}
-
 .empty-tip {
   color: #707070;
   font-size: 22px;
   line-height: 32px;
+}
+
+.activity-related-note-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.activity-related-note-card {
+  min-height: 116px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.activity-related-note-cover {
+  width: 96px;
+  height: 96px;
+  border-radius: 10px;
+  background: #1f1f1f;
+  flex: 0 0 auto;
+}
+
+.activity-related-note-cover.placeholder {
+  background: linear-gradient(135deg, #1e1e1e, #2b2b2b);
+}
+
+.activity-related-note-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-related-note-title {
+  display: block;
+  color: #e8e8e8;
+  font-size: 23px;
+  line-height: 32px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-related-note-meta {
+  display: block;
+  margin-top: 8px;
+  color: #7c7c7c;
+  font-size: 19px;
+  line-height: 28px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ticket-bar {
@@ -356,12 +415,29 @@ page {
 
 .drawer-panel {
   width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
   background: #2b2b2b;
   border-top-left-radius: 24px;
   border-top-right-radius: 24px;
   padding: 24px 24px 32px;
   box-sizing: border-box;
   transform: translateY(100%);
+}
+
+.drawer-body {
+  flex: 1;
+  min-height: 0;
+  // 微信 ScrollView 需要明确高度才会滚动；用 vh 避免 px 被转 rpx 后不够减
+  max-height: 55vh;
+}
+
+.drawer-long-poster {
+  width: 100%;
+  border-radius: 12px;
+  margin-top: 24px;
+  display: block;
 }
 
 .drawer-header {
@@ -547,16 +623,27 @@ page {
   line-height: 28px;
 }
 
-.viewer-radio {
+.viewer-check {
   width: 30px;
   height: 30px;
-  border-radius: 50%;
+  border-radius: 6px;
   border: 2px solid #818181;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  text {
+    color: #111;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+  }
 }
 
-.viewer-radio.active {
+.viewer-check.active {
   border-color: #fff;
-  background: radial-gradient(circle at center, #fff 0, #fff 9px, transparent 10px, transparent 100%);
+  background: #fff;
 }
 
 .viewer-empty {
@@ -585,6 +672,59 @@ page {
   color: #fff;
   font-size: 22px;
   letter-spacing: 0.94px;
+}
+
+.points-section {
+  margin-top: 24px;
+}
+
+.points-toggle {
+  min-height: 76px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.points-toggle.active {
+  border-color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.points-toggle.disabled {
+  opacity: 0.55;
+}
+
+.points-title {
+  display: block;
+  color: #fff;
+  font-size: 23px;
+  line-height: 32px;
+}
+
+.points-desc {
+  display: block;
+  margin-top: 4px;
+  color: #9a9a9a;
+  font-size: 19px;
+  line-height: 28px;
+}
+
+.points-check {
+  flex: 0 0 auto;
+  min-width: 72px;
+  height: 42px;
+  border-radius: 21px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #e5e5e5;
+  font-size: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .count-btn {
@@ -658,14 +798,17 @@ page {
 }
 
 .activity-share-modal {
-  min-height: 600px;
-  max-height: 80vh;
+  height: 70vh;
+  min-height: 0;
+  max-height: 760px;
   display: flex;
   flex-direction: column;
   background: #111214;
+  overflow: hidden;
 }
 
 .activity-share-input-box {
+  flex-shrink: 0;
   padding: 30px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -685,7 +828,10 @@ page {
 
 .activity-session-list {
   flex: 1;
+  height: 0;
+  min-height: 0;
   padding: 20px 0;
+  box-sizing: border-box;
 }
 
 .activity-share-loading {
@@ -711,6 +857,10 @@ page {
 
 .activity-session-item:active {
   background-color: #1a1b1f;
+}
+
+.activity-session-item.selected {
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 .activity-session-avatar {
@@ -744,6 +894,25 @@ page {
   color: #8b8d94;
 }
 
+.activity-share-confirm {
+  flex-shrink: 0;
+  margin: 14px 30px calc(24px + env(safe-area-inset-bottom));
+  height: 82px;
+  border-radius: 41px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #8b8d94;
+  font-size: 28px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activity-share-confirm.enabled {
+  background: #fff;
+  color: #111214;
+}
+
 .activity-share-layout.at-float-layout {
   .at-float-layout__overlay {
     background: rgba(0, 0, 0, 0.72);
@@ -770,4 +939,43 @@ page {
   .layout-body {
     background: #111214;
   }
+}
+
+/* 购票弹层：活动详情区（标签 / 正文 / 长图） */
+.drawer-detail-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.drawer-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.drawer-detail-tag {
+  padding: 6px 18px;
+  border-radius: 20px;
+  background: rgba(255, 46, 77, 0.14);
+  color: #ff2e4d;
+  font-size: 20px;
+}
+
+.drawer-detail-text {
+  display: block;
+  margin-top: 16px;
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.6;
+}
+
+/* 下架兜底详情：底部按钮置灰不可点 */
+.ticket-pill.disabled {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.ticket-pill.disabled .ticket-text {
+  color: rgba(255, 255, 255, 0.6);
 }

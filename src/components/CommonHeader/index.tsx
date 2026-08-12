@@ -1,4 +1,4 @@
-﻿import { View, Text, Image } from '@tarojs/components'
+import { View, Text, Image } from '@tarojs/components'
 import { CSSProperties, ReactNode, memo } from 'react'
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'

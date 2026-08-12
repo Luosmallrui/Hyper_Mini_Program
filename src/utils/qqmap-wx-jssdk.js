@@ -336,15 +336,13 @@ var Utils = {
       return parseFloat(distance.toFixed(0));
     },
     /**
-     * 使用微信接口进行定位
+     * 已移除 wx.getLocation 依赖：定位统一走 wx.chooseLocation，
+     * 调用方必须显式传入 location 参数，否则按失败处理。
      */
     getWXLocation(success, fail, complete) {
-        wx.getLocation({
-            type: 'gcj02',
-            success: success,
-            fail: fail,
-            complete: complete
-        });
+        var err = { errMsg: 'getLocation unavailable: pass location param instead' };
+        if (fail) fail(err);
+        if (complete) complete(err);
     },
 
     /**

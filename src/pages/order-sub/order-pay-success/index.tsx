@@ -8,15 +8,21 @@ import './index.scss'
 
 const fallbackPoster = 'https://cdn.hypercn.cn/avatars/02/2/f3f49889.jpeg'
 
-interface PayDetail {
-  name: string
-  avatar: string
-  price: number
+interface TicketOrderDetail {
+  order_no: string
+  actual_price: number
   quantity: number
-  out_trade_no: string
-  status: number
-  payed_at: string
-  exp: Record<string, unknown>
+  activity?: {
+    name?: string
+    start_time?: string
+    end_time?: string
+    poster_list?: string
+  }
+  ticket_spec?: {
+    name?: string
+  }
+  pay_time?: string
+  created_at?: string
 }
 
 interface OrderInfoState {
@@ -52,38 +58,41 @@ export default function OrderSuccessPage() {
 
   useEffect(() => {
     const fetchDetail = async () => {
-      const outTradeNo =
+      const orderNo =
+        (router.params?.order_no as string) ||
         (router.params?.out_trade_no as string) ||
-        '202602062102510002588'
+        ''
+      if (!orderNo) return
       try {
         const res = await request({
-          url: '/api/v1/pay/detail',
+          url: `/api/v1/order/${orderNo}`,
           method: 'GET',
-          data: { out_trade_no: outTradeNo }
         })
-        const detail: PayDetail | null = res?.data?.data || null
+        const detail: TicketOrderDetail | null = res?.data?.data || null
         if (!detail) return
         setOrderInfo({
-          orderNo: detail.out_trade_no,
-          eventName: detail.name || '订单商品',
-          eventTime: '',
-          ticketType: detail.name || '',
+          orderNo: detail.order_no,
+          eventName: detail.activity?.name || '订单商品',
+          eventTime: detail.activity?.start_time && detail.activity?.end_time
+            ? `${formatTime(detail.activity.start_time)} - ${formatTime(detail.activity.end_time)}`
+            : formatTime(detail.activity?.start_time),
+          ticketType: detail.ticket_spec?.name || '',
           ticketCount: detail.quantity || 1,
-          totalAmount: Math.round((detail.price || 0) / 100),
-          payTime: formatTime(detail.payed_at),
-          poster: detail.avatar || fallbackPoster
+          totalAmount: Number(((detail.actual_price || 0) / 100).toFixed(2)),
+          payTime: formatTime(detail.pay_time || detail.created_at),
+          poster: detail.activity?.poster_list || fallbackPoster
         })
       } catch (error) {
-        console.error('Pay detail load failed:', error)
+        console.error('Order detail load failed:', error)
       }
     }
 
     fetchDetail()
-  }, [router.params?.out_trade_no])
+  }, [router.params?.order_no, router.params?.out_trade_no])
 
   const handleViewOrder = () => {
     Taro.navigateTo({
-      url: `/pages/order-sub/order-detail/index?out_trade_no=${orderInfo.orderNo}`
+      url: `/pages/order-sub/order-detail/index?orderNo=${orderInfo.orderNo}`
     })
   }
 
@@ -101,7 +110,7 @@ export default function OrderSuccessPage() {
     <View className='order-success-page'>
       <View className='success-header'>
         <View className='success-icon-wrapper'>
-          <AtIcon value='check-circle' size='64' color='#52c41a' />
+          <AtIcon value='check-circle' size='64' color='#D8FF4F' />
         </View>
         <Text className='success-title'>支付成功</Text>
         <Text className='success-subtitle'>您的订单已支付成功，请准时参加活动</Text>
@@ -124,7 +133,7 @@ export default function OrderSuccessPage() {
                 })
               }}
             >
-              <AtIcon value='copy' size='14' color='#1890ff' />
+              <AtIcon value='copy' size='14' color='#D8FF4F' />
             </View>
           </View>
         </View>
@@ -165,7 +174,7 @@ export default function OrderSuccessPage() {
 
       <View className='tips-card'>
         <View className='tips-title'>
-          <AtIcon value='alert-circle' size='16' color='#faad14' />
+          <AtIcon value='alert-circle' size='16' color='#D8FF4F' />
           <Text>温馨提示</Text>
         </View>
         <View className='tips-content'>
@@ -182,6 +191,9 @@ export default function OrderSuccessPage() {
         <View className='action-btn primary' onClick={handleViewOrder}>
           <Text>查看订单</Text>
         </View>
+      </View>
+      <View className='refund-link' onClick={handleViewOrder}>
+        <Text className='refund-link-text'>申请退款</Text>
       </View>
     </View>
   )

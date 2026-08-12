@@ -1,68 +1,34 @@
-﻿import { View, Text, Image, Swiper, SwiperItem } from '@tarojs/components'
+import { View, Text, Image, Swiper, SwiperItem } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import { request } from '@/utils/request'
-import certificationIcon from '../../assets/images/certification.png'
+import { requireLogin } from '@/utils/auth'
+import { readContentFollowTarget } from '@/utils/content-follow'
+import {
+  getRelatedNoteCover,
+  normalizeRelatedNotes,
+  RelatedNote,
+  splitRelatedNotesForWaterfall,
+} from '../square/related-notes'
 import './index.scss'
 
-interface MerchantGood {
-    id: string
-    party_id: number
-    product_name: string
-    price: number
-    original_price: number
-    stock: number
-    description: string
-    cover_image: string
-    status: number
-    sales_volume: number
-    created_at: string
-    updated_at: string
-  }
-  
-  interface MerchantNote {
-    id: string
-    user_id: number
-    title: string
-    type: number
-    created_at: string
-    updated_at: string
-    time_stamp: number
-    media_data: {
-      url: string
-      thumbnail_url: string
-      width: number
-      height: number
-      duration: number
-    }
-    like_count: number
-    coll_count: number
-    share_count: number
-    comment_count: number
-    is_liked: boolean
-    is_collected: boolean
-    is_followed: boolean
-  }
-  
   interface MerchantDetail {
     id: number
     user_id?: string | number
     name: string
     avg_price: number
     location_name: string
-    lat?: number
-    lng?: number
     images: string[]
-    goods: MerchantGood[]
-    notes: MerchantNote[]
-    next_cursor: string
-    has_more: boolean
+    certificate?: string
     user_name: string
     user_avatar: string
     is_follow: boolean
     business_hours: string
+    follow_count?: number
+    follow_target_type?: string
+    follow_target_id?: string | number
   }
 
 const fallbackAvatar = 'https://cdn.hypercn.cn/note/2026/02/03/2018531527209521152.png'
@@ -82,10 +48,10 @@ export default function VenuePage() {
   const [menuButtonWidth, setMenuButtonWidth] = useState(0)
   const [currentHero, setCurrentHero] = useState<string>(fallbackGallery[0])
   const [heroIndex, setHeroIndex] = useState(0)
-  const [activeTab, setActiveTab] = useState<'goods' | 'notes'>('goods')
   const [followPending, setFollowPending] = useState(false)
-  const fallbackMapCenter = { latitude: 30.657, longitude: 104.066 }
-  const tabTouchStartXRef = useRef(0)
+  const [relatedNotes, setRelatedNotes] = useState<RelatedNote[]>([])
+  const [relatedNotesLoading, setRelatedNotesLoading] = useState(false)
+  const [followerCount, setFollowerCount] = useState(0)
 
   useEffect(() => {
     const sysInfo = Taro.getWindowInfo()
@@ -108,11 +74,75 @@ export default function VenuePage() {
         })
         const detail = res?.data?.data || null
         setVenue(detail)
+        // 新体系场地（organizers）走旧 merchant 详情时拿不到 user_id（返回 0），
+        // 关注状态也以新场地接口为准，这里补拉一次。
+        if (detail && !detail.user_id) {
+          try {
+            const venueRes = await request({
+              url: `/api/v1/venues/${venueId}`,
+              method: 'GET'
+            })
+            const venueData = venueRes?.data?.data
+            if (venueData) {
+              setVenue((prev) => (prev ? {
+                ...prev,
+                user_id: venueData.user_id ?? prev.user_id,
+                is_follow: Boolean(venueData.is_follow),
+                follow_count: venueData.follow_count ?? prev.follow_count,
+                follow_target_type: venueData.follow_target_type ?? prev.follow_target_type,
+                follow_target_id: venueData.follow_target_id ?? prev.follow_target_id,
+              } : prev))
+            }
+          } catch (followStateError) {
+            console.error('Venue follow-state load failed:', followStateError)
+          }
+        }
       } catch (error) {
         console.error('Venue detail load failed:', error)
       }
     }
     fetchVenue()
+  }, [venueId])
+
+  useEffect(() => {
+    const fetchFollowerCount = async () => {
+      if (!venueId) return
+      try {
+        const res = await request({
+          url: `/api/v1/merchant/${venueId}/follower/count`,
+          method: 'GET',
+        })
+        setFollowerCount(Number((res as any)?.data?.data?.follower_count) || 0)
+      } catch (error) {
+        console.error('Follower count load failed:', error)
+      }
+    }
+    fetchFollowerCount()
+  }, [venueId])
+
+  useEffect(() => {
+    const fetchRelatedNotes = async () => {
+      if (!venueId) return
+      setRelatedNotesLoading(true)
+      try {
+        const res = await request({
+          url: '/api/v1/note/related',
+          method: 'GET',
+          data: {
+            store_id: venueId,
+            pageSize: 20,
+          },
+        })
+        setRelatedNotes(normalizeRelatedNotes(res?.data?.data?.notes || []))
+      } catch (error) {
+        console.error('Venue related notes load failed:', error)
+        setRelatedNotes([])
+      } finally {
+        setRelatedNotesLoading(false)
+      }
+    }
+
+    fetchRelatedNotes()
   }, [venueId])
 
   const galleryImages = useMemo(() => {
@@ -133,18 +163,13 @@ export default function VenuePage() {
   const venueTime = venue?.business_hours ? `营业中：${venue.business_hours}` : '营业中：19:30-次日02:30'
   const venuePrice = typeof venue?.avg_price === 'number' ? `¥${(venue.avg_price / 100).toFixed(0)}/人起` : '¥80/人起'
   const venueLocation = venue?.location_name || '高新区盛园街道保利星荟5栋1楼'
-  const parseCoordinate = (value: unknown): number | null => {
-    const num = Number(value)
-    return Number.isFinite(num) ? num : null
-  }
-  const venueLat = parseCoordinate(venue?.lat)
-  const venueLng = parseCoordinate(venue?.lng)
-  const routeLat = parseCoordinate(router.params?.lat)
-  const routeLng = parseCoordinate(router.params?.lng)
   const venueUser = venue?.user_name || 'SWING'
   const venueAvatar = venue?.user_avatar || fallbackAvatar
-  const venueFans = String(venue?.notes?.length || '0')
-  const noteList = venue?.notes || []
+  const noteList = relatedNotes
+  const { left: leftNotes, right: rightNotes } = useMemo(
+    () => splitRelatedNotesForWaterfall(noteList),
+    [noteList],
+  )
 
   const formatNumber = (num: number): string => {
     if (num >= 10000) return `${(num / 10000).toFixed(1).replace(/\.0$/, '')}w`
@@ -152,41 +177,17 @@ export default function VenuePage() {
     return String(num)
   }
 
-  const calculateImageHeight = (width: number, height: number): number => {
+  const venueFans = formatNumber(followerCount)
+
+  const calculateImageHeight = (width?: number, height?: number): number => {
     const containerWidth = (Taro.getSystemInfoSync().windowWidth - 80) / 2
-    const aspectRatio = height / width
+    const aspectRatio = width && height ? height / width : 1.2
     const calculatedHeight = containerWidth * aspectRatio
     return Math.min(Math.max(calculatedHeight, 200), 400)
   }
 
   const handleNoteClick = (noteId: string | number) => {
     Taro.navigateTo({ url: `/pages/square-sub/post-detail/index?id=${String(noteId)}` })
-  }
-
-  const handleTabChange = (nextTab: 'goods' | 'notes') => {
-    setActiveTab(nextTab)
-  }
-
-  const handleTabTouchStart = (e: any) => {
-    const touch = e?.touches?.[0]
-    if (!touch) return
-    tabTouchStartXRef.current = touch.clientX
-  }
-
-  const handleTabTouchEnd = (e: any) => {
-    const touch = e?.changedTouches?.[0]
-    if (!touch) return
-    const deltaX = touch.clientX - tabTouchStartXRef.current
-    const threshold = 45
-    if (Math.abs(deltaX) < threshold) return
-
-    if (deltaX < 0 && activeTab === 'goods') {
-      setActiveTab('notes')
-      return
-    }
-    if (deltaX > 0 && activeTab === 'notes') {
-      setActiveTab('goods')
-    }
   }
 
   const handleHeroSwiperChange = (e: { detail: { current: number } }) => {
@@ -201,41 +202,15 @@ export default function VenuePage() {
     setHeroIndex(idx)
   }
 
-  const handleOpenMap = async () => {
-    const latitude = venueLat ?? routeLat
-    const longitude = venueLng ?? routeLng
-
-    try {
-      if (latitude !== null && longitude !== null) {
-        await Taro.openLocation({
-          latitude,
-          longitude,
-          name: venueName,
-          address: venueLocation,
-          scale: 17
-        })
-        return
-      }
-
-      await Taro.openLocation({
-        latitude: fallbackMapCenter.latitude,
-        longitude: fallbackMapCenter.longitude,
-        name: venueName,
-        address: venueLocation,
-        scale: 14
-      })
-    } catch (error) {
-      console.warn('openLocation failed:', error)
-      Taro.showToast({ title: '无法打开地图', icon: 'none' })
-    }
+  const handleOpenOrganizerHome = () => {
+    // 新体系下 venue id 即 organizer id，跳 C 端商家公开主页
+    if (!venueId) return
+    Taro.navigateTo({ url: `/pages/user-sub/organizer-home/index?id=${venueId}` })
   }
 
   const handleToggleFollow = async () => {
+    if (!requireLogin()) return
     if (!venue || followPending) return
-    if (!venue.user_id) {
-      Taro.showToast({ title: '用户信息缺失', icon: 'none' })
-      return
-    }
 
     const nextFollow = !Boolean(venue.is_follow)
     const action = nextFollow ? 'follow' : 'unfollow'
@@ -244,11 +219,23 @@ export default function VenuePage() {
     setVenue((prev) => (prev ? { ...prev, is_follow: nextFollow } : prev))
 
     try {
-      const res = await request({
-        url: `/api/v1/follow/${action}`,
-        method: 'POST',
-        data: { user_id: String(venue.user_id) },
-      })
+      // 旧 merchant 体系按主办方用户 ID 关注；新体系场地详情没有 user_id，
+      // 改按场地 ID 关注（后端同样落 user_follow，见 venue_subscription_api 文档第 5 节）。
+      // 已返回 follow_target_* 时按对象关注（docs/content_follow_api_20260810.md）。
+      const followTarget = readContentFollowTarget(venue)
+      const res = venue.user_id
+        ? await request({
+            url: `/api/v1/follow/${action}`,
+            method: 'POST',
+            data: {
+              user_id: String(venue.user_id),
+              ...(followTarget ? { target_type: followTarget.type, target_id: followTarget.id } : {}),
+            },
+          })
+        : await request({
+            url: `/api/v1/venues/${venueId}/follow`,
+            method: nextFollow ? 'POST' : 'DELETE',
+          })
       const code = Number((res as any)?.data?.code)
       if (code !== 200) {
         throw new Error((res as any)?.data?.msg || '操作失败')
@@ -260,6 +247,37 @@ export default function VenuePage() {
     } finally {
       setFollowPending(false)
     }
+  }
+
+  const renderNoteCard = (note: RelatedNote) => {
+    const cover = getRelatedNoteCover(note)
+    const firstMedia = note.media[0]
+    const imageHeight = calculateImageHeight(firstMedia?.width, firstMedia?.height)
+    const authorAvatar = note.authorAvatar || venueAvatar
+    const authorName = note.authorName || venueUser
+
+    return (
+      <View key={note.id} className='note-card' onClick={() => handleNoteClick(note.id)}>
+        {cover ? (
+          <Image className='note-cover' src={cover} mode='aspectFill' style={{ height: `${imageHeight}px` }} />
+        ) : (
+          <View className='note-cover note-cover-placeholder' style={{ height: `${imageHeight}px` }} />
+        )}
+        <View className='note-info'>
+          <Text className='note-title'>{note.title}</Text>
+          <View className='note-footer'>
+            <View className='author-info'>
+              <Image className='author-avatar' src={authorAvatar} mode='aspectFill' />
+              <Text className='author-name'>{authorName}</Text>
+            </View>
+            <View className='like-info'>
+              <Image className='like-icon' src={likeIcon} mode='aspectFit' />
+              <Text className='like-count'>{formatNumber(note.likeCount)}</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    )
   }
 
   return (
@@ -308,9 +326,8 @@ export default function VenuePage() {
                <Text className='meta'>{venueTime}</Text>
                <Text className='meta price'>{venuePrice}</Text>
              </View>
-             <View className='location-row' onClick={handleOpenMap}>
+             <View className='location-row'>
                <Text className='location'>{venueLocation}</Text>
-               <AtIcon value='chevron-right' size='16' color='#fff' />
              </View>
           </View>
 
@@ -332,115 +349,51 @@ export default function VenuePage() {
       {/* 下方内容区域 */}
       <View className='content-scroll'>
         <View className='content-inner'>
-          <View className='host-card'>
+          <View className='host-card' onClick={handleOpenOrganizerHome}>
             <View className='host-left'>
               <Image className='host-avatar' src={venueAvatar} mode='aspectFill' />
               <View className='host-info'>
                 <View className='host-name-row'>
                   <Text className='host-name'>{venueUser}</Text>
-                  <Image className='host-certification-icon' src={certificationIcon} mode='aspectFit' />
+                  {venue?.certificate && <Text className='host-certificate'>{venue.certificate}</Text>}
                 </View>
                 <Text className='host-fans'>{venueFans} 粉丝</Text>
               </View>
             </View>
-            <View className='follow-btn' onClick={handleToggleFollow}>
+            <View
+              className='follow-btn'
+              onClick={(e) => {
+                // 阻止冒泡到 host-card 的跳转
+                e.stopPropagation()
+                handleToggleFollow()
+              }}
+            >
               {followPending ? '处理中' : (venue?.is_follow ? '已关注' : '关注')}
             </View>
           </View>
 
           <View className='tab-row'>
-            <Text className={`tab ${activeTab === 'goods' ? 'active' : ''}`} onClick={() => handleTabChange('goods')}>商品</Text>
-            <Text className={`tab ${activeTab === 'notes' ? 'active' : ''}`} onClick={() => handleTabChange('notes')}>动态·{venue?.notes?.length || 0}</Text>
+            <Text className='tab active'>动态·{noteList.length}</Text>
           </View>
 
-          {activeTab === 'goods' ? (
-            <View className='tab-panel active' onTouchStart={handleTabTouchStart} onTouchEnd={handleTabTouchEnd}>
-              <View className='product-grid'>
-                {(venue?.goods || []).map(item => (
-                  <View key={item.id} className='product-card'>
-                    <Image className='product-img' src={item.cover_image?.trim()} mode='aspectFill' />
-                    <Text className='product-title'>{item.product_name}</Text>
-                    <View className='product-meta'>
-                      <Text className='price'>¥{(item.price / 100).toFixed(0)}</Text>
-                      {item.original_price ? <Text className='original'>¥{(item.original_price / 100).toFixed(0)}</Text> : null}
-                    </View>
-                    <Text className='sale'>{item.description}</Text>
-                    <View
-                      className='buy-btn'
-                      onClick={() => {
-                        if (!venueId) return
-                        Taro.navigateTo({
-                          url: `/pages/venue/product/index?venueId=${venueId}&productId=${item.id}`
-                        })
-                      }}
-                    >
-                      购买
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-          ) : (
-            <View className='tab-panel active' onTouchStart={handleTabTouchStart} onTouchEnd={handleTabTouchEnd}>
+          <View className='tab-panel active'>
               <View className='notes-section'>
                 {noteList.length > 0 ? (
                   <View className='waterfall-container'>
                     <View className='waterfall-column'>
-                      {noteList.filter((_, i) => i % 2 === 0).map(note => {
-                        const imageHeight = calculateImageHeight(note.media_data.width, note.media_data.height)
-                        return (
-                          <View key={String(note.id)} className='note-card' onClick={() => handleNoteClick(note.id)}>
-                            <Image className='note-cover' src={note.media_data.thumbnail_url || note.media_data.url} mode='aspectFill' style={{ height: `${imageHeight}px` }} />
-                            <View className='note-info'>
-                              <Text className='note-title'>{note.title}</Text>
-                              <View className='note-footer'>
-                                <View className='author-info'>
-                                  <Image className='author-avatar' src={venueAvatar} mode='aspectFill' />
-                                  <Text className='author-name'>{venueUser}</Text>
-                                </View>
-                                <View className='like-info'>
-                                  <Image className='like-icon' src={likeIcon} mode='aspectFit' />
-                                  <Text className='like-count'>{formatNumber(note.like_count)}</Text>
-                                </View>
-                              </View>
-                            </View>
-                          </View>
-                        )
-                      })}
+                      {leftNotes.map(renderNoteCard)}
                     </View>
                     <View className='waterfall-column'>
-                      {noteList.filter((_, i) => i % 2 === 1).map(note => {
-                        const imageHeight = calculateImageHeight(note.media_data.width, note.media_data.height)
-                        return (
-                          <View key={String(note.id)} className='note-card' onClick={() => handleNoteClick(note.id)}>
-                            <Image className='note-cover' src={note.media_data.thumbnail_url || note.media_data.url} mode='aspectFill' style={{ height: `${imageHeight}px` }} />
-                            <View className='note-info'>
-                              <Text className='note-title'>{note.title}</Text>
-                              <View className='note-footer'>
-                                <View className='author-info'>
-                                  <Image className='author-avatar' src={venueAvatar} mode='aspectFill' />
-                                  <Text className='author-name'>{venueUser}</Text>
-                                </View>
-                                <View className='like-info'>
-                                  <Image className='like-icon' src={likeIcon} mode='aspectFit' />
-                                  <Text className='like-count'>{formatNumber(note.like_count)}</Text>
-                                </View>
-                              </View>
-                            </View>
-                          </View>
-                        )
-                      })}
+                      {rightNotes.map(renderNoteCard)}
                     </View>
                   </View>
                 ) : (
                   <View className='empty-notes'>
-                    <Text className='empty-icon'>📷</Text>
-                    <Text className='empty-text'>还没有发布动态</Text>
+                    <Text className='empty-text'>{relatedNotesLoading ? '动态加载中...' : '暂无相关动态'}</Text>
                   </View>
                 )}
               </View>
             </View>
-          )}
 
           <View className='bottom-space' />
         </View>
@@ -448,5 +401,3 @@ export default function VenuePage() {
     </View>
   )
 }
-
-

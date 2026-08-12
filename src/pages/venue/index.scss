@@ -91,7 +91,7 @@ page {
       .price { font-weight: bold; }
     }
     .location-row {
-      display: flex; align-items: center; gap: 8px; font-weight: 400; font-size: 20px; color: #FFFFFF; cursor: pointer;
+      display: flex; align-items: center; gap: 8px; font-weight: 400; font-size: 20px; color: #FFFFFF;
     }
   }
 
@@ -141,7 +141,7 @@ page {
     .host-avatar { width: 80px; height: 80px; border-radius: 50%; background: #333; }
     .host-info {
         display: flex; flex-direction: column; gap: 8px;
-        .host-name-row { display: flex; align-items: center; gap: 10px; .host-name { font-size: 28px; color: #fff; font-weight: bold; } .host-certification-icon { width: 20px; height: 20px; display: block; }}
+        .host-name-row { display: flex; align-items: center; gap: 10px; .host-name { font-size: 28px; color: #fff; font-weight: bold; } .host-certificate { font-size: 20px; color: #5a70fe; }}
         .host-fans { font-size: 22px; color: #999; }
     }
   }
@@ -185,6 +185,7 @@ page {
     .note-card {
         background: #1C1C1E; border-radius: 16px; overflow: hidden;
         .note-cover { width: 100%; display: block; background: #333;}
+        .note-cover-placeholder { background: linear-gradient(135deg, #1f1f1f, #303030); }
         .note-info { padding: 16px; 
             .note-title { color: #eee; font-size: 26px; line-height: 1.4; margin-bottom: 12px;}
             .note-footer { display: flex; justify-content: space-between; align-items: center; 

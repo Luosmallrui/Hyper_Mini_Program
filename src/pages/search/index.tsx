@@ -8,8 +8,10 @@ import './index.scss'
 
 interface SubscribeItem {
   id: number
+  name?: string
   title: string
   type: string
+  poster_list?: string
   cover_image: string
   location_name: string
   address: string
@@ -28,16 +30,18 @@ interface SubscriptionCard {
   locationName: string
 }
 
-type SearchType = 3
+type SearchType = 0
 type HistoryKeyword = string
 
 interface SearchResultApiItem {
   id?: number | string
   merchant_id?: number | string
   party_id?: number | string
+  activity_id?: number | string
   title?: string
   name?: string
   merchant_name?: string
+  poster_list?: string
   cover_image?: string
   cover?: string
   image?: string
@@ -46,6 +50,8 @@ interface SearchResultApiItem {
   location_name?: string
   location?: string
   address?: string
+  district?: string
+  __source?: 'merchant' | 'activity'
 }
 
 interface SearchResultCard {
@@ -54,9 +60,10 @@ interface SearchResultCard {
   coverImage: string
   type: string
   locationName: string
+  source: 'merchant' | 'activity'
 }
 
-const SEARCH_TYPE: SearchType = 3
+const SEARCH_TYPE: SearchType = 0
 
 const normalizeHistoryKeywords = (source: unknown): HistoryKeyword[] => {
   if (!Array.isArray(source)) return []
@@ -75,28 +82,35 @@ const extractSearchItems = (source: unknown): SearchResultApiItem[] => {
     parties?: unknown
     list?: unknown
     merchants?: unknown
+    activities?: unknown
   }
-  if (Array.isArray(data.parties)) return data.parties as SearchResultApiItem[]
-  if (Array.isArray(data.list)) return data.list as SearchResultApiItem[]
-  if (Array.isArray(data.merchants)) return data.merchants as SearchResultApiItem[]
-  return []
+  const merchantItems = [
+    ...(Array.isArray(data.parties) ? data.parties as SearchResultApiItem[] : []),
+    ...(Array.isArray(data.merchants) ? data.merchants as SearchResultApiItem[] : []),
+    ...(Array.isArray(data.list) ? data.list as SearchResultApiItem[] : []),
+  ].map((item) => ({ ...item, __source: 'merchant' as const }))
+  const activityItems = (Array.isArray(data.activities) ? data.activities as SearchResultApiItem[] : [])
+    .map((item) => ({ ...item, __source: 'activity' as const }))
+  return [...merchantItems, ...activityItems]
 }
 
 const mapSearchResults = (source: unknown): SearchResultCard[] => {
   const items = extractSearchItems(source)
   return items
     .map((item: SearchResultApiItem, index: number) => {
-      const rawId = item?.id ?? item?.merchant_id ?? item?.party_id ?? `search-${index}`
+      const cardSource: SearchResultCard['source'] = item?.__source === 'activity' ? 'activity' : 'merchant'
+      const rawId = item?.id ?? item?.activity_id ?? item?.merchant_id ?? item?.party_id ?? `search-${index}`
       const title = String(item?.title || item?.name || item?.merchant_name || '').trim()
-      const coverImage = String(item?.cover_image || item?.cover || item?.image || '').trim()
-      const type = String(item?.type || item?.type_name || '').trim()
-      const locationName = String(item?.location_name || item?.location || item?.address || '').trim()
+      const coverImage = String(item?.poster_list || item?.cover_image || item?.cover || item?.image || '').trim()
+      const type = String(cardSource === 'activity' ? '活动' : (item?.type || item?.type_name || '')).trim()
+      const locationName = String(item?.location_name || item?.location || item?.address || item?.district || '').trim()
       return {
         id: String(rawId),
         title: title || '未命名',
         coverImage,
         type,
         locationName,
+        source: cardSource,
       }
     })
     .filter((item) => Boolean(item.id))
@@ -135,7 +149,7 @@ export default function SearchPage() {
     setSubscriptionError('')
     try {
       const res = await request({
-        url: '/api/v1/subscribe/list',
+        url: '/api/v1/activity/subscriptions?page=1&pageSize=20',
         method: 'GET',
       })
       const body: any = res?.data
@@ -144,13 +158,13 @@ export default function SearchPage() {
         setSubscriptionError('加载失败，点击重试')
         return
       }
-      const source = Array.isArray(body?.data) ? body.data : []
+      const source = Array.isArray(body?.data?.list) ? body.data.list : []
       const mapped: SubscriptionCard[] = source
         .map((item: SubscribeItem) => ({
           id: Number(item?.id) || 0,
-          name: String(item?.title || ''),
-          coverImage: String(item?.cover_image || ''),
-          type: String(item?.type || ''),
+          name: String(item?.name || item?.title || ''),
+          coverImage: String(item?.poster_list || item?.cover_image || ''),
+          type: String(item?.type || 'activity'),
           lat: Number(item?.lat) || 0,
           lng: Number(item?.lng) || 0,
           locationName: String(item?.location_name || ''),
@@ -214,7 +228,10 @@ export default function SearchPage() {
       }
       const mapped = mapSearchResults(body?.data)
       setSearchResults(mapped)
-      void fetchSearchHistory()
+      // 搜索历史是登录态数据，游客不请求
+      if (Taro.getStorageSync('access_token')) {
+        void fetchSearchHistory()
+      }
     } catch (error) {
       setSearchResults([])
       setSearchError('搜索失败，请重试')
@@ -224,6 +241,7 @@ export default function SearchPage() {
   }
 
   const deleteHistoryKeyword = async (historyKeyword: string) => {
+    if (!Taro.getStorageSync('access_token')) return
     const targetKeyword = String(historyKeyword || '').trim()
     if (!targetKeyword) return
     if (deletingKeywordSetRef.current.has(targetKeyword)) return
@@ -249,6 +267,7 @@ export default function SearchPage() {
   }
 
   useDidShow(() => {
+    if (!Taro.getStorageSync('access_token')) return
     void fetchSubscriptions()
     void fetchSearchHistory()
   })
@@ -270,11 +289,26 @@ export default function SearchPage() {
   const handleResultClick = (item: SearchResultCard) => {
     const id = String(item?.id || '').trim()
     if (!id) return
+    if (item.source === 'activity') {
+      Taro.navigateTo({ url: `/pages/activity/index?id=${encodeURIComponent(id)}` })
+      return
+    }
     const type = String(item?.type || '').toLowerCase()
     const isVenue = type.includes('场地') || type.includes('venue') || type.includes('club')
     const path = isVenue
       ? `/pages/venue/index?id=${encodeURIComponent(id)}&tag=${encodeURIComponent(item.type || '')}`
       : `/pages/activity/index?id=${encodeURIComponent(id)}&tag=${encodeURIComponent(item.type || '')}`
+    Taro.navigateTo({ url: path })
+  }
+
+  const handleSubscriptionClick = (sub: SubscriptionCard) => {
+    const id = String(sub?.id || '').trim()
+    if (!id) return
+    const type = String(sub?.type || '').toLowerCase()
+    const isVenue = type.includes('场地') || type.includes('venue') || type.includes('club')
+    const path = isVenue
+      ? `/pages/venue/index?id=${encodeURIComponent(id)}&tag=${encodeURIComponent(sub.type || '')}`
+      : `/pages/activity/index?id=${encodeURIComponent(id)}&tag=${encodeURIComponent(sub.type || '')}`
     Taro.navigateTo({ url: path })
   }
 
@@ -329,7 +363,7 @@ export default function SearchPage() {
               )}
 
               {!loadingSubscriptions && !subscriptionError && subscriptions.map((sub) => (
-                <View key={sub.id} className='sub-item'>
+                <View key={sub.id} className='sub-item' onClick={() => handleSubscriptionClick(sub)}>
                   <View className='avatar-circle'>
                     {sub.coverImage ? (
                       <Image className='real-avatar' src={sub.coverImage} mode='aspectFill' />

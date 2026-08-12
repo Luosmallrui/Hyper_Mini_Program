@@ -1,0 +1,656 @@
+// Verify page - design values from 管理后台-核销 design spec
+
+.verify-page {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 1.0);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+// Gradient background - full width, top portion
+.verify-bg-gradient {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 1740rpx;
+  background: linear-gradient(0deg, rgba(15, 15, 15, 1) 0%, rgba(0, 0, 0, 1) 100%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+// Status bar
+.verify-status-bar {
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+// Navigation - rgba(20,19,26,1) bg
+.verify-nav-box {
+  position: relative;
+  z-index: 1;
+  background-color: rgba(20, 19, 26, 1.0);
+  padding: 0 30rpx 42rpx 30rpx;
+  overflow: hidden;
+}
+
+.verify-nav-row {
+  margin-top: 24rpx;
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+}
+
+.verify-nav-back {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.verify-nav-back-img {
+  width: 38rpx;
+  height: 48rpx;
+}
+
+.verify-nav-title {
+  color: rgba(243, 243, 244, 1);
+  font-size: 28rpx;
+  font-family: PingFangSC-Semibold;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 40rpx;
+  margin-top: 24rpx;
+  flex: 1;
+  text-align: center;
+  overflow: hidden;
+}
+
+// Scrollable content
+.verify-scroll {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  padding-bottom: 290rpx;
+}
+
+// Section header - margin for side spacing
+.verify-section-header {
+  margin-top: 64rpx;
+  margin-left: 30rpx;
+  margin-right: 30rpx;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.verify-section-title {
+  color: rgba(142, 142, 142, 1);
+  font-size: 26rpx;
+  font-family: PingFangSC-Regular;
+  font-weight: normal;
+  white-space: nowrap;
+  line-height: 37rpx;
+}
+
+.verify-section-more {
+  color: rgba(142, 142, 142, 1);
+  font-size: 26rpx;
+  font-family: PingFangSC-Regular;
+  font-weight: normal;
+  white-space: nowrap;
+  line-height: 37rpx;
+}
+
+// Ticket cards - constrained to viewport width
+.verify-ticket-card {
+  background-color: rgba(22, 22, 22, 1.0);
+  border-radius: 24rpx;
+  padding: 24rpx;
+  margin-left: 30rpx;
+  margin-right: 30rpx;
+  margin-top: 40rpx;
+  align-items: center;
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+}
+
+.verify-ticket-cover {
+  width: 136rpx;
+  height: 136rpx;
+  border-radius: 24rpx;
+  border: 1rpx solid rgba(151, 151, 151, 1);
+  flex-shrink: 0;
+  background-color: rgba(216, 216, 216, 1);
+}
+
+.verify-ticket-info {
+  flex: 1;
+  margin-left: 20rpx;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.verify-ticket-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 12rpx;
+}
+
+.verify-ticket-title {
+  color: rgba(142, 142, 142, 1);
+  font-size: 26rpx;
+  font-family: PingFangSC-Regular;
+  font-weight: normal;
+  text-align: left;
+  line-height: 37rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.verify-ticket-type {
+  color: rgba(183, 183, 183, 1);
+  font-size: 22rpx;
+  font-family: PingFangSC-Regular;
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 30rpx;
+  margin-top: 16rpx;
+}
+
+.verify-ticket-person {
+  color: rgba(183, 183, 183, 1);
+  font-size: 22rpx;
+  font-family: PingFangSC-Regular;
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 28rpx;
+  margin-top: 25rpx;
+}
+
+.verify-ticket-status {
+  color: rgba(142, 142, 142, 1);
+  font-size: 24rpx;
+  font-family: PingFangSC-Regular;
+  font-weight: normal;
+  text-align: right;
+  white-space: nowrap;
+  line-height: 37rpx;
+  flex-shrink: 0;
+  max-width: 160rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Scanner area - tappable capsule
+.verify-bottom-scan-wrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 132rpx;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.verify-scanner-area {
+  width: 484rpx;
+  height: 140rpx;
+  border-radius: 999rpx;
+  background: #FF3150;
+  align-items: center;
+  justify-content: center;
+  display: flex;
+  pointer-events: auto;
+}
+
+.verify-scanner-area.disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.verify-scanner-icon {
+  width: 78rpx;
+  height: 78rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.verify-scan-glyph {
+  position: relative;
+  width: 76rpx;
+  height: 64rpx;
+}
+
+.verify-scan-corner {
+  position: absolute;
+  width: 21rpx;
+  height: 21rpx;
+  border-color: #FFFFFF;
+}
+
+.verify-scan-corner.tl {
+  left: 0;
+  top: 0;
+  border-left: 6rpx solid #FFFFFF;
+  border-top: 6rpx solid #FFFFFF;
+  border-top-left-radius: 6rpx;
+}
+
+.verify-scan-corner.tr {
+  right: 0;
+  top: 0;
+  border-right: 6rpx solid #FFFFFF;
+  border-top: 6rpx solid #FFFFFF;
+  border-top-right-radius: 6rpx;
+}
+
+.verify-scan-corner.bl {
+  left: 0;
+  bottom: 0;
+  border-left: 6rpx solid #FFFFFF;
+  border-bottom: 6rpx solid #FFFFFF;
+  border-bottom-left-radius: 6rpx;
+}
+
+.verify-scan-corner.br {
+  right: 0;
+  bottom: 0;
+  border-right: 6rpx solid #FFFFFF;
+  border-bottom: 6rpx solid #FFFFFF;
+  border-bottom-right-radius: 6rpx;
+}
+
+.verify-scan-line {
+  position: absolute;
+  left: 13rpx;
+  right: 13rpx;
+  top: 30rpx;
+  height: 5rpx;
+  border-radius: 999rpx;
+  background: #FFFFFF;
+}
+
+.verify-scanner-hint {
+  color: rgba(142, 142, 142, 1);
+  font-size: 20rpx;
+  font-family: PingFangSC-Regular;
+  font-weight: normal;
+  text-align: center;
+  line-height: 28rpx;
+  margin-top: 8rpx;
+}
+
+// Secondary links below scanner
+.verify-secondary-links {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 20rpx;
+  margin-top: 40rpx;
+}
+
+.verify-secondary-link {
+  color: rgba(142, 142, 142, 1);
+  font-size: 24rpx;
+  font-family: PingFangSC-Regular;
+  line-height: 33rpx;
+}
+
+.verify-secondary-sep {
+  color: rgba(85, 85, 85, 1);
+  font-size: 24rpx;
+  line-height: 33rpx;
+}
+
+.verify-safe-bottom {
+  height: 40rpx;
+}
+
+// Modal overlay - rgba(0,0,0,0.52)
+.verify-modal-overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.52);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.verify-result-modal-overlay {
+  justify-content: flex-start;
+  padding-top: 470rpx;
+}
+
+// Modal card - rgba(44,44,46,1), border-radius: 24px
+.verify-modal-card {
+  background-color: rgba(44, 44, 46, 1.0);
+  border-radius: 48rpx;
+  width: 602rpx;
+  padding: 54rpx 30rpx 45rpx 30rpx;
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.verify-modal-card.recognized {
+  padding-top: 56rpx;
+  padding-bottom: 45rpx;
+}
+
+.verify-modal-card.success {
+  padding-top: 56rpx;
+  padding-bottom: 44rpx;
+}
+
+.verify-modal-card.failed {
+  padding-top: 68rpx;
+  padding-bottom: 45rpx;
+}
+
+.verify-modal-icon-row {
+  min-width: 235rpx;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.verify-modal-title-group {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.verify-modal-title {
+  color: rgba(243, 243, 244, 1);
+  font-size: 40rpx;
+  font-family: PingFangSC-Semibold;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 56rpx;
+}
+
+.verify-modal-subtitle {
+  color: rgba(255, 255, 255, 1);
+  font-size: 30rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 42rpx;
+  margin-top: 13rpx;
+}
+
+.verify-modal-desc {
+  width: 515rpx;
+  min-height: 84rpx;
+  color: rgba(142, 142, 142, 1);
+  font-size: 30rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  text-align: center;
+  line-height: 42rpx;
+  margin-top: 93rpx;
+}
+
+.verify-modal-ticket {
+  align-items: center;
+  gap: 15rpx;
+  margin-top: 60rpx;
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+}
+
+.verify-modal-card.recognized .verify-modal-ticket {
+  margin-top: 62rpx;
+}
+
+.verify-modal-card.success .verify-modal-ticket {
+  margin-top: 63rpx;
+}
+
+.verify-modal-card.failed .verify-modal-ticket {
+  margin-top: 78rpx;
+}
+
+.verify-modal-btn {
+  background-color: rgba(216, 216, 216, 1.0);
+  border-radius: 66rpx;
+  padding: 35rpx 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 88rpx;
+}
+
+.verify-modal-card.recognized .verify-modal-btn {
+  margin-top: 88rpx;
+}
+
+.verify-modal-card.success .verify-modal-btn {
+  margin-top: 90rpx;
+}
+
+.verify-modal-card.failed .verify-modal-btn {
+  margin-top: 88rpx;
+}
+
+.verify-modal-btn-text {
+  color: rgba(0, 0, 0, 1);
+  font-size: 26rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 37rpx;
+}
+
+.verify-modal-cancel {
+  color: rgba(255, 255, 255, 1);
+  font-size: 26rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 37rpx;
+  margin-top: 49rpx;
+}
+
+// Global placeholder for dark inputs
+.dark-placeholder {
+  color: rgba(85, 85, 85, 1);
+  font-size: 22rpx;
+  font-family: PingFangSC-Regular;
+}
+
+// Add Verifier Modal - rgba(31,31,31,1), border-radius: 21px
+.add-verifier-card {
+  background-color: rgba(31, 31, 31, 1.0);
+  border-radius: 42rpx;
+  padding: 40rpx 30rpx 40rpx 30rpx;
+  width: 690rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.add-verifier-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.add-verifier-title {
+  color: rgba(255, 255, 255, 1);
+  font-size: 26rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  line-height: 37rpx;
+}
+
+.add-verifier-close {
+  color: rgba(116, 116, 116, 1);
+  font-size: 26rpx;
+  font-family: PingFangSC-Regular;
+  line-height: 37rpx;
+}
+
+.add-verifier-label {
+  color: rgba(255, 255, 255, 1);
+  font-size: 26rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  line-height: 37rpx;
+  margin-top: 48rpx;
+  text-align: left;
+  width: 100%;
+}
+
+.add-verifier-org {
+  color: rgba(151, 151, 151, 1);
+  font-size: 26rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  line-height: 37rpx;
+  margin-top: 16rpx;
+  text-align: left;
+  width: 100%;
+}
+
+.add-verifier-input-shell {
+  background-color: rgba(0, 0, 0, 1.0);
+  border-radius: 24rpx;
+  border: 1rpx solid rgba(151, 151, 151, 1);
+  margin-top: 18rpx;
+  padding: 33rpx 19rpx;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.add-verifier-input {
+  color: rgba(255, 255, 255, 1);
+  font-size: 22rpx;
+  font-family: PingFangSC-Regular;
+  font-weight: normal;
+  line-height: 30rpx;
+  width: 100%;
+}
+
+.add-verifier-btns {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 60rpx;
+  gap: 20rpx;
+}
+
+.add-verifier-clear-btn {
+  background-color: rgba(85, 85, 85, 1.0);
+  border-radius: 14rpx;
+  padding: 29rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 210rpx;
+}
+
+.add-verifier-clear-text {
+  color: rgba(255, 255, 255, 1);
+  font-size: 24rpx;
+  font-family: PingFangSC-Semibold;
+  font-weight: 600;
+  line-height: 33rpx;
+}
+
+.add-verifier-submit-btn {
+  background-color: rgba(255, 255, 255, 1.0);
+  border-radius: 14rpx;
+  padding: 29rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.add-verifier-submit-text {
+  color: rgba(32, 35, 34, 1);
+  font-size: 24rpx;
+  font-family: PingFangSC-Semibold;
+  font-weight: 600;
+  line-height: 33rpx;
+}
+
+// Channel / Scope chip selector
+.add-verifier-channel-row {
+  display: flex;
+  flex-direction: row;
+  gap: 20rpx;
+  margin-top: 18rpx;
+}
+
+.add-verifier-chip {
+  padding: 16rpx 36rpx;
+  border-radius: 24rpx;
+  border: 2rpx solid rgba(151, 151, 151, 0.4);
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-verifier-chip text {
+  color: rgba(151, 151, 151, 1);
+  font-size: 24rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  line-height: 33rpx;
+}
+
+.add-verifier-chip.selected {
+  border-color: rgba(255, 255, 255, 1);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.add-verifier-chip.selected text {
+  color: rgba(255, 255, 255, 1);
+}

@@ -11,14 +11,14 @@ interface MerchantGood {
   party_id: number
   product_name: string
   price: number
-  original_price: number
-  stock: number
-  description: string
+  original_price?: number
   cover_image: string
-  status: number
   sales_volume: number
   created_at: string
-  updated_at: string
+  stock?: number
+  description?: string
+  status?: number
+  updated_at?: string
 }
 
 interface MerchantDetail {
@@ -27,10 +27,6 @@ interface MerchantDetail {
   avg_price: number
   location_name: string
   images: string[]
-  goods: MerchantGood[]
-  notes: any[]
-  next_cursor: string
-  has_more: boolean
   user_name: string
   user_avatar: string
   is_follow: boolean
@@ -79,18 +75,35 @@ export default function VenueProductDetail() {
           url: `/api/v1/merchant/${venueId}`,
           method: 'GET'
         })
-        const detail = res?.data?.data || null
-        setVenue(detail)
-        if (detail?.goods) {
-          const target = detail.goods.find((item: MerchantGood) => String(item.id) === String(productId))
-          setProduct(target || detail.goods[0] || null)
-        }
+        setVenue(res?.data?.data || null)
       } catch (error) {
-        console.error('Product detail load failed:', error)
+        console.error('Merchant detail load failed:', error)
       }
     }
 
     fetchDetail()
+  }, [venueId])
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      if (!venueId) return
+      try {
+        const res = await request({
+          url: `/api/v1/merchant/${venueId}/goods`,
+          method: 'GET',
+          data: { page: 1, page_size: 100 },
+        })
+        const goods: MerchantGood[] = (res as any)?.data?.data?.goods || []
+        const target = productId
+          ? goods.find((item) => String(item.id) === String(productId))
+          : goods[0]
+        setProduct(target || null)
+      } catch (error) {
+        console.error('Product list load failed:', error)
+      }
+    }
+
+    fetchProduct()
   }, [venueId, productId])
 
   const galleryImages = useMemo(() => {
@@ -100,8 +113,8 @@ export default function VenueProductDetail() {
     return images.length > 0 ? images : fallbackImages
   }, [product?.cover_image, venue?.images])
 
-  const price = product?.price ? Math.round(product.price / 100) : 0
-  const originalPrice = product?.original_price ? Math.round(product.original_price / 100) : 0
+  const price = product?.price ? Number((product.price / 100).toFixed(2)) : 0
+  const originalPrice = product?.original_price ? Number((product.original_price / 100).toFixed(2)) : 0
   const savePrice = originalPrice > price ? originalPrice - price : 0
   const sales = product?.sales_volume || 0
 

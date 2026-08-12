@@ -1,13 +1,18 @@
-﻿import { View, Text, Input, Textarea, Image, ScrollView } from '@tarojs/components'
-import Taro from '@tarojs/taro'
+import { View, Text, Input, Textarea, Image, ScrollView } from '@tarojs/components'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { useState, useEffect, useRef } from 'react'
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import { request } from '../../../utils/request'
 import { reverseGeocode, searchByKeyword, type POIItem } from '../../../utils/qqmap'
+import { chooseUserLocation, getStoredChosenLocation } from '../../../utils/user-location'
+import { normalizeSubscribedActivities, type SubscribedActivityItem } from './subscribed-activities'
 import './index.scss'
 
 const BASE_URL = 'https://www.hypercn.cn'
+
+// 与后台默认城市中心一致（成都），仅作为无选点缓存时的搜索兜底
+const DEFAULT_POI_CENTER = { latitude: 30.5539, longitude: 104.0676 }
 
 interface MediaItem {
   tempPath: string
@@ -21,12 +26,6 @@ interface MediaItem {
 interface TopicItem {
   id: number
   name: string
-}
-
-interface SubscribedActivityItem {
-  id: number
-  title: string
-  type: string
 }
 
 type StepKey = 'photo' | 'text'
@@ -92,14 +91,18 @@ export default function PostCreatePage() {
     }
   }, [])
 
-  // 页面加载 -> 获取定位 -> 逆地址解析附近 POI
+  // 页面加载 -> 有选点缓存时以其为中心拉取附近 POI；否则等用户在弹窗里地图选点
   useEffect(() => {
-    fetchNearbyPois()
+    const stored = getStoredChosenLocation()
+    if (!stored) return
+    userLatRef.current = stored.latitude
+    userLngRef.current = stored.longitude
+    void fetchNearbyPois(stored.latitude, stored.longitude)
   }, [])
 
-  useEffect(() => {
-    fetchSubscribedActivities()
-  }, [])
+  useDidShow(() => {
+    void fetchSubscribedActivities()
+  })
 
   useEffect(() => {
     if (activeIndex >= mediaList.length) {
@@ -120,38 +123,16 @@ export default function PostCreatePage() {
     setSelectedTopics(prev => prev.filter(id => topicMap.has(id)))
   }, [mediaList])
 
-  // ========== 核心：获取附近地点 ==========
-  const fetchNearbyPois = async () => {
+  // ========== 核心：按指定坐标获取附近地点 ==========
+  const fetchNearbyPois = async (latitude: number, longitude: number) => {
     setIsLoadingLocation(true)
     try {
-      // 第一步：获取用户当前位置
-      const locRes = await Taro.getLocation({
-        type: 'gcj02',
-        isHighAccuracy: false,
-      })
-
-      userLatRef.current = locRes.latitude
-      userLngRef.current = locRes.longitude
-
-      // 第二步：逆地址解析，拿到附近 POI 列表
-      const result = await reverseGeocode(locRes.latitude, locRes.longitude)
+      // 逆地址解析，拿到附近 POI 列表
+      const result = await reverseGeocode(latitude, longitude)
 
       setNearbyPois(result.pois)
     } catch (err: any) {
       console.warn('获取附近地点失败:', err)
-
-      if (err?.errMsg?.includes('deny') || err?.errMsg?.includes('auth')) {
-        Taro.showModal({
-          title: '需要位置权限',
-          content: '请在设置中开启位置权限，以便获取附近地点',
-          confirmText: '去设置',
-          success: (modalRes) => {
-            if (modalRes.confirm) {
-              Taro.openSetting({})
-            }
-          },
-        })
-      }
     } finally {
       setIsLoadingLocation(false)
     }
@@ -169,8 +150,8 @@ export default function PostCreatePage() {
     try {
       const results = await searchByKeyword(
         keyword,
-        userLatRef.current || 0,
-        userLngRef.current || 0,
+        userLatRef.current || DEFAULT_POI_CENTER.latitude,
+        userLngRef.current || DEFAULT_POI_CENTER.longitude,
         20
       )
       setSearchResults(results)
@@ -199,24 +180,25 @@ export default function PostCreatePage() {
     setShowLocationPicker(true)
   }
 
-  // 备选：使用微信原生地图选点
+  // 核心定位入口：微信原生地图选点（wx.chooseLocation）
   const handleChooseLocationNative = async () => {
-    try {
-      const res = await Taro.chooseLocation({})
-      if (res.name) {
-        const poi: POIItem = {
-          id: `native_${Date.now()}`,
-          name: res.name,
-          address: res.address || '',
-          latitude: res.latitude,
-          longitude: res.longitude,
-        }
-        setSelectedLocation(poi)
-        setShowLocationPicker(false)
+    const chosen = await chooseUserLocation()
+    if (!chosen) return
+    userLatRef.current = chosen.latitude
+    userLngRef.current = chosen.longitude
+    if (chosen.name) {
+      const poi: POIItem = {
+        id: `native_${Date.now()}`,
+        name: chosen.name,
+        address: chosen.address || '',
+        latitude: chosen.latitude,
+        longitude: chosen.longitude,
       }
-    } catch (_e) {
-      console.log('用户取消地图选点')
+      setSelectedLocation(poi)
+      setShowLocationPicker(false)
     }
+    // 以选点为中心刷新附近 POI，方便用户在弹窗里继续微调
+    void fetchNearbyPois(chosen.latitude, chosen.longitude)
   }
 
   const fetchSubscribedActivities = async () => {
@@ -224,26 +206,18 @@ export default function PostCreatePage() {
     setActivityError('')
     try {
       const res = await request({
-        url: '/api/v1/subscribe/list',
+        url: '/api/v1/activity/subscriptions?page=1&pageSize=20',
         method: 'GET',
       })
       const body: any = res?.data
-      const source = body?.code === 200 && Array.isArray(body?.data) ? body.data : null
+      const source = body?.code === 200 && Array.isArray(body?.data?.list) ? body.data.list : null
       if (!source) {
         setSubscribedActivities([])
         setActivityError('加载失败，点击重试')
         return
       }
 
-      const activityTypeSet = new Set(['活动', '派对', 'activity', 'event'])
-      const mapped: SubscribedActivityItem[] = source
-        .map((item: any) => ({
-          id: Number(item?.id) || 0,
-          title: String(item?.title || ''),
-          type: String(item?.type || '').toLowerCase(),
-        }))
-        .filter((item: SubscribedActivityItem) => item.id > 0 && item.title)
-        .filter((item: SubscribedActivityItem) => activityTypeSet.has(item.type) || activityTypeSet.has(item.type.toLowerCase()))
+      const mapped = normalizeSubscribedActivities(source)
 
       setSubscribedActivities(mapped)
       if (mapped.length === 0) {
@@ -734,7 +708,7 @@ export default function PostCreatePage() {
 
               <View className='tag-list'>
                 {isLoadingLocation ? (
-                  <Text className='location-hint-text'>定位中...</Text>
+                  <Text className='location-hint-text'>加载附近地点中...</Text>
                 ) : locationDisplayList.length > 0 ? (
                   locationDisplayList.map((poi) => (
                     <View
@@ -886,7 +860,7 @@ export default function PostCreatePage() {
               {!isSearching && pickerDisplayList.length === 0 && (
                 <View className='picker-empty'>
                   <Text className='picker-empty-text'>
-                    {locationSearchKey.trim() ? '未找到相关地点' : '暂无附近地点'}
+                    {locationSearchKey.trim() ? '未找到相关地点' : '暂无附近地点，可在地图上选择'}
                   </Text>
                 </View>
               )}

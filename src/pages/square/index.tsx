@@ -10,6 +10,7 @@ import lightningFilledIcon from '@/assets/icons/lightning.svg'
 import lightningOutlineIcon from '@/assets/icons/lightning-outline.svg'
 import { setTabBarIndex } from '../../store/tabbar'
 import { request } from '../../utils/request'
+import { requireLogin } from '../../utils/auth'
 import './index.scss'
 
 const BASE_URL = 'https://www.hypercn.cn'
@@ -407,8 +408,8 @@ export default function SquarePage() {
     query.select('.channel-scroll-view').boundingClientRect()
     query.selectAll('.channel-scroll-view .tab-item').boundingClientRect()
     query.exec((result) => {
-      const scrollRect = result?.[0] as WechatMiniprogram.BoundingClientRectCallbackResult | undefined
-      const tabRectList = result?.[1] as WechatMiniprogram.BoundingClientRectCallbackResult[] | undefined
+      const scrollRect = result?.[0] as Taro.NodesRef.BoundingClientRectCallbackResult | undefined
+      const tabRectList = result?.[1] as Taro.NodesRef.BoundingClientRectCallbackResult[] | undefined
       if (!scrollRect || !Array.isArray(tabRectList) || !tabRectList.length) return
 
       const viewportWidth = Math.max(Math.floor((scrollRect.width || 0) - TAB_RIGHT_RESERVED_WIDTH), 0)
@@ -509,7 +510,7 @@ export default function SquarePage() {
           }
           return payload
         })(),
-        header: { Authorization: `Bearer ${token}` },
+        header: token ? { Authorization: `Bearer ${token}` } : {},
         dataType: 'string',
         responseType: 'text'
       })
@@ -786,6 +787,7 @@ export default function SquarePage() {
   }
 
   const subscribeChannel = async (channel: ChannelApiItem) => {
+    if (!requireLogin()) return
     if (isDefaultChannelId(channel.id)) {
       return
     }
@@ -814,6 +816,7 @@ export default function SquarePage() {
   }
 
   const unsubscribeChannel = async (channel: ChannelApiItem) => {
+    if (!requireLogin()) return
     if (isDefaultChannelId(channel.id)) {
       return
     }
@@ -967,6 +970,7 @@ export default function SquarePage() {
   }
 
   const toggleNoteLike = async (noteId: string, currentLikedByMe: boolean) => {
+    if (!requireLogin()) return
     if (pendingLikeIdsRef.current.has(noteId)) return
     pendingLikeIdsRef.current.add(noteId)
 

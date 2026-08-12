@@ -6,6 +6,10 @@ import prodConfig from './prod'
 
 // https://taro-docs.jd.com/docs/next/config#defineconfig-辅助函数
 export default defineConfig(async (merge, {}) => {
+  const configuredMapLayerStyle = Number(process.env.YDY_TENCENT_MAP_LAYER_STYLE)
+  const mapLayerStyle = Number.isInteger(configuredMapLayerStyle) && configuredMapLayerStyle > 0
+    ? configuredMapLayerStyle
+    : 0
   const baseConfig: UserConfigExport = {
     projectName: 'ydy-cli-project-taros',
     date: '2024-6-13',
@@ -20,6 +24,7 @@ export default defineConfig(async (merge, {}) => {
     outputRoot: 'dist',
     plugins: [],
     defineConstants: {
+      __YDY_TENCENT_MAP_LAYER_STYLE__: JSON.stringify(mapLayerStyle),
     },
     copy: {
       patterns: [

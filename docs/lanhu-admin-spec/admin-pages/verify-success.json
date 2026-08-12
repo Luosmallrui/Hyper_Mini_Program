@@ -1,0 +1,459 @@
+{
+  "pageName": "管理后台-核销成功",
+  "lanhuPageId": "3a6e0e66-a674-45b2-bfc9-e238329d3913",
+  "lanhuIndex": 11,
+  "updateTime": "2026-05-25T16:25:24.339031Z",
+  "sourceUrl": "https://lanhuapp.com/web/#/item/project/stage?pid=5adab28a-d9b0-4b1d-9f3f-e83a4902dc83&tid=d55baf76-3040-46e7-acae-37a0ded883fa",
+  "recommendedRoute": "pages/user-sub/organizer/index",
+  "currentRoute": "pages/user-sub/organizer/index",
+  "internalView": "verify:successModal",
+  "implementationStatus": "半完成",
+  "priority": "P1",
+  "canvas": {
+    "lanhuWidth": 187.5,
+    "lanhuHeight": 406,
+    "exportedSpecWidth": 750,
+    "unit": "Lanhu CSS px; mini-program rpx can use same numeric width because 750rpx = full screen",
+    "conversion": "Lanhu 750px design width maps to 750rpx; older docs note design px / 2 = rpx for 1500px @4x sources."
+  },
+  "layout": {
+    "topNav": {
+      "height": 185,
+      "background": "rgba(20,19,26,1)",
+      "title": "管理后台"
+    },
+    "contentAreas": [
+      "AdminCustomNav",
+      "AdminBottomNav",
+      "VerifyTicketCard",
+      "VerifyResultDialog",
+      "AddVerifierDialog"
+    ],
+    "bottomNav": {
+      "height": 156,
+      "background": "rgba(25,25,25,1)",
+      "items": [
+        "首页",
+        "活动",
+        "更多",
+        "账户"
+      ]
+    },
+    "notes": "当前 modalStatus=success；需补接口成功后列表刷新、重复提交防抖和失败回滚。"
+  },
+  "nodeTree": [
+    {
+      "id": "page",
+      "name": "管理后台-核销成功",
+      "type": "page",
+      "x": 0,
+      "y": 0,
+      "width": 750,
+      "height": 1624,
+      "display": "flex",
+      "flexDirection": "column",
+      "background": "rgba(0,0,0,1)",
+      "children": [
+        "customNav",
+        "content",
+        "bottomNav"
+      ]
+    },
+    {
+      "id": "customNav",
+      "name": "管理后台顶部导航",
+      "type": "navigation",
+      "x": 0,
+      "y": 0,
+      "width": 750,
+      "height": 185,
+      "background": "rgba(20,19,26,1)",
+      "color": "rgba(243,243,244,1)",
+      "fontSize": 28,
+      "fontWeight": 600,
+      "text": "管理后台"
+    },
+    {
+      "id": "content",
+      "name": "主内容区域",
+      "type": "container",
+      "x": 30,
+      "y": 201,
+      "width": 690,
+      "height": "auto",
+      "padding": "0 30px",
+      "background": "transparent"
+    },
+    {
+      "id": "bottomNav",
+      "name": "底部内部导航",
+      "type": "tabbar",
+      "x": 0,
+      "y": "bottom",
+      "width": 750,
+      "height": 156,
+      "background": "rgba(25,25,25,1)",
+      "children": [
+        "首页",
+        "活动",
+        "更多",
+        "账户"
+      ]
+    }
+  ],
+  "components": [
+    "AdminCustomNav",
+    "AdminBottomNav",
+    "VerifyTicketCard",
+    "VerifyResultDialog",
+    "AddVerifierDialog"
+  ],
+  "texts": [
+    "管理后台",
+    "订单核销",
+    "已核销",
+    "查看更多",
+    "将二维码/条形码放入框内，即可自动扫描",
+    "手动输入验证券码",
+    "确认核销",
+    "我知道了"
+  ],
+  "assets": [
+    {
+      "name": "preview",
+      "path": "unknown",
+      "status": "待人工确认"
+    }
+  ],
+  "interactions": [
+    {
+      "name": "onLoad/onShow",
+      "trigger": "页面进入或内部视图切换",
+      "stateChanges": [
+        "idle->loading->loaded/empty/error"
+      ],
+      "api": "proposed or mock",
+      "success": "渲染数据",
+      "failure": "error/toast"
+    },
+    {
+      "name": "onScanCode/onConfirmVerify",
+      "trigger": "扫码/确认核销",
+      "stateChanges": [
+        "modalVisible",
+        "modalStatus",
+        "scannedTicket"
+      ],
+      "api": "verifyTicketCode proposed",
+      "success": "成功弹窗 + 刷新已核销列表",
+      "failure": "失败弹窗"
+    }
+  ],
+  "states": [
+    {
+      "state": "idle",
+      "enter": "页面挂载或返回当前内部视图",
+      "ui": "保持上一次数据或空壳布局",
+      "enabled": [
+        "返回",
+        "切换 tab"
+      ],
+      "disabled": [
+        "提交类按钮，直到数据 ready"
+      ]
+    },
+    {
+      "state": "loading",
+      "enter": "onLoad/onShow 或筛选搜索刷新",
+      "ui": "显示 loading 或骨架；设计稿未给出则使用 Taro.showLoading/局部 loading",
+      "enabled": [
+        "返回"
+      ],
+      "disabled": [
+        "重复提交",
+        "删除",
+        "审核"
+      ]
+    },
+    {
+      "state": "loaded",
+      "enter": "数据加载成功且有数据",
+      "ui": "展示列表/表单/卡片",
+      "enabled": [
+        "搜索",
+        "筛选",
+        "新增",
+        "编辑",
+        "下一步"
+      ],
+      "disabled": []
+    },
+    {
+      "state": "empty",
+      "enter": "数据加载成功但列表为空",
+      "ui": "展示“暂无活动/暂无订单”等空态和必要 CTA",
+      "enabled": [
+        "新增",
+        "重置筛选"
+      ],
+      "disabled": [
+        "列表项操作"
+      ]
+    },
+    {
+      "state": "error",
+      "enter": "接口失败或数据解析失败",
+      "ui": "显示错误提示和重试入口；设计稿未给出，需最小实现",
+      "enabled": [
+        "重试",
+        "返回"
+      ],
+      "disabled": [
+        "提交"
+      ]
+    },
+    {
+      "state": "submitting",
+      "enter": "保存/新增/核销/删除确认后",
+      "ui": "按钮 loading 或禁用，Taro.showLoading",
+      "enabled": [
+        "取消视具体操作而定"
+      ],
+      "disabled": [
+        "重复点击提交"
+      ]
+    },
+    {
+      "state": "dialogOpen",
+      "enter": "筛选、日历、核销、提现、添加核销员等弹窗打开",
+      "ui": "遮罩 + 面板",
+      "enabled": [
+        "关闭",
+        "确认"
+      ],
+      "disabled": [
+        "底层滚动和底层点击"
+      ]
+    }
+  ],
+  "dataBindingHints": {
+    "pageState": [
+      "loading",
+      "error",
+      "empty",
+      "toast/dialog"
+    ],
+    "currentMock": "src/pages/user-sub/organizer/mock.ts",
+    "fields": [
+      "OrganizerActivityItem",
+      "CreateActivityDraft",
+      "TicketSpec",
+      "ActivityFilterState",
+      "VerifyTicketItem",
+      "OrganizerAccount"
+    ]
+  },
+  "apiHints": {
+    "existingApis": [
+      {
+        "name": "servicesGetHome",
+        "file": "src/services/index.ts",
+        "method": "GET",
+        "path": "/api/home",
+        "relation": "首页数据；与后台管理无直接绑定"
+      },
+      {
+        "name": "servicesAuthWx/servicesAuthWxPhone",
+        "file": "src/services/index.ts",
+        "method": "POST",
+        "path": "/api/biz/auth/wx*",
+        "relation": "登录；非后台管理接口"
+      }
+    ],
+    "proposedApis": [
+      {
+        "name": "verifyTicketCode",
+        "method": "POST",
+        "path": "/api/biz/organizer/tickets/verify",
+        "params": [
+          "code",
+          "activityId?"
+        ],
+        "response": [
+          "status",
+          "ticket",
+          "reasonCode"
+        ]
+      }
+    ],
+    "currentMock": [
+      "src/pages/user-sub/organizer/mock.ts"
+    ],
+    "unknowns": [
+      "真实后台接口路径",
+      "后端响应 code/msg 规范",
+      "权限字段"
+    ]
+  },
+  "eventHandlers": [
+    {
+      "name": "onLoad/onShow",
+      "trigger": "页面进入或内部视图切换",
+      "stateChanges": [
+        "idle->loading->loaded/empty/error"
+      ],
+      "api": "proposed or mock",
+      "success": "渲染数据",
+      "failure": "error/toast"
+    },
+    {
+      "name": "onScanCode/onConfirmVerify",
+      "trigger": "扫码/确认核销",
+      "stateChanges": [
+        "modalVisible",
+        "modalStatus",
+        "scannedTicket"
+      ],
+      "api": "verifyTicketCode proposed",
+      "success": "成功弹窗 + 刷新已核销列表",
+      "failure": "失败弹窗"
+    }
+  ],
+  "formValidation": [
+    {
+      "field": "code",
+      "type": "string",
+      "required": true,
+      "rule": "券码不能为空；格式 unknown",
+      "errorMessage": "券码不能为空；格式 unknown",
+      "submitMapping": "code",
+      "echoMapping": "code"
+    },
+    {
+      "field": "newVerifierName",
+      "type": "string",
+      "required": true,
+      "rule": "姓名不能为空",
+      "errorMessage": "姓名不能为空",
+      "submitMapping": "newVerifierName",
+      "echoMapping": "newVerifierName"
+    },
+    {
+      "field": "newVerifierPhone",
+      "type": "phone",
+      "required": true,
+      "rule": "11 位手机号基础校验",
+      "errorMessage": "11 位手机号基础校验",
+      "submitMapping": "newVerifierPhone",
+      "echoMapping": "newVerifierPhone"
+    }
+  ],
+  "permissionHints": {
+    "currentCode": "ALLOW_ORGANIZER_DEBUG + isMerchantUser(userInfo) only",
+    "operationPermissions": [
+      {
+        "name": "createActivity",
+        "status": "unknown/proposed",
+        "note": "后端权限字段未确认"
+      },
+      {
+        "name": "editActivity",
+        "status": "unknown/proposed",
+        "note": "后端权限字段未确认"
+      },
+      {
+        "name": "deleteActivity",
+        "status": "unknown/proposed",
+        "note": "后端权限字段未确认"
+      },
+      {
+        "name": "verifyTicket",
+        "status": "unknown/proposed",
+        "note": "后端权限字段未确认"
+      },
+      {
+        "name": "manageVerifier",
+        "status": "unknown/proposed",
+        "note": "后端权限字段未确认"
+      },
+      {
+        "name": "editWithdrawal",
+        "status": "unknown/proposed",
+        "note": "后端权限字段未确认"
+      }
+    ],
+    "dangerousActions": [
+      "deleteTicketSpec",
+      "deleteVerifier",
+      "logout",
+      "clearAllTicketSpecs"
+    ],
+    "confirmationRequired": [
+      "deleteVerifier",
+      "deleteTicketSpec",
+      "clearAllTicketSpecs",
+      "logout"
+    ]
+  },
+  "lifecycleHints": {
+    "onLoad": "读取用户信息、计算导航栏 metrics、初始化内部 view",
+    "onShow": "建议刷新 dashboard/activity/account 数据；当前未见真实接口",
+    "onPullDownRefresh": "proposed: 当前 tab 重新加载并 stopPullDownRefresh",
+    "onReachBottom": "proposed: 列表 tab 加载下一页"
+  },
+  "wxssHints": {
+    "source": "src/pages/user-sub/organizer/index.scss",
+    "tokens": [
+      "$organizer-bg",
+      "#000",
+      "$organizer-card",
+      "#181818",
+      "$organizer-panel",
+      "#242424",
+      "$organizer-danger",
+      "#FF3150",
+      "$organizer-success",
+      "#35D34A"
+    ],
+    "note": "优先复用现有 organizer SCSS token，避免新增一套品牌色。"
+  },
+  "implementationHints": [
+    "当前 modalStatus=success；需补接口成功后列表刷新、重复提交防抖和失败回滚。",
+    "当前 app.config.ts 只注册 pages/user-sub/organizer/index；verify/more/account/createWizard 均为 organizer/index 内部视图，不是独立路由。",
+    "不要把 Lanhu HTML/CSS 直接复制为小程序源码；只提取数值和结构。"
+  ],
+  "reuseHints": [
+    "src/pages/user-sub/organizer/index.tsx",
+    "src/pages/user-sub/organizer/index.scss",
+    "src/pages/user-sub/organizer/mock.ts",
+    "src/pages/user-sub/organizer/types.ts",
+    "src/pages/user-sub/organizer/constants.ts",
+    "taro-ui AtIcon",
+    "src/components/NoData"
+  ],
+  "dynamicBehaviorSpec": {
+    "initialization": "使用现有 mock 保底；如接入接口，先 loading，再根据 list length 进入 loaded/empty。",
+    "search": "keyword 变化后本地过滤或请求 proposed list API；确认搜索重置 page=1。",
+    "filter": "filterState 临时态，应用后写入 appliedFilter 并刷新列表。",
+    "create": "createWizard 草稿跨步骤保存，下一步前做 minimal validation。",
+    "edit": "未明确设计；如从列表进入编辑，复用 createWizard 并带 activityId。",
+    "delete": "危险操作需要二次确认，成功后刷新列表。",
+    "audit": "设计体现状态，不体现审核动作；动作 unknown。",
+    "pagination": "当前代码没有分页；proposed page/pageSize/hasMore。",
+    "dialog": "所有 overlay 打开时锁定底层滚动，关闭时保留或重置临时态按页面定义。",
+    "feedback": "提交时 showLoading/禁用按钮，成功 Toast，失败 Toast/Dialog。"
+  },
+  "acceptanceCriteria": [
+    "页面在 WeChat Mini Program 目标下可打开，不引入新路由破坏。",
+    "顶部导航、黑色背景、卡片圆角、底部内部导航与 design-tokens.json 对齐。",
+    "loading、empty、error 至少有最小可见反馈。",
+    "扫码/手动输入触发核销状态弹窗；成功/失败/无效码状态可展示；重复提交被禁用。"
+  ],
+  "unknowns": [
+    "上传时间字段只有 update_time，无法确认是否等同 upload_time",
+    "真实接口路径",
+    "权限字段",
+    "复杂表单规则",
+    "部分 P1 页面缺少节点级 HTML/CSS"
+  ]
+}

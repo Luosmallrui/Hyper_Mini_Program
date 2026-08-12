@@ -5,3 +5,7 @@ deploy_versions/
 node_modules/
 .DS_Store
 .swc
+.kimi-code/
+.playwright-cli/
+output/
+dist.zip

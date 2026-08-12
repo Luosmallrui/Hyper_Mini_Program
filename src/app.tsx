@@ -1,17 +1,10 @@
 import { PropsWithChildren, useEffect, useState } from 'react'
 import { Text, View } from '@tarojs/components'
-import Taro, { useDidShow, useLaunch } from '@tarojs/taro'
+import Taro, { useLaunch } from '@tarojs/taro'
 import { appUpdate } from './utils'
 import IMService from './utils/im'
 import { scheduleAutoRefresh } from './utils/request'
 import './app.less'
-
-const AUTH_PAGE_ROUTE = 'pages/auth/index'
-const AUTH_CODE_PAGE_ROUTE = 'pages/auth-code/index'
-const AUTH_PAGE_URL = '/pages/auth/index'
-const FORCE_AUTH_KEY = '__force_auth_gate__'
-const AUTH_REDIRECT_KEY = '__auth_redirect__'
-const DEFAULT_REDIRECT = '/pages/index/index'
 
 if (typeof console.time !== 'function') {
   const timeMap: Record<string, number> = {}
@@ -50,40 +43,15 @@ function App({ children }: PropsWithChildren<any>) {
   const isAuthPage = () => {
     const pages = Taro.getCurrentPages()
     const current: any = pages[pages.length - 1]
-    return current?.route === AUTH_PAGE_ROUTE || current?.route === AUTH_CODE_PAGE_ROUTE
-  }
-
-  const buildCurrentPageUrl = () => {
-    const pages = Taro.getCurrentPages()
-    const current: any = pages[pages.length - 1]
-    if (!current?.route) return DEFAULT_REDIRECT
-    const basePath = `/${current.route}`
-    const options = current.options || {}
-    const query = Object.keys(options)
-      .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(options[key])}`)
-      .join('&')
-    return query ? `${basePath}?${query}` : basePath
-  }
-
-  const navigateToAuthPage = () => {
-    if (isAuthPage()) return
-    const redirectUrl = buildCurrentPageUrl()
-    if (redirectUrl && !redirectUrl.startsWith(AUTH_PAGE_URL) && !redirectUrl.startsWith('/pages/auth-code/index')) {
-      Taro.setStorageSync(AUTH_REDIRECT_KEY, redirectUrl)
-    }
-    Taro.reLaunch({ url: AUTH_PAGE_URL })
-  }
-
-  const ensureAuthRoute = () => {
-    const token = Taro.getStorageSync('access_token')
-    const forceAuthGate = Taro.getStorageSync(FORCE_AUTH_KEY) === 1
-    if (token && !forceAuthGate) return
-    navigateToAuthPage()
+    return current?.route === 'pages/auth/index' || current?.route === 'pages/auth-code/index'
   }
 
   useLaunch(() => {
     appUpdate()
     enableWeappShareMenu()
+
+    // 游客模式：清理历史版本遗留的强制登录标记
+    Taro.removeStorageSync('__force_auth_gate__')
 
     console.log(
       `\n %c 电子科技大学${process.env.NODE_ENV} %c ${process.env.YDY_APP_API} \n`,
@@ -92,15 +60,9 @@ function App({ children }: PropsWithChildren<any>) {
     )
   })
 
-  useDidShow(() => {
-    ensureAuthRoute()
-  })
-
   useEffect(() => {
     const token = Taro.getStorageSync('access_token')
     const expire = Taro.getStorageSync('access_expire')
-
-    ensureAuthRoute()
 
     if (token) {
       IMService.getInstance().connect()
@@ -116,16 +78,13 @@ function App({ children }: PropsWithChildren<any>) {
       }, 500)
     }
 
+    // 会话过期仅关闭 IM，不再强制跳转登录页；页面各自降级为游客态
     const handleForceLogout = () => {
       IMService.getInstance().close()
-      Taro.setStorageSync(FORCE_AUTH_KEY, 1)
-      navigateToAuthPage()
     }
 
     const handleLoginSuccess = () => {
-      const topPages = Taro.getCurrentPages()
-      const current: any = topPages[topPages.length - 1]
-      if (current?.route === AUTH_PAGE_ROUTE) return
+      if (isAuthPage()) return
       IMService.getInstance().reset()
       setTimeout(() => {
         IMService.getInstance().connect()

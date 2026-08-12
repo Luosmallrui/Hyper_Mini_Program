@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Image, ScrollView } from '@tarojs/components';
 import Taro, { useRouter } from '@tarojs/taro';
 import { AtIcon } from 'taro-ui';
+import { requireLogin } from '../../../utils/auth';
 import './index.less';
 
 const BASE_URL = 'https://www.hypercn.cn';
@@ -95,7 +96,7 @@ const UserProfilePage: React.FC = () => {
         url: `${BASE_URL}/api/v1/user/info`,
         method: 'GET',
         data: { user_id: String(userId) },
-        header: { 'Authorization': `Bearer ${token}` },
+        header: token ? { 'Authorization': `Bearer ${token}` } : {},
         dataType: 'string',
         responseType: 'text'
       });
@@ -159,7 +160,7 @@ const UserProfilePage: React.FC = () => {
         url: `${BASE_URL}/api/v1/user/note`,
         method: 'GET',
         data: params,
-        header: { 'Authorization': `Bearer ${token}` },
+        header: token ? { 'Authorization': `Bearer ${token}` } : {},
         dataType: 'string', // 关键：设置为 string，避免 JSON 自动解析时丢失精度
         responseType: 'text'
       });
@@ -213,6 +214,7 @@ const UserProfilePage: React.FC = () => {
 
   // 关注/取消关注
   const handleFollowToggle = async () => {
+    if (!requireLogin()) return;
     try {
       const action = isFollowing ? 'unfollow' : 'follow';
 
@@ -286,6 +288,10 @@ const UserProfilePage: React.FC = () => {
   // 跳转到关注/粉丝列表
   const handleStatsClick = (type: string) => {
     if (type === 'likes') return;
+    // 关注/粉丝列表接口的查询主体是当前登录用户，无法展示他人列表；
+    // 他人主页只保留数字展示，禁用跳转（避免打开别人主页却跳到自己的列表）
+    const isSelfProfile = String(myUserId || '') !== '' && String(myUserId) === String(userId);
+    if (!isSelfProfile) return;
     Taro.navigateTo({
       url: `/pages/user-sub/follow-list/index?type=${type}&userId=${userId}`
     });
@@ -298,6 +304,22 @@ const UserProfilePage: React.FC = () => {
     console.log('跳转到笔记详情, ID:', id);
     Taro.navigateTo({
       url: `/pages/square-sub/post-detail/index?id=${id}`
+    });
+  };
+
+  const handleMessageClick = () => {
+    if (!requireLogin()) return;
+    if (!userId) {
+      Taro.showToast({ title: '用户信息缺失', icon: 'none' });
+      return;
+    }
+
+    if (myUserId && String(myUserId) === String(userId)) {
+      return;
+    }
+
+    Taro.navigateTo({
+      url: `/pages/chat/index?peer_id=${userId}&title=${encodeURIComponent(userProfile?.nickname || '')}&type=1`
     });
   };
 
@@ -378,6 +400,10 @@ const UserProfilePage: React.FC = () => {
 
             <Text className="username">{userProfile.nickname}</Text>
 
+            {!!userProfile.signature && (
+              <Text className="signature-text">{userProfile.signature}</Text>
+            )}
+
             {userProfile.created_at && (
               <View className="join-date">
                 <Text className="join-text">
@@ -411,7 +437,7 @@ const UserProfilePage: React.FC = () => {
                 >
                   <Text className="btn-text">{isFollowing ? '已关注' : '关注'}</Text>
                 </View>
-                <View className="message-btn">
+                <View className="message-btn" onClick={handleMessageClick}>
                   <Text className="btn-text">私信</Text>
                 </View>
               </View>

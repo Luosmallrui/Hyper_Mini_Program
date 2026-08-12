@@ -2,6 +2,7 @@ import { Component } from 'react'
 import { View, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { tabBarStore } from '../store/tabbar'
+import { requireLogin } from '../utils/auth'
 import './index.scss'
 
 interface TabItem {
@@ -72,6 +73,8 @@ export default class CustomTabBar extends Component<{}, State> {
   }
 
   handleSpecialClick = async (item: TabItem) => {
+    // 发帖需要登录：先引导登录，避免游客选完图才被拦截
+    if (!requireLogin()) return
     try {
       const res = await Taro.chooseMedia({
         count: 9,

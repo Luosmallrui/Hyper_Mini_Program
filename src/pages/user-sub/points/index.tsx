@@ -24,8 +24,27 @@ interface PointsData {
   next_cursor: string | number | null
 }
 
+type PointsRecordTab = 'all' | 'income' | 'expense'
+
+export const buildPointsRecordsQuery = (
+  activeTab: PointsRecordTab,
+  cursor: string | number | null,
+  isRefresh: boolean
+) => {
+  const query: Record<string, string | number> = {
+    cursor: isRefresh ? 0 : (cursor ?? 0),
+    limit: 20
+  }
+
+  if (activeTab !== 'all') {
+    query.action = activeTab
+  }
+
+  return query
+}
+
 export default function PointsPage() {
-  const [activeTab, setActiveTab] = useState<'all' | 'income' | 'expense'>('all')
+  const [activeTab, setActiveTab] = useState<PointsRecordTab>('all')
   const [pointsData, setPointsData] = useState<PointsData>({
     balance: 0,
     pending_count: 0,
@@ -57,7 +76,6 @@ export default function PointsPage() {
 
   useEffect(() => {
     loadPointsData()
-    loadPointsRecords(true)
   }, [])
 
   useEffect(() => {
@@ -70,11 +88,12 @@ export default function PointsPage() {
     try {
       const res = await request({ url: '/api/v1/points/balance', method: 'GET' })
       if (res.data && res.data.code === 200) {
+        const balanceData = res.data.data || {}
         setPointsData(prev => ({
           ...prev,
-          balance: res.data.data.balance || 0,
-          pending_count: res.data.data.pending_count || 0,
-          pending_amount: res.data.data.pending_amount || 0
+          balance: balanceData.balance ?? balanceData.points ?? balanceData.available ?? balanceData.available_points ?? 0,
+          pending_count: balanceData.pending_count || 0,
+          pending_amount: balanceData.pending_amount || 0
         }))
       }
     } catch (error) { console.error(error) }
@@ -89,17 +108,17 @@ export default function PointsPage() {
       const res = await request({
         url: '/api/v1/points/records',
         method: 'GET',
-        data: { pageSize: 20, cursor: currentCursor, type: activeTab === 'all' ? '' : activeTab }
+        data: buildPointsRecordsQuery(activeTab, currentCursor, isRefresh)
       })
 
       if (res.data && res.data.code === 200) {
-        const { records: newRecords, next_cursor, has_more } = res.data.data
+        const { records: newRecords = [], next_cursor, has_more } = res.data.data || {}
         setPointsData(prev => ({
           ...prev,
           records: isRefresh ? newRecords : [...prev.records, ...newRecords],
           next_cursor
         }))
-        setHasMore(has_more)
+        setHasMore(Boolean(has_more))
       }
     } catch (error) {
       Taro.showToast({ title: '加载失败', icon: 'none' })

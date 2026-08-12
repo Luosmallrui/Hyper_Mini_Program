@@ -1,4 +1,4 @@
-﻿import { View, Text, Input, ScrollView, Image } from '@tarojs/components'
+import { View, Text, Input, ScrollView, Image } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useState, useEffect, useRef } from 'react'
 import { AtIcon } from 'taro-ui'
@@ -584,9 +584,19 @@ export default function ChatPage() {
           }
           return m
         }))
+        Taro.eventCenter.trigger('CHAT_MESSAGE_SENT', {
+          peer_id: Number(peer_id),
+          session_type: sessionType
+        })
+      } else {
+        // 发送被拒绝（如被禁言/已退群）：撤下本地临时消息并提示服务端原因
+        setMsgList(prev => prev.filter(m => m.id !== tempId))
+        Taro.showToast({ title: resData?.msg || '发送失败', icon: 'none' })
       }
     } catch (err) {
       console.error('[ChatPage] send failed', err)
+      setMsgList(prev => prev.filter(m => m.id !== tempId))
+      Taro.showToast({ title: '发送失败，请重试', icon: 'none' })
     }
   }
 

@@ -1,0 +1,158 @@
+{
+  "source": "Lanhu MCP + src/pages/user-sub/organizer/index.scss",
+  "pageWidth": {
+    "lanhuCssPx": 750,
+    "miniProgramRpx": 750,
+    "note": "750px design spec maps naturally to 750rpx full width; existing SCSS uses rpx."
+  },
+  "rpxConversion": {
+    "rule": "Use Lanhu 750px width values as rpx values for Mini Program; if source is 1500px @4x, divide by 2 to rpx per existing SCSS comment."
+  },
+  "colors": {
+    "background": "rgba(0,0,0,1)",
+    "nav": "rgba(20,19,26,1)",
+    "bottomNav": "rgba(25,25,25,1)",
+    "card": "rgba(24,24,24,1)",
+    "card2": "rgba(32,35,34,1)",
+    "panel": "rgba(36,36,36,1)",
+    "formPanel": "rgba(38,38,38,1)",
+    "input": "rgba(0,0,0,1)",
+    "textPrimary": "rgba(255,255,255,1)",
+    "textNav": "rgba(243,243,244,1)",
+    "textSecondary": "rgba(160,160,160,1)",
+    "textMuted": "rgba(116,116,116,1)",
+    "textWeak": "rgba(142,142,142,1)",
+    "border": "rgba(151,151,151,1)",
+    "danger": "#FF3150",
+    "success": "#35D34A",
+    "calendarActive": "#D8FF4F",
+    "primaryButton": "#FFFFFF",
+    "redButton": "#FF3150",
+    "greenButton": "#35D34A"
+  },
+  "typography": {
+    "navTitle": {
+      "fontSize": 28,
+      "fontWeight": 600,
+      "lineHeight": 40,
+      "family": "PingFangSC-Semibold"
+    },
+    "sectionTitle": {
+      "fontSize": 28,
+      "fontWeight": 600,
+      "lineHeight": 44
+    },
+    "body": {
+      "fontSize": 26,
+      "lineHeight": 37
+    },
+    "tab": {
+      "fontSize": 34,
+      "lineHeight": 48
+    },
+    "small": {
+      "fontSize": 22,
+      "lineHeight": 30
+    },
+    "stat": {
+      "fontSize": 46,
+      "lineHeight": 55,
+      "family": "DOUYINSANSBOLD-GB"
+    }
+  },
+  "spacing": {
+    "pageX": 30,
+    "sectionGap": 40,
+    "cardGap": 20,
+    "cardPadding": 30,
+    "bottomSafeArea": "env(safe-area-inset-bottom)"
+  },
+  "radius": {
+    "card": 12,
+    "iconBox": 16,
+    "pill": 50,
+    "stepDot": 9,
+    "navCapsule": 32
+  },
+  "shadow": {
+    "default": "none in extracted CSS; use none unless current code already has shadow"
+  },
+  "border": {
+    "default": "1px solid rgba(151,151,151,1)",
+    "soft": "1rpx solid rgba(255,255,255,0.10)"
+  },
+  "zIndex": {
+    "nav": 10,
+    "bottomNav": 20,
+    "overlay": 50,
+    "modal": 60,
+    "toast": 80
+  },
+  "componentSizes": {
+    "nav": {
+      "statusBarImageHeight": 88,
+      "navHeight": 97,
+      "total": 185
+    },
+    "bottomNav": {
+      "height": 156,
+      "iconSize": 40
+    },
+    "quickActionCard": {
+      "width": 690,
+      "height": 162
+    },
+    "emptyActivityCard": {
+      "width": 690,
+      "height": 210
+    },
+    "searchInput": {
+      "height": 88
+    },
+    "filterPanel": {
+      "width": 690
+    },
+    "wizardStepDot": {
+      "width": 62,
+      "height": 62
+    },
+    "formInput": {
+      "height": 97
+    },
+    "map": {
+      "width": 692,
+      "height": 529
+    }
+  },
+  "adminPageSpecificTokens": {
+    "wizard": {
+      "stepLineWidth": 96,
+      "uploadBoxHeight": 235
+    },
+    "ticket": {
+      "configCardWidth": 690,
+      "chipHeight": 58
+    },
+    "calendar": {
+      "panelBg": "#181818",
+      "activeDay": "#D8FF4F"
+    },
+    "verify": {
+      "success": "#35D34A",
+      "failed": "#FF3150"
+    }
+  },
+  "existingVariableMapping": {
+    "$organizer-bg": "colors.background",
+    "$organizer-nav": "colors.nav",
+    "$organizer-card": "colors.card",
+    "$organizer-card-2": "colors.card2",
+    "$organizer-panel": "colors.panel",
+    "$organizer-border": "colors.border",
+    "$organizer-text": "colors.textPrimary",
+    "$organizer-text-muted": "colors.textMuted",
+    "$organizer-danger": "colors.danger",
+    "$organizer-success": "colors.success",
+    "$organizer-calendar-active": "colors.calendarActive"
+  }
+}

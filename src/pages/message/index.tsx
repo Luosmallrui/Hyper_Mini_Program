@@ -3,6 +3,7 @@ import Taro from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { setTabBarIndex } from '@/store/tabbar'
 import { request } from '@/utils/request'
+import { isLoggedIn, requireLogin } from '@/utils/auth'
 import { getCustomTabBarHeight } from '@/utils/layout'
 import './index.scss'
 import customerServiceIcon from '../../assets/icons/customer-service.svg'
@@ -36,6 +37,8 @@ interface SystemNoticeItem {
 export default function MessagePage() {
   const [sessionList, setSessionList] = useState<SessionItem[]>([])
   const [totalUnread, setTotalUnread] = useState(0)
+  const [markingAllRead, setMarkingAllRead] = useState(false)
+  const [isLogin, setIsLogin] = useState(false)
 
   const [navBarPaddingTop, setNavBarPaddingTop] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
@@ -46,6 +49,13 @@ export default function MessagePage() {
   Taro.useDidShow(() => {
     setTabBarIndex(3)
     Taro.eventCenter.trigger('TAB_SWITCH_LOADING', false)
+    // 游客模式：未登录展示登录引导，不请求会话接口
+    const loggedIn = isLoggedIn()
+    setIsLogin(loggedIn)
+    if (!loggedIn) {
+      setSessionList([])
+      return
+    }
     fetchSessionList()
   })
 
@@ -102,9 +112,15 @@ export default function MessagePage() {
       })
     }
 
+    const onChatMessageSent = () => {
+      fetchSessionList()
+    }
+
     Taro.eventCenter.on('IM_NEW_MESSAGE', onNewMessage)
+    Taro.eventCenter.on('CHAT_MESSAGE_SENT', onChatMessageSent)
     return () => {
       Taro.eventCenter.off('IM_NEW_MESSAGE', onNewMessage)
+      Taro.eventCenter.off('CHAT_MESSAGE_SENT', onChatMessageSent)
     }
   }, [])
 
@@ -143,6 +159,53 @@ export default function MessagePage() {
       Taro.showToast({ title: '刷新成功', icon: 'success' })
     } finally {
       setTimeout(() => setIsRefreshing(false), 300)
+    }
+  }
+
+  // 客服消息入口：先取平台客服账号（不写死 user_id），再进入单聊
+  const handleOpenCustomerService = async () => {
+    try {
+      const res = await request({ url: '/api/v1/user/customer-service', method: 'GET' })
+      const body: any = res?.data
+      const serviceUserId = Number(body?.data?.user_id || 0)
+      if (body?.code === 200 && serviceUserId > 0) {
+        const name = String(body.data.nickname || 'Hyper 客服')
+        Taro.navigateTo({
+          url: `/pages/chat/index?peer_id=${serviceUserId}&title=${encodeURIComponent(name)}&type=1`
+        })
+        return
+      }
+      Taro.showToast({ title: body?.code === 404 ? '客服暂不可用' : body?.msg || '客服暂不可用', icon: 'none' })
+    } catch (err) {
+      Taro.showToast({ title: '客服暂不可用', icon: 'none' })
+    }
+  }
+
+  const handleMarkAllRead = async () => {
+    if (markingAllRead || totalUnread <= 0) return
+    const unreadSessions = sessionList.filter(item => Number(item.unread) > 0 && item.peer_id)
+    if (unreadSessions.length === 0) return
+
+    const previousList = sessionList
+    setMarkingAllRead(true)
+    setSessionList(prev => prev.map(item => ({ ...item, unread: 0 })))
+
+    try {
+      await Promise.all(unreadSessions.map(item => request({
+        url: '/api/v1/session/clear-unread',
+        method: 'POST',
+        data: {
+          session_type: item.session_type,
+          peer_id: item.peer_id
+        }
+      })))
+      Taro.showToast({ title: '已全部标记', icon: 'success' })
+      await fetchSessionList()
+    } catch (error) {
+      setSessionList(previousList)
+      Taro.showToast({ title: '操作失败，请重试', icon: 'none' })
+    } finally {
+      setMarkingAllRead(false)
     }
   }
 
@@ -203,6 +266,12 @@ export default function MessagePage() {
           <Text className='header-title'>消息</Text>
           {totalUnread > 0 && <Text className='header-count'>({totalUnread})</Text>}
         </View>
+        <View
+          className={`header-mark-all ${markingAllRead || totalUnread <= 0 ? 'disabled' : ''}`}
+          onClick={handleMarkAllRead}
+        >
+          <Text>{markingAllRead ? '处理中' : totalUnread > 0 ? '一键已读' : '已全部读'}</Text>
+        </View>
       </View>
 
       <ScrollView
@@ -222,9 +291,24 @@ export default function MessagePage() {
         <View className='message-scroll-content'>
           <View style={{ height: `${navBarPaddingTop + navBarHeight}px` }} />
 
+        {!isLogin && (
+          <View className='guest-state'>
+            <Text className='guest-state__text'>登录后查看消息</Text>
+            <View className='guest-state__btn' onClick={() => requireLogin()}>
+              <Text>去登录</Text>
+            </View>
+          </View>
+        )}
+
+        {isLogin && (
+        <>
         <View className='system-list'>
           {systemNotices.map(item => (
-            <View key={item.id} className='msg-item system-item'>
+            <View
+              key={item.id}
+              className='msg-item system-item'
+              onClick={item.id === 'sys_6' ? () => void handleOpenCustomerService() : undefined}
+            >
               <View className='avatar-box system-avatar'>
                 <Image src={item.iconSrc} className='system-icon' mode='aspectFit' />
               </View>
@@ -280,6 +364,8 @@ export default function MessagePage() {
             </View>
           )}
         </View>
+        </>
+        )}
           <View style={{ height: `${tabBarHeight + 20}px` }} />
         </View>
       </ScrollView>

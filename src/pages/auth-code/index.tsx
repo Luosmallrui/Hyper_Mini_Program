@@ -4,7 +4,6 @@ import Taro, { useDidShow } from '@tarojs/taro'
 import AuthGate from '@/components/AuthGate'
 import './index.less'
 
-const FORCE_AUTH_KEY = '__force_auth_gate__'
 const AUTH_REDIRECT_KEY = '__auth_redirect__'
 const DEFAULT_REDIRECT = '/pages/index/index'
 const TAB_PAGES = ['/pages/index/index', '/pages/square/index', '/pages/message/index', '/pages/user/index']
@@ -35,15 +34,13 @@ const goAfterLogin = () => {
 export default function AuthCodePage() {
   useDidShow(() => {
     const token = Taro.getStorageSync('access_token')
-    const forceAuth = Taro.getStorageSync(FORCE_AUTH_KEY) === 1
-    if (token && !forceAuth) {
+    if (token) {
       goAfterLogin()
     }
   })
 
   useEffect(() => {
     const handleLoginSuccess = () => {
-      Taro.removeStorageSync(FORCE_AUTH_KEY)
       goAfterLogin()
     }
 

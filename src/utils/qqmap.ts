@@ -12,8 +12,29 @@ export interface POIItem {
   address: string    // 详细地址
   latitude: number
   longitude: number
+  province?: string
+  city?: string
+  district?: string
   distance?: number  // 距离（米）
   category?: string  // 分类，如 "美食:小吃"
+}
+
+export interface ReverseGeocodeResult {
+  address: string
+  province?: string
+  city?: string
+  district?: string
+  pois: POIItem[]
+}
+
+const extractAdminInfo = (item: any) => {
+  const admin = item?.ad_info || {}
+  const component = item?.address_component || {}
+  return {
+    province: admin.province || component.province || '',
+    city: admin.city || component.city || '',
+    district: admin.district || component.district || '',
+  }
 }
 
 /**
@@ -38,6 +59,7 @@ export function searchNearby(
           address: item.address || '',
           latitude: item.location?.lat || latitude,
           longitude: item.location?.lng || longitude,
+          ...extractAdminInfo(item),
           distance: item._distance || 0,
           category: item.category || '',
         }))
@@ -58,7 +80,7 @@ export function searchNearby(
 export function reverseGeocode(
   latitude: number,
   longitude: number
-): Promise<{ address: string; pois: POIItem[] }> {
+): Promise<ReverseGeocodeResult> {
   return new Promise((resolve, reject) => {
     qqmapsdk.reverseGeocoder({
       location: {latitude, longitude},
@@ -66,17 +88,20 @@ export function reverseGeocode(
       poi_options: 'policy=2;page_size=20', // policy=2 综合排序
       success: (res: any) => {
         const result = res.result || {}
+        const adminInfo = extractAdminInfo(result)
         const pois: POIItem[] = (result.pois || []).map((item: any) => ({
           id: item.id || `revgeo_${Math.random()}`,
           name: item.title || '',
           address: item.address || '',
           latitude: item.location?.lat || latitude,
           longitude: item.location?.lng || longitude,
+          ...extractAdminInfo(item),
           distance: item._distance || 0,
           category: item.category || '',
         }))
         resolve({
           address: result.address || '',
+          ...adminInfo,
           pois,
         })
       },
@@ -110,6 +135,7 @@ export function searchByKeyword(
           address: item.address || '',
           latitude: item.location?.lat || latitude,
           longitude: item.location?.lng || longitude,
+          ...extractAdminInfo(item),
           distance: item._distance || 0,
           category: item.category || '',
         }))

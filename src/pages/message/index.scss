@@ -41,6 +41,28 @@
       color: #999;
     }
   }
+
+  .header-mark-all {
+    position: absolute;
+    left: 30px;
+    height: 48px;
+    padding: 0 18px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    text {
+      color: #fff;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    &.disabled {
+      opacity: 0.55;
+    }
+  }
 }
 
 .message-scroll {
@@ -209,4 +231,25 @@
   text-align: center;
   color: #444;
   font-size: 26px;
+}
+
+.guest-state {
+  padding: 140px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  &__text {
+    color: #888;
+    font-size: 28px;
+    margin-bottom: 40px;
+  }
+
+  &__btn {
+    padding: 16px 72px;
+    border-radius: 999px;
+    background: #FF2E4D;
+    color: #fff;
+    font-size: 28px;
+  }
 }

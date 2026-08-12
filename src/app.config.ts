@@ -24,7 +24,7 @@ export default defineAppConfig({
     },
     {
       root: 'pages/venue',
-      pages: ['index', 'product/index']
+      pages: ['index']
     },
     {
       root: 'pages/order-sub',
@@ -46,7 +46,9 @@ export default defineAppConfig({
         'follow-list/index',
         'profile/index',
         'points/index',
-        'organizer/index'
+        'organizer/index',
+        'organizer-home/index',
+        'verifier-bind/index'
       ]
     },
     {
@@ -60,15 +62,19 @@ export default defineAppConfig({
   ],
   window: {
     backgroundTextStyle: 'light',
+    // 全局深色页面背景：避免下拉回弹/滑动时露出默认白色背景（异常白块）
+    backgroundColor: '#000000',
     navigationBarBackgroundColor: '#fff',
     navigationBarTitleText: 'WeChat',
     navigationBarTextStyle: 'black',
   },
   tabBar: {
     custom: true, // 启用自定义tabBar
-    color: '#999999',
-    selectedColor: '#1677FF',
-    backgroundColor: '#ffffff',
+    // 自定义 tabBar 顶部是透明渐变，切换瞬间会露出原生 tabBar 背景；
+    // 必须与页面同为深色，否则出现白色闪边
+    color: '#666666',
+    selectedColor: '#ffffff',
+    backgroundColor: '#000000',
     list: [
       {
         pagePath: 'pages/index/index',
@@ -88,11 +94,6 @@ export default defineAppConfig({
       },
     ],
   },
-  requiredPrivateInfos: ['getLocation', 'chooseLocation'],
+  requiredPrivateInfos: ['chooseLocation'],
   lazyCodeLoading: 'requiredComponents',
-  permission: {
-    'scope.userLocation': {
-      desc: '你的位置信息将用于小程序位置接口的效果展示',
-    },
-  },
 })

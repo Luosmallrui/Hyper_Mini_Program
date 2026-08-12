@@ -1,101 +1,136 @@
-import { Image, ScrollView, Text, View } from '@tarojs/components'
+import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
 import { AtIcon } from 'taro-ui'
-import { organizerStats } from '../mock'
-import { OrganizerActivityItem } from '../types'
+import { OrganizerActivityItem, OrganizerStats, PageDataState } from '../types'
+import iconCouponWhite from '../../../../assets/organizer/icon-coupon-white.png'
+import iconHomeSmileWhite from '../../../../assets/organizer/icon-home-smile-white.png'
+import iconCollageWhite from '../../../../assets/organizer/icon-collage-white.png'
+import iconAccountWhite from '../../../../assets/organizer/icon-account-white.png'
 
 interface OrganizerHomeViewProps {
   activityItems: OrganizerActivityItem[]
+  stats: OrganizerStats
+  pageState: PageDataState
+  onRetry: () => void
   onChangeTab: (tab: 'activities') => void
   onOpenCreateWizard: () => void
   onOpenSales: () => void
   onOpenVerifiers: () => void
+  onOpenAddVerifier?: () => void
   onOpenTicketConfig: () => void
-  onOpenDistribution: () => void
+  onOpenVerify?: () => void
 }
 
 const QUICK_ACTIONS = [
-  { title: '发布活动', desc: '在此处发布最新活动', icon: 'add', onClickKey: 'create' },
-  { title: '添加核销员', desc: '快速添加核销员', icon: 'user', onClickKey: 'verifiers', secondary: true },
-  { title: '票务配置', desc: '一键配置轻松快捷', icon: 'filter', onClickKey: 'ticket' },
-  { title: '分销管理', desc: '加速活动传播', icon: 'share-2', onClickKey: 'distribution' },
-] as const
+  { title: '发布活动', desc: '在此处发布最新活动', iconSrc: iconHomeSmileWhite, action: 'create' as const },
+  { title: '订单核销', desc: '扫码核销现场订单', iconSrc: iconCouponWhite, action: 'verify' as const },
+  { title: '添加核销员', desc: '快速添加核销员', iconSrc: iconAccountWhite, action: 'verifiers' as const },
+  { title: '票务配置', desc: '一键配置轻松快捷', iconSrc: iconCollageWhite, action: 'ticket' as const },
+]
 
-const renderCardHeader = (title: string, actionText?: string, onAction?: () => void) => (
-  <View className="organizer-card-header">
-    <Text className="organizer-card-title">{title}</Text>
-    {actionText ? (
-      <View className="organizer-card-action" onClick={onAction}>
-        <Text>{actionText}</Text>
-      </View>
-    ) : null}
-  </View>
-)
+const formatOrderStatValue = (val: number) => (val === 0 ? '0.00' : String(Math.round(val)))
+const formatStatValue = (val: number) => String(Math.round(val))
 
 export default function OrganizerHomeView(props: OrganizerHomeViewProps) {
-  const { activityItems, onChangeTab, onOpenCreateWizard, onOpenSales, onOpenVerifiers, onOpenTicketConfig, onOpenDistribution } = props
+  const { activityItems, stats, pageState, onRetry, onChangeTab, onOpenCreateWizard, onOpenSales, onOpenVerifiers, onOpenTicketConfig } = props
   const publishedActivities = activityItems.filter((item) => item.status === 'published').slice(0, 2)
 
-  const getQuickActionHandler = (key: typeof QUICK_ACTIONS[number]['onClickKey']) => {
-    if (key === 'create') return onOpenCreateWizard
-    if (key === 'verifiers') return onOpenVerifiers
-    if (key === 'ticket') return onOpenTicketConfig
-    return onOpenDistribution
+  const getQuickActionHandler = (action: typeof QUICK_ACTIONS[number]['action']) => {
+    switch (action) {
+      case 'create': return onOpenCreateWizard
+      case 'verify': return props.onOpenVerify || onOpenVerifiers
+      case 'verifiers': return props.onOpenAddVerifier || props.onOpenVerify || onOpenVerifiers
+      case 'ticket': return onOpenTicketConfig
+    }
+  }
+
+  if (pageState === 'loading') {
+    return (
+      <View className="organizer-scroll home-scroll page-state-center">
+        <View className="page-loading-spinner" />
+        <Text className="page-state-text">加载中...</Text>
+      </View>
+    )
+  }
+
+  if (pageState === 'error') {
+    return (
+      <View className="organizer-scroll home-scroll page-state-center">
+        <AtIcon value="alert-circle" size={48} color="#FF3150" />
+        <Text className="page-state-text">加载失败</Text>
+        <Button className="retry-button" onClick={onRetry}>重试</Button>
+      </View>
+    )
   }
 
   return (
-    <ScrollView className="organizer-scroll" scrollY>
+    <ScrollView className="organizer-scroll home-scroll" scrollY>
+      {/* 已上架活动 */}
       <View className="organizer-section">
-        {renderCardHeader('已上架活动', '前往活动中心', () => onChangeTab('activities'))}
-        <View className="featured-activity-list">
-          {publishedActivities.length > 0 ? publishedActivities.map((item) => (
+        <View className="organizer-card-header">
+          <Text className="organizer-card-title">已上架活动</Text>
+          <Text className="organizer-card-link" onClick={() => onChangeTab('activities')}>前往活动中心</Text>
+        </View>
+        {publishedActivities.length > 0 ? (
+          <View className="featured-activity-list">
+            {publishedActivities.map((item) => (
               <View key={item.id} className="featured-activity-card" onClick={() => onChangeTab('activities')}>
-                <Image className="featured-cover" src={item.cover} mode="aspectFill" />
+                <View className="featured-cover">
+                  <Image className="featured-cover-img" src={item.cover} mode="aspectFill" />
+                </View>
                 <View className="featured-content">
                   <Text className="featured-title">{item.title}</Text>
                   <Text className="featured-meta">上架时间：{item.publishedAt}</Text>
-                  <Text className="featured-meta">活动时间：{item.eventTime}</Text>
+                  {item.eventTime ? <Text className="featured-meta">活动时间：{item.eventTime}</Text> : null}
                 </View>
-                <AtIcon value="chevron-right" size="20" color="#666" />
+                <AtIcon value="chevron-right" size={18} color="#666" />
               </View>
-            )) : (
-            <View className="featured-empty-card">
-              <Text className="featured-empty-text">暂无活动</Text>
+            ))}
+          </View>
+        ) : (
+          <View className="home-featured-empty">
+            <Text className="home-featured-empty-text">暂无活动</Text>
+          </View>
+        )}
+      </View>
+
+      {/* 活动数据 */}
+      <View className="organizer-section">
+        <View className="organizer-card-header">
+          <Text className="organizer-card-title">活动数据</Text>
+          <Text className="organizer-card-link" onClick={onOpenSales}>前往数据中心</Text>
+        </View>
+        <View className="home-stat-card">
+          <View className="home-stat-grid">
+            <View className="home-stat-cell">
+              <Text className="home-stat-value">{formatOrderStatValue(stats.todayOrders)}</Text>
+              <Text className="home-stat-label">今日订单</Text>
             </View>
-          )}
-        </View>
-      </View>
-
-      <View className="organizer-section">
-        {renderCardHeader('活动数据', '前往数据中心', onOpenSales)}
-        <View className="stats-grid-card">
-          <View className="stats-cell">
-            <Text className="stats-number">{organizerStats.todayOrders}</Text>
-            <Text className="stats-label">今日订单</Text>
-          </View>
-          <View className="stats-cell">
-            <Text className="stats-number">{organizerStats.todaySales}</Text>
-            <Text className="stats-label">今日销售</Text>
-          </View>
-          <View className="stats-cell">
-            <Text className="stats-number">{organizerStats.totalSubscribers}</Text>
-            <Text className="stats-label">活动订阅量</Text>
+            <View className="home-stat-cell">
+              <Text className="home-stat-value">{formatStatValue(stats.todaySales)}</Text>
+              <Text className="home-stat-label">今日销售</Text>
+            </View>
+            <View className="home-stat-cell">
+              <Text className="home-stat-value">{formatStatValue(stats.totalSubscribers)}</Text>
+              <Text className="home-stat-label">活动订阅量</Text>
+            </View>
           </View>
         </View>
       </View>
 
+      {/* 快速配置 */}
       <View className="organizer-section">
-        {renderCardHeader('快速配置')}
+        <Text className="organizer-card-title" style={{ marginBottom: '20rpx', color: '#A0A0A0' }}>快速配置</Text>
         <View className="quick-action-list">
           {QUICK_ACTIONS.map((item) => (
-            <View key={item.title} className="quick-action-card" onClick={getQuickActionHandler(item.onClickKey)}>
-              <View className={`quick-icon-box ${item.secondary ? 'secondary' : ''}`}>
-                <AtIcon value={item.icon as any} size="24" color="#fff" />
+              <View key={item.title} className="home-quick-card" onClick={getQuickActionHandler(item.action)}>
+                <View className="home-quick-icon-box">
+                  <Image className="home-quick-icon-img" src={item.iconSrc} mode="aspectFit" />
+                </View>
+              <View className="home-quick-content">
+                <Text className="home-quick-title">{item.title}</Text>
+                <Text className="home-quick-desc">{item.desc}</Text>
               </View>
-              <View className="quick-action-content">
-                <Text className="quick-title">{item.title}</Text>
-                <Text className="quick-desc">{item.desc}</Text>
-              </View>
-              <AtIcon value="chevron-right" size="20" color="#666" />
+              <AtIcon value="chevron-right" size={18} color="#666" />
             </View>
           ))}
         </View>

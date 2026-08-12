@@ -17,16 +17,16 @@ const TEXT_EXTENSIONS = new Set([
 
 const BAD_PATTERNS = [
   '\uFFFD',
-  '鍏ㄩ儴',
-  '璺濈',
-  '琛屾斂鍖',
-  '鏇村',
-  '鏉″姩鎬',
-  '锛岃',
-  '纭畾',
-  '鏌ョ湅鍒楄〃',
-  '鍏虫敞',
-  '璁㈤槄娲诲姩',
+  '\u934f\u3129\u5134',
+  '\u74ba\u6fe0\ue79e',
+  '\u741b\u5c7e\u6582\u9356',
+  '\u93c7\u6751\uff3f',
+  '\u93c9\u5a07\u52a8\u603c',
+  '\u951b\u5c83\ue1ec',
+  '\u7ead\ue1c6\u757e',
+  '\u93cc\u30e7\u6e6a\u9362\u3012',
+  '\u934f\u866b\u655e',
+  '\u7481\u3224\u69d8\u6d3b\u59e9',
 ]
 
 const skipFile = (filePath) => {

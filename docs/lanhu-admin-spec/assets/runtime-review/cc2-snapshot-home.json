@@ -1,0 +1,329 @@
+{
+  "path": "pages/user-sub/organizer/index",
+  "elements": [
+    {
+      "uid": "view#_Dx",
+      "tagName": "view",
+      "text": "管理后台\n已上架活动\n前往活动中心\nPOWER FLOW\n上架时间：2026-01-01 16:53\n活动时间：2025.01.03-04 星期五 21:30-02:30\nTHE BAD SOFA 沙发派对\n上架时间：2026-01-01 16:53\n活动时间：2025.01.03-04 星期五 21:30-02:30\n活动数据\n前往数据中心\n数据明细\n82\n今日订单\n4360.00\n今日销售\n72\n活动订阅量\n快速配置\n新增活动\n在此处上架你\n最新的活动\n添加核销员\n快速添加核销员\n活动抽奖\n配合活动抽奖，\n增加社群活跃\n活动分销\n加速您的活动传播\n活动合集\n巡演必备，\n多场次集合展示\n赠票配置\n一键赠票，方便快捷\n首页\n活动\n更多\n账户",
+      "position": {
+        "left": 0,
+        "top": 0,
+        "width": 430,
+        "height": 932
+      }
+    },
+    {
+      "uid": "view#_Bn",
+      "tagName": "view",
+      "text": "管理后台",
+      "position": {
+        "left": 0,
+        "top": 0,
+        "width": 430,
+        "height": 94
+      }
+    },
+    {
+      "uid": "view#_Bk",
+      "tagName": "view",
+      "position": {
+        "left": 6,
+        "top": 43,
+        "width": 48,
+        "height": 50
+      }
+    },
+    {
+      "uid": "view#_Df",
+      "tagName": "view",
+      "text": "已上架活动\n前往活动中心\nPOWER FLOW\n上架时间：2026-01-01 16:53\n活动时间：2025.01.03-04 星期五 21:30-02:30\nTHE BAD SOFA 沙发派对\n上架时间：2026-01-01 16:53\n活动时间：2025.01.03-04 星期五 21:30-02:30\n活动数据\n前往数据中心\n数据明细\n82\n今日订单\n4360.00\n今日销售\n72\n活动订阅量\n快速配置\n新增活动\n在此处上架你\n最新的活动\n添加核销员\n快速添加核销员\n活动抽奖\n配合活动抽奖，\n增加社群活跃\n活动分销\n加速您的活动传播\n活动合集\n巡演必备，\n多场次集合展示\n赠票配置\n一键赠票，方便快捷",
+      "position": {
+        "left": 0,
+        "top": 94,
+        "width": 430,
+        "height": 838
+      }
+    },
+    {
+      "uid": "view#_Ej",
+      "tagName": "view",
+      "text": "已上架活动\n前往活动中心\nPOWER FLOW\n上架时间：2026-01-01 16:53\n活动时间：2025.01.03-04 星期五 21:30-02:30\nTHE BAD SOFA 沙发派对\n上架时间：2026-01-01 16:53\n活动时间：2025.01.03-04 星期五 21:30-02:30",
+      "position": {
+        "left": 17,
+        "top": 104,
+        "width": 396,
+        "height": 263
+      }
+    },
+    {
+      "uid": "view#_EH",
+      "tagName": "view",
+      "text": "已上架活动\n前往活动中心",
+      "position": {
+        "left": 17,
+        "top": 104,
+        "width": 396,
+        "height": 25
+      }
+    },
+    {
+      "uid": "view#_Ei",
+      "tagName": "view",
+      "text": "POWER FLOW\n上架时间：2026-01-01 16:53\n活动时间：2025.01.03-04 星期五 21:30-02:30\nTHE BAD SOFA 沙发派对\n上架时间：2026-01-01 16:53\n活动时间：2025.01.03-04 星期五 21:30-02:30",
+      "position": {
+        "left": 17,
+        "top": 140,
+        "width": 396,
+        "height": 227
+      }
+    },
+    {
+      "uid": "view#_EU",
+      "tagName": "view",
+      "text": "POWER FLOW\n上架时间：2026-01-01 16:53\n活动时间：2025.01.03-04 星期五 21:30-02:30",
+      "position": {
+        "left": 17,
+        "top": 140,
+        "width": 395,
+        "height": 108
+      }
+    },
+    {
+      "uid": "view#_EJ",
+      "tagName": "view",
+      "position": {
+        "left": 26,
+        "top": 155.5,
+        "width": 77,
+        "height": 77
+      }
+    },
+    {
+      "uid": "view#_ES",
+      "tagName": "view",
+      "text": "POWER FLOW\n上架时间：2026-01-01 16:53\n活动时间：2025.01.03-04 星期五 21:30-02:30",
+      "position": {
+        "left": 114,
+        "top": 151,
+        "width": 254,
+        "height": 86
+      }
+    },
+    {
+      "uid": "view#_Eh",
+      "tagName": "view",
+      "text": "THE BAD SOFA 沙发派对\n上架时间：2026-01-01 16:53\n活动时间：2025.01.03-04 星期五 21:30-02:30",
+      "position": {
+        "left": 17,
+        "top": 259,
+        "width": 395,
+        "height": 108
+      }
+    },
+    {
+      "uid": "view#_EW",
+      "tagName": "view",
+      "position": {
+        "left": 26,
+        "top": 274.5,
+        "width": 77,
+        "height": 77
+      }
+    },
+    {
+      "uid": "view#_Ef",
+      "tagName": "view",
+      "text": "THE BAD SOFA 沙发派对\n上架时间：2026-01-01 16:53\n活动时间：2025.01.03-04 星期五 21:30-02:30",
+      "position": {
+        "left": 114,
+        "top": 270,
+        "width": 254,
+        "height": 86
+      }
+    },
+    {
+      "uid": "view#_FJ",
+      "tagName": "view",
+      "text": "活动数据\n前往数据中心\n数据明细\n82\n今日订单\n4360.00\n今日销售\n72\n活动订阅量",
+      "position": {
+        "left": 17,
+        "top": 387,
+        "width": 396,
+        "height": 161
+      }
+    },
+    {
+      "uid": "view#_Eo",
+      "tagName": "view",
+      "text": "活动数据\n前往数据中心",
+      "position": {
+        "left": 17,
+        "top": 387,
+        "width": 396,
+        "height": 25
+      }
+    },
+    {
+      "uid": "view#_FI",
+      "tagName": "view",
+      "text": "数据明细\n82\n今日订单\n4360.00\n今日销售\n72\n活动订阅量",
+      "position": {
+        "left": 17,
+        "top": 423,
+        "width": 396,
+        "height": 125
+      }
+    },
+    {
+      "uid": "view#_Er",
+      "tagName": "view",
+      "position": {
+        "left": 30,
+        "top": 464,
+        "width": 370,
+        "height": 1
+      }
+    },
+    {
+      "uid": "view#_FH",
+      "tagName": "view",
+      "text": "82\n今日订单\n4360.00\n今日销售\n72\n活动订阅量",
+      "position": {
+        "left": 30,
+        "top": 481,
+        "width": 370,
+        "height": 50
+      }
+    },
+    {
+      "uid": "view#_Ew",
+      "tagName": "view",
+      "text": "82\n今日订单",
+      "position": {
+        "left": 30,
+        "top": 481,
+        "width": 119,
+        "height": 50
+      }
+    },
+    {
+      "uid": "view#_FB",
+      "tagName": "view",
+      "text": "4360.00\n今日销售",
+      "position": {
+        "left": 155.328125,
+        "top": 481,
+        "width": 120,
+        "height": 50
+      }
+    },
+    {
+      "uid": "view#_FG",
+      "tagName": "view",
+      "text": "72\n活动订阅量",
+      "position": {
+        "left": 280.65625,
+        "top": 481,
+        "width": 119,
+        "height": 50
+      }
+    },
+    {
+      "uid": "view#_GP",
+      "tagName": "view",
+      "text": "快速配置\n新增活动\n在此处上架你\n最新的活动\n添加核销员\n快速添加核销员\n活动抽奖\n配合活动抽奖，\n增加社群活跃\n活动分销\n加速您的活动传播\n活动合集\n巡演必备，\n多场次集合展示\n赠票配置\n一键赠票，方便快捷",
+      "position": {
+        "left": 17,
+        "top": 568,
+        "width": 396,
+        "height": 626
+      }
+    },
+    {
+      "uid": "view#_GO",
+      "tagName": "view",
+      "text": "新增活动\n在此处上架你\n最新的活动\n添加核销员\n快速添加核销员\n活动抽奖\n配合活动抽奖，\n增加社群活跃\n活动分销\n加速您的活动传播\n活动合集\n巡演必备，\n多场次集合展示\n赠票配置\n一键赠票，方便快捷",
+      "position": {
+        "left": 17,
+        "top": 593,
+        "width": 396,
+        "height": 601
+      }
+    },
+    {
+      "uid": "view#_FU",
+      "tagName": "view",
+      "text": "新增活动\n在此处上架你\n最新的活动",
+      "position": {
+        "left": 17,
+        "top": 593,
+        "width": 396,
+        "height": 94
+      }
+    },
+    {
+      "uid": "view#_FN",
+      "tagName": "view",
+      "position": {
+        "left": 34,
+        "top": 615,
+        "width": 50,
+        "height": 50
+      }
+    },
+    {
+      "uid": "view#_FS",
+      "tagName": "view",
+      "text": "新增活动\n在此处上架你\n最新的活动",
+      "position": {
+        "left": 96,
+        "top": 608,
+        "width": 268,
+        "height": 64
+      }
+    },
+    {
+      "uid": "view#_Fd",
+      "tagName": "view",
+      "text": "添加核销员\n快速添加核销员",
+      "position": {
+        "left": 17,
+        "top": 698,
+        "width": 396,
+        "height": 88
+      }
+    },
+    {
+      "uid": "view#_FW",
+      "tagName": "view",
+      "position": {
+        "left": 34,
+        "top": 717,
+        "width": 50,
+        "height": 50
+      }
+    },
+    {
+      "uid": "view#_Fb",
+      "tagName": "view",
+      "text": "添加核销员\n快速添加核销员",
+      "position": {
+        "left": 96,
+        "top": 719.5,
+        "width": 268,
+        "height": 45
+      }
+    },
+    {
+      "uid": "view#_Fm",
+      "tagName": "view",
+      "text": "活动抽奖\n配合活动抽奖，\n增加社群活跃",
+      "position": {
+        "left": 17,
+        "top": 797,
+        "width": 396,
+        "height": 94
+      }
+    }
+  ]
+}

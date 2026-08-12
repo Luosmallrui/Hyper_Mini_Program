@@ -1,17 +1,24 @@
-﻿import { View, Text, Map as TaroMap, Swiper, SwiperItem, Image, ScrollView, Canvas } from '@tarojs/components'
+import { View, Text, Map as TaroMap, Swiper, SwiperItem, Image, ScrollView, Canvas } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import 'taro-ui/dist/style/components/slider.scss'
 import { request } from '@/utils/request'
+import {
+  getActivityMarkerDetailUrl,
+  getActivityMarkerPageUrl,
+  isActivityMarker,
+  normalizeActivityMarkerSourceId,
+} from '@/utils/activity-marker'
+import { cacheUserInfo } from '@/utils/user-info'
+import { chooseUserLocation, getStoredChosenLocation } from '@/utils/user-location'
+import { requireLogin } from '@/utils/auth'
 import CommonHeader from '@/components/CommonHeader'
 import { useNavBarMetrics } from '@/hooks/useNavBarMetrics'
 import { setTabBarIndex } from '../../store/tabbar'
 import mapPinIcon from '../../assets/icons/map-pin.svg'
 import mapPinFallbackIcon from '../../assets/icons/map-pin-fallback.png'
-import partyMarkerFallbackIcon from '../../assets/icons/marker-party-fallback.png'
-import venueMarkerFallbackIcon from '../../assets/icons/marker-venue-fallback.png'
 import mapMakerBackground from '../../assets/images/map-maker-background.png'
 import certificationIcon from '../../assets/images/certification.png'
 import {
@@ -29,6 +36,9 @@ const ALL_CATEGORY_ID = 0
 const ALL_CATEGORY_NAME = '全部分类'
 const AREA_LEVEL1 = [{ key: 'dist', name: '距离' }, { key: 'region', name: '行政区/商圈' }]
 const MAP_KEY = 'Y7YBZ-3UUEN-Z3KFC-SH4QG-LH5RT-IAB4S'
+const MAP_LAYER_STYLE = __YDY_TENCENT_MAP_LAYER_STYLE__ > 0
+  ? __YDY_TENCENT_MAP_LAYER_STYLE__
+  : undefined
 const USER_LOCATION_MARKER_ID = 99900001
 const MARKER_INACTIVE_HEIGHT = 30
 const MARKER_ACTIVE_HEIGHT = 65
@@ -42,31 +52,21 @@ const ACTIVE_BACKGROUND_RATIO = 735 / 817
 const ACTIVE_FOREGROUND_ICON_HEIGHT = 33
 const ACTIVE_FOREGROUND_ICON_ANCHOR_Y = 1.55
 const USER_LOCATION_MARKER_DISPLAY_SIZE = Math.max(16, Math.round(USER_AVATAR_MARKER_SIZE * 0.94))
-const MORE_TAGS: Array<{ id: number; name: string }> = []
+const MORE_TAGS: Array<{ id: number; name: string; sort: number }> = []
+const DEFAULT_DISTANCE_OPTIONS: Array<{ label: string; value: number | null }> = [
+  { label: '不限', value: null },
+  { label: '1km', value: 1 },
+  { label: '3km', value: 3 },
+  { label: '5km', value: 5 },
+  { label: '10km', value: 10 },
+]
 
-interface MerchantItem {
-  id: number
-  user_id?: string | number
-  title: string
-  type: string
-  location: string
-  lat: number
-  lng: number
-  username: string
-  user_avatar: string
-  cover_image: string
-  created_at: string
-  avg_price: number
-  current_count: number
-  post_count: number
-  icon?: string
-  is_subscribe?: boolean
-  is_subscribed?: boolean
-  is_follow?: boolean
-}
 
 interface PartyItem {
   id: string | number
+  source?: 'activity'
+  sourceId?: string | number
+  detailUrl?: string
   title: string
   type: string
   userId: string
@@ -85,8 +85,11 @@ interface PartyItem {
   fans?: string
   isVerified?: boolean
   isFollowed?: boolean
-  isSubscribed?: boolean
+  /** 内容关注目标（docs/content_follow_api_20260810.md），后端未返回时为空 */
+  followTargetType?: string
+  followTargetId?: string | number
 }
+
 
 interface DistrictArea {
   id: number
@@ -106,6 +109,7 @@ interface DistrictNode {
 interface MerchantTag {
   id: number
   name: string
+  sort: number
 }
 
 interface CategoryItem {
@@ -142,6 +146,7 @@ export default function IndexPage() {
   const [selectedDistrictId, setSelectedDistrictId] = useState<number | null>(null)
   const [selectedAreaId, setSelectedAreaId] = useState<number | null>(null)
   const [selectedAreaName, setSelectedAreaName] = useState('')
+  const [selectedDistanceKm, setSelectedDistanceKm] = useState<number | null>(null)
   const { statusBarHeight, navBarHeight } = useNavBarMetrics()
   const [initialCenter, setInitialCenter] = useState({ lng: 104.066, lat: 30.657 })
   const initialCenterRef = useRef(initialCenter)
@@ -164,11 +169,12 @@ export default function IndexPage() {
   const hasUserInitialFocusRef = useRef(false)
   const districtLoadedRef = useRef(districtLoaded)
   const districtLoadingRef = useRef(districtLoading)
-  const subscribePendingRef = useRef<Set<string | number>>(new Set())
   const followPendingRef = useRef<Set<string | number>>(new Set())
   const selectedTagIdsRef = useRef<number[]>(selectedTagIds)
   const selectedDistrictIdRef = useRef<number | null>(selectedDistrictId)
   const selectedAreaIdRef = useRef<number | null>(selectedAreaId)
+  const selectedDistanceKmRef = useRef<number | null>(selectedDistanceKm)
+  const districtTreeRef = useRef<DistrictNode[]>(districtTree)
   const selectedCategoryIdRef = useRef<number>(selectedCategoryId)
   const categoryOptionsRef = useRef<CategoryItem[]>(categoryOptions)
   const merchantTagsLoadedRef = useRef(merchantTagsLoaded)
@@ -201,11 +207,16 @@ export default function IndexPage() {
     setSelectedDistrictId(null)
     setSelectedAreaId(null)
     setSelectedAreaName('')
+    setSelectedDistanceKm(null)
     setSelectedTagIds([])
     setDraftTagIds([])
     setSelectedCategory(ALL_CATEGORY_NAME)
     setSelectedCategoryId(ALL_CATEGORY_ID)
     selectedCategoryIdRef.current = ALL_CATEGORY_ID
+    selectedDistrictIdRef.current = null
+    selectedAreaIdRef.current = null
+    selectedDistanceKmRef.current = null
+    selectedTagIdsRef.current = []
     setCategoryOptions([])
     categoryOptionsRef.current = []
     setCategoryLoaded(false)
@@ -412,7 +423,7 @@ export default function IndexPage() {
 
       setSelectedDistrictId((prev) => {
         const hasPrev = prev !== null && normalized.some((node) => node.id === prev)
-        return hasPrev ? prev : normalized[0].id
+        return hasPrev ? prev : null
       })
     } catch (error) {
       setDistrictLoaded(false)
@@ -439,9 +450,11 @@ export default function IndexPage() {
         .map((item: any) => ({
           id: Number(item?.id) || 0,
           name: String(item?.name || ''),
+          sort: Number(item?.sort) || 0,
         }))
         .filter((item: MerchantTag) => item.id > 0 && Boolean(item.name))
-        .sort((a, b) => a.id - b.id)
+        // 与后端约定一致：sort ASC, id ASC（见 docs/content_tag_management_api_20260807.md 第 2 节）
+        .sort((a, b) => (a.sort - b.sort) || (a.id - b.id))
 
       setMerchantTags(normalized)
       setMerchantTagsLoaded(true)
@@ -518,11 +531,8 @@ export default function IndexPage() {
   Taro.useDidShow(() => {
     setTabBarIndex(0)
     Taro.eventCenter.trigger('TAB_SWITCH_LOADING', false)
-    const authed = syncAuthState()
-    if (!authed) {
-      resetIndexState()
-      return
-    }
+    // 游客模式：未登录也照常加载浏览数据，仅用户态能力（如位置 marker）按登录态降级
+    syncAuthState()
     resetFirstScreenInitState()
     clearMarkerCaches()
     Taro.nextTick(() => {
@@ -531,7 +541,6 @@ export default function IndexPage() {
           await fetchCategoryOptions()
         }
         const location = await refreshUserLocationMarker()
-        if (!hasTokenRef.current) return
         if (location) {
           const latestScale = await getCurrentMapScale()
           const focusCenter = getFocusCenter(location.longitude, location.latitude, latestScale)
@@ -556,11 +565,10 @@ export default function IndexPage() {
   })
 
   useEffect(() => {
-    if (!hasToken) return
     Taro.nextTick(() => {
       mapCtx.current = Taro.createMapContext('myMap')
     })
-  }, [hasToken])
+  }, [])
 
   useEffect(() => {
     partyListRef.current = partyList
@@ -588,6 +596,10 @@ export default function IndexPage() {
   }, [districtLoaded])
 
   useEffect(() => {
+    districtTreeRef.current = districtTree
+  }, [districtTree])
+
+  useEffect(() => {
     districtLoadingRef.current = districtLoading
   }, [districtLoading])
 
@@ -602,6 +614,10 @@ export default function IndexPage() {
   useEffect(() => {
     selectedAreaIdRef.current = selectedAreaId
   }, [selectedAreaId])
+
+  useEffect(() => {
+    selectedDistanceKmRef.current = selectedDistanceKm
+  }, [selectedDistanceKm])
 
   useEffect(() => {
     merchantTagsLoadedRef.current = merchantTagsLoaded
@@ -633,7 +649,9 @@ export default function IndexPage() {
       return
     }
     if (selectedDistrictId !== null && !districtTree.some((item) => item.id === selectedDistrictId)) {
-      setSelectedDistrictId(districtTree[0].id)
+      setSelectedDistrictId(null)
+      setSelectedAreaId(null)
+      setSelectedAreaName('')
     }
   }, [districtTree, selectedDistrictId])
 
@@ -716,15 +734,136 @@ export default function IndexPage() {
     void refreshUserLocationMarker()
   }, [hasToken])
 
+  const resolveDistrictAreaNames = (districtId?: number | null, areaId?: number | null) => {
+    const district = districtTreeRef.current.find((item) => item.id === districtId)
+    const area = district?.areas?.find((item) => item.id === areaId)
+    return {
+      districtName: district?.name || '',
+      areaName: area?.name || '',
+    }
+  }
+
+  const resolveMapMarkerFilters = (options?: {
+    tagIds?: number[]
+    districtId?: number | null
+    areaId?: number | null
+    categoryId?: number
+    distanceKm?: number | null
+  }) => {
+    const districtId = typeof options?.districtId !== 'undefined' ? options.districtId : selectedDistrictIdRef.current
+    const areaId = typeof options?.areaId !== 'undefined' ? options.areaId : selectedAreaIdRef.current
+    const names = resolveDistrictAreaNames(districtId, areaId)
+    return {
+      categoryId: typeof options?.categoryId === 'number' ? options.categoryId : selectedCategoryIdRef.current,
+      districtId,
+      areaId,
+      districtName: names.districtName,
+      areaName: names.areaName,
+      tagIds: Array.isArray(options?.tagIds) ? options.tagIds : selectedTagIdsRef.current,
+      distanceKm: typeof options?.distanceKm !== 'undefined' ? options.distanceKm : selectedDistanceKmRef.current,
+      center: initialCenterRef.current,
+    }
+  }
+
+  const buildMapMarkerQueryParams = (filters: ReturnType<typeof resolveMapMarkerFilters>) => {
+    const query = ['source=all', 'limit=200']
+    if (filters.categoryId && filters.categoryId !== ALL_CATEGORY_ID) {
+      query.push(`category_id=${encodeURIComponent(String(filters.categoryId))}`)
+    }
+    if (filters.districtName) {
+      query.push(`district=${encodeURIComponent(filters.districtName)}`)
+    }
+    // The current backend still maps area/business_area into an area_id SQL
+    // condition in /api/v1/map/markers. Keep area filtering client-side until
+    // that endpoint can safely accept business area params.
+    if (filters.tagIds.length > 0) {
+      query.push(`tag_ids=${encodeURIComponent(filters.tagIds.join(','))}`)
+    }
+    if (filters.distanceKm) {
+      query.push(`distance=${encodeURIComponent(String(filters.distanceKm))}`)
+      query.push(`lat=${encodeURIComponent(String(filters.center.lat))}`)
+      query.push(`lng=${encodeURIComponent(String(filters.center.lng))}`)
+    }
+    return query.join('&')
+  }
+
+  const readFilterField = (item: any, keys: string[]) => {
+    for (const key of keys) {
+      if (typeof item?.[key] !== 'undefined') return item[key]
+      if (typeof item?.activity?.[key] !== 'undefined') return item.activity[key]
+      if (typeof item?.merchant?.[key] !== 'undefined') return item.merchant[key]
+    }
+    return undefined
+  }
+
+  const normalizeFilterNumbers = (value: any): number[] => {
+    if (Array.isArray(value)) return value.map(Number).filter(Number.isFinite)
+    if (typeof value === 'string') {
+      return value
+        .split(',')
+        .map((item) => Number(item.trim()))
+        .filter(Number.isFinite)
+    }
+    const num = Number(value)
+    return Number.isFinite(num) ? [num] : []
+  }
+
+  const matchesFilterNumber = (item: any, keys: string[], expected?: number | null) => {
+    if (!expected) return true
+    const value = readFilterField(item, keys)
+    if (typeof value === 'undefined' || value === null || value === '') return true
+    return normalizeFilterNumbers(value).includes(expected)
+  }
+
+  const matchesFilterText = (item: any, keys: string[], expected?: string) => {
+    const target = String(expected || '').trim()
+    if (!target) return true
+    const value = readFilterField(item, keys)
+    if (typeof value === 'undefined' || value === null || value === '') return true
+    return String(value).includes(target)
+  }
+
+  const getDistanceKm = (fromLat: number, fromLng: number, toLat: number, toLng: number) => {
+    const toRad = (value: number) => (value * Math.PI) / 180
+    const earthRadiusKm = 6371
+    const dLat = toRad(toLat - fromLat)
+    const dLng = toRad(toLng - fromLng)
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(toRad(fromLat)) * Math.cos(toRad(toLat)) * Math.sin(dLng / 2) ** 2
+    return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  }
+
+  const matchesDistanceFilter = (item: any, filters: ReturnType<typeof resolveMapMarkerFilters>) => {
+    if (!filters.distanceKm) return true
+    const lat = Number(readFilterField(item, ['lat', 'latitude']))
+    const lng = Number(readFilterField(item, ['lng', 'longitude']))
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return true
+    return getDistanceKm(filters.center.lat, filters.center.lng, lat, lng) <= filters.distanceKm
+  }
+
+  const filterMapMarkersBySelectedFilters = (rawList: any[], filters: ReturnType<typeof resolveMapMarkerFilters>) => {
+    const requestedTags = filters.tagIds.filter((id) => Number(id) > 0)
+    return rawList.filter((item) => {
+      const categoryOk = matchesFilterNumber(item, ['category_id', 'categoryId', 'category', 'category_ids', 'categoryIds'], filters.categoryId)
+      const districtOk = matchesFilterNumber(item, ['district_id', 'districtId'], filters.districtId)
+        && matchesFilterText(item, ['district', 'districtName'], filters.districtName)
+      const areaOk = matchesFilterNumber(item, ['area_id', 'areaId', 'business_area_id', 'businessAreaId'], filters.areaId)
+        && matchesFilterText(item, ['area', 'areaName', 'business_area', 'businessArea', 'location', 'address'], filters.areaName)
+      const tagValue = readFilterField(item, ['tag_ids', 'tagIds', 'tags', 'merchant_tag_ids', 'merchantTagIds'])
+      const tagOk = requestedTags.length === 0 || typeof tagValue === 'undefined' || requestedTags.every((id) => normalizeFilterNumbers(tagValue).includes(id))
+      return categoryOk && districtOk && areaOk && tagOk && matchesDistanceFilter(item, filters)
+    })
+  }
+
   const syncPartyData = async (options?: {
     tagIds?: number[]
     districtId?: number | null
+    areaId?: number | null
     categoryId?: number
+    distanceKm?: number | null
     skipAutoFocusToMerchant?: boolean
     initialMarkerActiveIndex?: number
   }) => {
-    if (!hasTokenRef.current) return
-
     if (listLoadingRef.current) {
       listPendingRef.current = true
       return
@@ -732,70 +871,56 @@ export default function IndexPage() {
 
     listLoadingRef.current = true
     try {
-      const activeTagIds = Array.isArray(options?.tagIds) ? options?.tagIds : selectedTagIdsRef.current
-      const resolvedCategoryId =
-        typeof options?.categoryId === 'number' ? options.categoryId : selectedCategoryIdRef.current
-      let allCategoryIds = categoryOptionsRef.current.map((item) => item.id)
-      if (resolvedCategoryId === ALL_CATEGORY_ID && allCategoryIds.length === 0 && !categoryLoadingRef.current) {
-        await fetchCategoryOptions()
-        allCategoryIds = categoryOptionsRef.current.map((item) => item.id)
-      }
-      const activeCategoryIds = resolvedCategoryId === ALL_CATEGORY_ID ? allCategoryIds : [resolvedCategoryId]
-      const hasAreaSelected = selectedAreaIdRef.current !== null
-      const activeDistrictId = options && 'districtId' in options
-        ? options.districtId
-        : (hasAreaSelected ? selectedDistrictIdRef.current : null)
-      const queryParts: string[] = []
-      if (activeTagIds.length > 0) {
-        queryParts.push(`tags=${activeTagIds.map((id) => encodeURIComponent(String(id))).join(',')}`)
-      }
-      if (activeCategoryIds.length > 0) {
-        queryParts.push(`category=${activeCategoryIds.map((id) => encodeURIComponent(String(id))).join(',')}`)
-      }
-      if (activeDistrictId !== null && activeDistrictId !== undefined) {
-        queryParts.push(`district_id=${encodeURIComponent(String(activeDistrictId))}`)
-      }
-      const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : ''
+      const filters = resolveMapMarkerFilters(options)
       const res = await request({
-        url: `/api/v1/merchant/list${query}`,
+        url: `/api/v1/map/markers?${buildMapMarkerQueryParams(filters)}`,
         method: 'GET',
       })
-      if (!hasTokenRef.current) return
       const body: any = res?.data
       const rawList = Array.isArray(body?.data?.list)
         ? body.data.list
         : (Array.isArray(body?.list) ? body.list : null)
       if (!rawList) {
-        console.warn('[index] merchant list response invalid', body)
+        console.warn('[index] map markers response invalid', body)
+        setPartyList([])
+        partyListRef.current = []
+        setMarkers([])
+        setCurrent(0)
+        currentRef.current = 0
         return
       }
 
-      const mappedList: PartyItem[] = rawList.map((item: MerchantItem) => {
-        const createdAt = item.created_at ? new Date(item.created_at) : null
-        const formattedTime = createdAt && !Number.isNaN(createdAt.getTime())
-          ? createdAt.toISOString().slice(0, 10)
-          : item.created_at || ''
+      const filteredRawList = filterMapMarkersBySelectedFilters(rawList, filters)
+        .filter((item: any) => isActivityMarker(item))
+      const mappedList: PartyItem[] = filteredRawList.map((item: any) => {
+        const sourceId = normalizeActivityMarkerSourceId(item)
         return {
-          id: item.id,
-          userId: String((item as any)?.user_id ?? ''),
+          id: sourceId,
+          source: 'activity',
+          sourceId,
+          detailUrl: getActivityMarkerDetailUrl(item),
           title: item.title,
-          type: item.type,
+          type: item.type === 'venue' ? '场地' : '活动',
+          userId: String(item.user_id ?? ''),
           location: item.location,
           lat: item.lat,
           lng: item.lng,
-          user: item.username,
-          userAvatar: item.user_avatar,
+          user: item.username || item.user || '--',
+          userAvatar: item.user_avatar || item.userAvatar || '',
           image: item.cover_image,
           icon: item.icon,
-          time: formattedTime,
-          price: typeof item.avg_price === 'number' ? (item.avg_price / 100).toFixed(0) : '0',
-          attendees: item.current_count,
-          dynamicCount: item.post_count,
-          fans: String(item.current_count ?? ''),
+          time: item.type === 'venue' && item.business_hours
+            ? item.business_hours
+            : (item.start_time || item.created_at || ''),
+          price: typeof item.avg_price === 'number' && item.avg_price > 0 ? (item.avg_price / 100).toFixed(0) : '--',
+          attendees: item.current_count || 0,
+          dynamicCount: item.post_count || 0,
+          fans: String(item.follow_count ?? item.current_count ?? '--'),
           isVerified: false,
-          isFollowed: Boolean((item as any)?.is_follow ?? (item as any)?.isFollowed),
+          isFollowed: Boolean(item.is_follow),
+          followTargetType: item.follow_target_type ?? item.followTargetType,
+          followTargetId: item.follow_target_id ?? item.followTargetId,
           rank: '',
-          isSubscribed: Boolean((item as any)?.is_subscribe ?? (item as any)?.is_subscribed),
         }
       })
 
@@ -827,7 +952,9 @@ export default function IndexPage() {
       console.error('Party list load failed:', error)
     } finally {
       listLoadingRef.current = false
-      if (listPendingRef.current && hasTokenRef.current) {
+      // Guest mode must also re-run with the latest filters; otherwise filter
+      // changes made during an in-flight load are silently dropped.
+      if (listPendingRef.current) {
         listPendingRef.current = false
         void syncPartyData()
       } else {
@@ -836,9 +963,7 @@ export default function IndexPage() {
     }
   }
 
-  const resolveMarkerFallback = (item: PartyItem) => {
-    if (item.type === '场地') return venueMarkerFallbackIcon
-    if (item.type === '派对') return partyMarkerFallbackIcon
+  const resolveMarkerFallback = (_item: PartyItem) => {
     return mapPinFallbackIcon
   }
 
@@ -884,7 +1009,7 @@ export default function IndexPage() {
       const longitude = Number(item.lng)
       const safeLatitude = Number.isFinite(latitude) ? latitude : initialCenter.lat
       const safeLongitude = Number.isFinite(longitude) ? longitude : initialCenter.lng
-      const ratioHint = item.type === '派对' ? 44 / 54 : 1
+      const ratioHint = 1
 
       if (isActive) {
         const bgMarkerId = renderVersion * 10000 + markerBaseId * 10 + 1
@@ -1050,25 +1175,19 @@ export default function IndexPage() {
     return cachedUser.avatar_url || cachedUser.avatar || cachedUser.headimgurl || cachedUser.head_img || ''
   }
 
-  const refreshUserLocationMarker = async (): Promise<{ latitude: number; longitude: number } | null> => {
-    if (!hasTokenRef.current) {
-      setUserLocationMarker(null)
-      return null
-    }
-
+  const buildUserLocationMarker = async (
+    latitude: number,
+    longitude: number,
+  ): Promise<{ latitude: number; longitude: number } | null> => {
     let avatarUrl = getCachedUserAvatar()
     if (!avatarUrl) {
       const accessToken = Taro.getStorageSync('access_token')
       if (accessToken) {
         try {
           const res = await request({ url: '/api/v1/user/info', method: 'GET' })
-          const latestUser = res?.data?.data?.user
-          if (latestUser) {
-            const normalizedUser = {
-              ...latestUser,
-              avatar_url: latestUser.avatar_url || latestUser.avatar || latestUser.headimgurl || latestUser.head_img || '',
-            }
-            Taro.setStorageSync('userInfo', normalizedUser)
+          const latestUserPayload = res?.data?.data
+          if (latestUserPayload?.user) {
+            const normalizedUser = cacheUserInfo(latestUserPayload)
             avatarUrl = normalizedUser.avatar_url
           }
         } catch (error) {
@@ -1078,7 +1197,6 @@ export default function IndexPage() {
     }
 
     try {
-      const location = await Taro.getLocation({ type: 'gcj02' })
       const avatarIconPath = await buildCircularAvatarMarker(avatarUrl, mapPinFallbackIcon)
       let safeAvatarIconPath = avatarIconPath || mapPinFallbackIcon
       try {
@@ -1089,8 +1207,8 @@ export default function IndexPage() {
       }
       setUserLocationMarker({
         id: USER_LOCATION_MARKER_ID,
-        latitude: location.latitude,
-        longitude: location.longitude,
+        latitude,
+        longitude,
         width: USER_LOCATION_MARKER_DISPLAY_SIZE,
         height: USER_LOCATION_MARKER_DISPLAY_SIZE,
         iconPath: safeAvatarIconPath,
@@ -1098,13 +1216,28 @@ export default function IndexPage() {
         anchor: { x: 0.5, y: 0.5 },
       })
       return {
-        latitude: location.latitude,
-        longitude: location.longitude,
+        latitude,
+        longitude,
       }
     } catch (error) {
       console.warn('refresh user location marker failed:', error)
       return null
     }
+  }
+
+  // 从用户选点缓存恢复位置标记；定位统一走 wx.chooseLocation，不再调用 wx.getLocation
+  const refreshUserLocationMarker = async (): Promise<{ latitude: number; longitude: number } | null> => {
+    if (!hasTokenRef.current) {
+      setUserLocationMarker(null)
+      return null
+    }
+
+    const storedLocation = getStoredChosenLocation()
+    if (!storedLocation) {
+      setUserLocationMarker(null)
+      return null
+    }
+    return buildUserLocationMarker(storedLocation.latitude, storedLocation.longitude)
   }
 
   const handleSwiperChange = (e: any) => {
@@ -1128,18 +1261,14 @@ export default function IndexPage() {
   }
 
   const handleLocate = async () => {
-    if (!hasTokenRef.current) {
-      Taro.showToast({
-        title: '请先登录',
-        icon: 'none',
-      })
-      return
-    }
+    // 定位入口统一为微信原生选点（wx.chooseLocation），对游客开放，取消时不打扰
+    const chosen = await chooseUserLocation()
+    if (!chosen) return
 
-    const location = await refreshUserLocationMarker()
+    const location = await buildUserLocationMarker(chosen.latitude, chosen.longitude)
     if (!location) {
       Taro.showToast({
-        title: '定位失败，请开启定位权限',
+        title: '定位失败，请重试',
         icon: 'none',
       })
       return
@@ -1163,55 +1292,14 @@ export default function IndexPage() {
     void updateMarkers(partyList, targetIndex)
   }
 
-  const toggleSubscribe = (id: string | number) => {
-    const target = partyListRef.current.find((item) => item.id === id)
-    if (!target || target.type !== '派对') return
-    if (subscribePendingRef.current.has(id)) return
-
-    const nextSubscribed = !Boolean(target.isSubscribed)
-    subscribePendingRef.current.add(id)
-    setPartyList((prev) => {
-      const next = prev.map((item) => (item.id === id ? { ...item, isSubscribed: nextSubscribed } : item))
-      partyListRef.current = next
-      return next
-    })
-
-    const endpoint = nextSubscribed ? '/api/v1/merchant/subscribe' : '/api/v1/merchant/unsubscribe'
-    request({
-      url: endpoint,
-      method: 'POST',
-      data: { party_id: String(id) },
-    })
-      .then((res: any) => {
-        const code = Number(res?.data?.code)
-        if (code !== 200) {
-          setPartyList((prev) => {
-            const next = prev.map((item) => (item.id === id ? { ...item, isSubscribed: !nextSubscribed } : item))
-            partyListRef.current = next
-            return next
-          })
-          Taro.showToast({ title: nextSubscribed ? '订阅失败' : '取消订阅失败', icon: 'none' })
-          return
-        }
-        Taro.showToast({ title: nextSubscribed ? '订阅成功' : '已取消订阅', icon: 'none' })
-      })
-      .catch(() => {
-        setPartyList((prev) => {
-          const next = prev.map((item) => (item.id === id ? { ...item, isSubscribed: !nextSubscribed } : item))
-          partyListRef.current = next
-          return next
-        })
-        Taro.showToast({ title: nextSubscribed ? '订阅失败' : '取消订阅失败', icon: 'none' })
-      })
-      .finally(() => {
-        subscribePendingRef.current.delete(id)
-      })
-  }
-
   const toggleFollow = (id: string | number) => {
+    if (!requireLogin()) return
     const target = partyListRef.current.find((item) => item.id === id)
     if (!target) return
-    if (!target.userId) {
+    const followTarget = target.followTargetType && target.followTargetId
+      ? { target_type: target.followTargetType, target_id: target.followTargetId }
+      : null
+    if (!target.userId && !followTarget) {
       Taro.showToast({ title: '用户信息缺失', icon: 'none' })
       return
     }
@@ -1229,7 +1317,8 @@ export default function IndexPage() {
     request({
       url: `/api/v1/follow/${action}`,
       method: 'POST',
-      data: { user_id: String(target.userId) },
+      // 内容关注：保留 user_id 兼容字段，有 follow_target_* 时按对象关注（docs/content_follow_api_20260810.md）
+      data: { user_id: String(target.userId), ...(followTarget || {}) },
     })
       .then((res: any) => {
         const code = Number(res?.data?.code)
@@ -1253,11 +1342,7 @@ export default function IndexPage() {
 
   const navigateTo = (path: string) => Taro.navigateTo({ url: path })
   const getDetailPath = (item: PartyItem) => {
-    const itemType = String(item?.type || '').trim()
-    if (itemType === '场地') {
-      return `/pages/venue/index?id=${item.id}&tag=${encodeURIComponent(item.type || '')}`
-    }
-    return `/pages/activity/index?id=${item.id}&tag=${encodeURIComponent(item.type || '')}`
+    return getActivityMarkerPageUrl(item)
   }
 
   const topHeaderStyle = { top: `${statusBarHeight}px`, height: `${navBarHeight}px` }
@@ -1285,7 +1370,7 @@ export default function IndexPage() {
 
   const isHighlight = (type: string) => {
     if (type === 'all') return selectedCategory !== ALL_CATEGORY_NAME
-    if (type === 'area') return selectedAreaId !== null
+    if (type === 'area') return selectedAreaId !== null || selectedDistanceKm !== null
     if (type === 'more') return selectedTagIds.length > 0
     return false
   }
@@ -1343,11 +1428,29 @@ export default function IndexPage() {
             </ScrollView>
             {areaL1 === 'dist' ? (
               <>
-                <View className='col col-2'>
-                  <View className='item active'>暂未开放</View>
-                </View>
+                <ScrollView scrollY className='col col-2'>
+                  {DEFAULT_DISTANCE_OPTIONS.map((item) => (
+                    <View
+                      key={item.label}
+                      className={`item ${selectedDistanceKm === item.value ? 'active' : ''}`}
+                      onClick={() => {
+                        setSelectedDistanceKm(item.value)
+                        selectedDistanceKmRef.current = item.value
+                        setSelectedDistrictId(null)
+                        setSelectedAreaId(null)
+                        selectedDistrictIdRef.current = null
+                        selectedAreaIdRef.current = null
+                        setSelectedAreaName(item.value ? item.label : '')
+                        setFilterOpen('none')
+                        void syncPartyData({ distanceKm: item.value, districtId: null, areaId: null })
+                      }}
+                    >
+                      {item.label}
+                    </View>
+                  ))}
+                </ScrollView>
                 <View className='col col-3'>
-                  <View className='item'>请选择“行政区/商圈”</View>
+                  <View className='item'>按当前位置筛选附近活动</View>
                 </View>
               </>
             ) : (
@@ -1371,10 +1474,12 @@ export default function IndexPage() {
                         setSelectedDistrictId(null)
                         setSelectedAreaId(null)
                         setSelectedAreaName('')
+                        setSelectedDistanceKm(null)
                         selectedDistrictIdRef.current = null
                         selectedAreaIdRef.current = null
+                        selectedDistanceKmRef.current = null
                         setFilterOpen('none')
-                        void syncPartyData({ districtId: null })
+                        void syncPartyData({ districtId: null, areaId: null, distanceKm: null })
                       }}
                     >
                       不限
@@ -1388,8 +1493,10 @@ export default function IndexPage() {
                         setSelectedDistrictId(item.id)
                         setSelectedAreaId(null)
                         setSelectedAreaName('')
+                        setSelectedDistanceKm(null)
                         selectedDistrictIdRef.current = item.id
                         selectedAreaIdRef.current = null
+                        selectedDistanceKmRef.current = null
                       }}
                     >
                       {item.name}
@@ -1408,10 +1515,14 @@ export default function IndexPage() {
                         const nextAreaId = selectedAreaId === item.id ? null : item.id
                         setSelectedAreaId(nextAreaId)
                         setSelectedAreaName(nextAreaId === null ? '' : item.name)
+                        setSelectedDistanceKm(null)
                         selectedAreaIdRef.current = nextAreaId
+                        selectedDistanceKmRef.current = null
                         setFilterOpen('none')
                         void syncPartyData({
                           districtId: nextAreaId === null ? null : (currentDistrict?.id ?? item.district_id),
+                          areaId: nextAreaId,
+                          distanceKm: null,
                         })
                       }}
                     >
@@ -1471,12 +1582,14 @@ export default function IndexPage() {
                   setSelectedDistrictId(null)
                   setSelectedAreaId(null)
                   setSelectedAreaName('')
+                  setSelectedDistanceKm(null)
                   selectedDistrictIdRef.current = null
                   selectedAreaIdRef.current = null
+                  selectedDistanceKmRef.current = null
                   setSelectedTagIds([])
                   selectedTagIdsRef.current = []
                   setDraftTagIds([])
-                  void syncPartyData({ categoryId: ALL_CATEGORY_ID, tagIds: [], districtId: null })
+                  void syncPartyData({ categoryId: ALL_CATEGORY_ID, tagIds: [], districtId: null, areaId: null, distanceKm: null })
                 }}
               >
                 重置
@@ -1500,8 +1613,6 @@ export default function IndexPage() {
     )
   }
 
-  if (!hasToken) return null
-
   return (
     <View className='index-page-map'>
       <TaroMap
@@ -1512,6 +1623,7 @@ export default function IndexPage() {
         scale={DEFAULT_MAP_SCALE}
         markers={mapMarkers}
         subkey={MAP_KEY}
+        {...(MAP_LAYER_STYLE ? { layerStyle: MAP_LAYER_STYLE } : {})}
         setting={{ enableSatellite: false, enableTraffic: false }}
         onMarkerTap={handleMarkerTap}
         onRegionChange={handleRegionChange}
@@ -1640,7 +1752,9 @@ export default function IndexPage() {
                       <AtIcon value='clock' size='14' color='#999' />
                       <Text className='info-txt info-first'>{item.time}</Text>
                       <Text className='info-txt'>{item.dynamicCount}条动态</Text>
-                      <Text className='info-txt price'>¥{item.price}/人</Text>
+                      {item.type !== '场地' && (
+                        <Text className='info-txt price'>¥{item.price}/人</Text>
+                      )}
                     </View>
                     <View className='card-footer'>
                       <View className='user-info'>
@@ -1671,17 +1785,6 @@ export default function IndexPage() {
                         >
                           {item.isFollowed ? '已关注' : '关注'}
                         </View>
-                        {item.type === '派对' && (
-                          <View
-                            className='card-action-btn subscribe-btn'
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              toggleSubscribe(item.id)
-                            }}
-                          >
-                            {item.isSubscribed ? '取消订阅' : '订阅活动'}
-                          </View>
-                        )}
                       </View>
                     </View>
                   </View>

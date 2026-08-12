@@ -81,6 +81,16 @@ page {
             font-weight: normal;
         }
      }
+
+     .delete-note-btn {
+        padding: 4px 12px;
+        border: 1px solid rgba(255, 46, 77, 0.8);
+        border-radius: 20px;
+        font-size: 24rpx;
+        color: #FF2E4D;
+        font-weight: 600;
+        background: rgba(0,0,0,0.3);
+     }
   }
 }
 
@@ -286,6 +296,7 @@ page {
              display: flex; align-items: center; gap: 16px;
              .c-time { font-size: 22rpx; color: #666;}
              .c-action { font-size: 24rpx; color: #fff; font-weight: 500;}
+             .c-action.delete { color: #FF6B7F; }
          }
 
          /* 二级回复容器 */
@@ -337,6 +348,7 @@ page {
                          display: flex; align-items: center; gap: 12px;
                          .sub-time { font-size: 20rpx; color: #666; }
                          .sub-reply-btn { font-size: 20rpx; color: #fff; font-weight: 500; }
+                         .sub-delete-btn { font-size: 20rpx; color: #FF6B7F; font-weight: 500; }
                      }
                  }
              }
@@ -517,6 +529,10 @@ page {
   background-color: #f8f8f8;
 }
 
+.session-item.selected {
+  background-color: #eef6ff;
+}
+
 .session-avatar {
   width: 80px;
   height: 80px;
@@ -546,4 +562,22 @@ page {
 .session-type {
   font-size: 24px;
   color: #999;
+}
+
+.share-confirm-btn {
+  margin: 16px 30px 30px;
+  height: 88px;
+  border-radius: 44px;
+  background: #d7d7d7;
+  color: #777;
+  font-size: 30px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.share-confirm-btn.enabled {
+  background: #111;
+  color: #fff;
 }

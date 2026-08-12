@@ -242,3 +242,175 @@
 .bottom-space {
   height: 80px;
 }
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.group-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 16px;
+  background: #2c2c2e;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.group-avatar-img {
+  width: 100%;
+  height: 100%;
+}
+
+.group-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  color: #fff;
+}
+
+.group-avatar-grid {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+}
+
+.group-avatar-grid.cols-1 .group-avatar-cell { width: 100%; height: 100%; }
+.group-avatar-grid.cols-2 .group-avatar-cell { width: 50%; height: 50%; }
+.group-avatar-grid.cols-3 .group-avatar-cell { width: 33.33%; height: 33.33%; }
+
+.group-avatar-edit {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.group-header-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.group-mute-flag {
+  font-size: 18px;
+  color: #ff2e4d;
+}
+
+.group-desc {
+  display: block;
+  margin-top: 16px;
+  font-size: 22px;
+  color: #a8a8a8;
+  line-height: 1.5;
+}
+
+.candidate-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #2c2c2e;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.candidate-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #1c1c1e;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.candidate-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.candidate-name {
+  font-size: 24px;
+  color: #fff;
+  font-weight: 500;
+}
+
+.candidate-mobile {
+  font-size: 20px;
+  color: #8f8f8f;
+}
+
+.role-tag.muted-tag {
+  background: rgba(255, 46, 77, 0.18);
+  color: #ff2e4d;
+}
+
+.role-tag.me-tag {
+  background: rgba(255, 255, 255, 0.08);
+  color: #8f8f8f;
+}
+
+.manage-card {
+  margin-top: 20px;
+  background: #1c1c1e;
+  border-radius: 18px;
+  padding: 4px 24px;
+}
+
+.manage-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.manage-item:last-child {
+  border-bottom: none;
+}
+
+.manage-label {
+  font-size: 26px;
+  color: #fff;
+}
+
+.manage-label-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.manage-hint {
+  font-size: 20px;
+  color: #666;
+}
+
+.danger-btn {
+  margin-top: 28px;
+  height: 88px;
+  border-radius: 44px;
+  background: rgba(255, 46, 77, 0.12);
+  color: #ff2e4d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 600;
+}

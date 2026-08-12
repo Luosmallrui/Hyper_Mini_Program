@@ -1,0 +1,276 @@
+[
+  {
+    "componentName": "AdminCustomNav",
+    "componentType": "navigation",
+    "purpose": "后台管理顶部原生导航适配",
+    "recommendedPath": "reuse organizer/index.tsx renderCustomNav",
+    "existingSimilarComponent": "renderCustomNav",
+    "props": [
+      "title",
+      "onBack",
+      "navMetrics"
+    ],
+    "data": [],
+    "events": [
+      "onBack"
+    ],
+    "slots": [],
+    "visualSpec": {
+      "height": 185,
+      "bg": "#14131A"
+    },
+    "states": [
+      "default"
+    ],
+    "interactionSpec": "返回上一内部视图或上一页",
+    "usedByPages": [
+      "admin-home-empty",
+      "admin-home-listed",
+      "activity-center-empty",
+      "activity-center-search-input",
+      "activity-center-search-result",
+      "activity-center-filter-panel",
+      "activity-center-filter-selected",
+      "activity-center-date-filter",
+      "activity-create-venue-setting",
+      "activity-create-upload-poster",
+      "activity-create-ticket-config",
+      "activity-create-info",
+      "add-verifier",
+      "verify-ticket",
+      "verify-success",
+      "verify-failed",
+      "verify-invalid-code",
+      "account-withdrawal-info",
+      "account-withdrawal-edit",
+      "audit-pending",
+      "audit-rejected"
+    ],
+    "implementationSuggestion": "继续复用现有 renderCustomNav，不新增组件也可。"
+  },
+  {
+    "componentName": "AdminSearchBar",
+    "componentType": "input",
+    "purpose": "活动中心搜索",
+    "recommendedPath": "src/pages/user-sub/organizer/activities/index.tsx",
+    "existingSimilarComponent": "activity search row",
+    "props": [
+      "value",
+      "placeholder"
+    ],
+    "data": [
+      "activityKeyword"
+    ],
+    "events": [
+      "onInput",
+      "onConfirm",
+      "onClear"
+    ],
+    "slots": [],
+    "visualSpec": {
+      "height": 88,
+      "bg": "#1f1f1f",
+      "radius": 12
+    },
+    "states": [
+      "default",
+      "focused",
+      "filled",
+      "disabled"
+    ],
+    "interactionSpec": "输入后本地过滤或请求 proposed list API",
+    "usedByPages": [
+      "activity-center-empty",
+      "activity-center-search-input",
+      "activity-center-search-result"
+    ],
+    "implementationSuggestion": "补 confirm/clear 和键盘态布局。"
+  },
+  {
+    "componentName": "AdminFilterPanel",
+    "componentType": "overlay",
+    "purpose": "审核状态/活动状态/日期筛选",
+    "recommendedPath": "src/pages/user-sub/organizer/activities/index.tsx",
+    "existingSimilarComponent": "filterPanelOpen + render in activities",
+    "props": [
+      "filterState"
+    ],
+    "data": [
+      "auditStatuses",
+      "lifeStatuses",
+      "startAt",
+      "endAt"
+    ],
+    "events": [
+      "toggle",
+      "reset",
+      "apply",
+      "openCalendar"
+    ],
+    "slots": [],
+    "visualSpec": {
+      "width": 690,
+      "bg": "#1f1f1f"
+    },
+    "states": [
+      "closed",
+      "open",
+      "selected"
+    ],
+    "interactionSpec": "临时态 filterState，应用后写 appliedFilter",
+    "usedByPages": [
+      "activity-center-filter-panel",
+      "activity-center-filter-selected",
+      "activity-center-date-filter"
+    ],
+    "implementationSuggestion": "保留临时态，避免关闭后未应用污染列表。"
+  },
+  {
+    "componentName": "WizardStepHeader",
+    "componentType": "stepper",
+    "purpose": "活动发布 5 步进度",
+    "recommendedPath": "src/pages/user-sub/organizer/index.tsx renderStepHeader",
+    "existingSimilarComponent": "renderStepHeader",
+    "props": [
+      "currentStep"
+    ],
+    "data": [
+      "wizardStep"
+    ],
+    "events": [
+      "none or step tap if allowed"
+    ],
+    "slots": [],
+    "visualSpec": {
+      "dot": "62x62",
+      "line": "96px"
+    },
+    "states": [
+      "completed",
+      "active",
+      "disabled"
+    ],
+    "interactionSpec": "当前代码仅展示，不建议允许跳步直到校验规则确认",
+    "usedByPages": [
+      "activity-create-info",
+      "activity-create-venue-setting",
+      "activity-create-upload-poster",
+      "activity-create-ticket-config"
+    ],
+    "implementationSuggestion": "视觉对齐步骤条，交互保持保守。"
+  },
+  {
+    "componentName": "TicketSpecEditor",
+    "componentType": "form",
+    "purpose": "票券规格配置",
+    "recommendedPath": "src/pages/user-sub/organizer/index.tsx renderStepFour",
+    "existingSimilarComponent": "renderStepFour",
+    "props": [
+      "ticketSpecs",
+      "selectedSpecId"
+    ],
+    "data": [
+      "TicketSpec[]"
+    ],
+    "events": [
+      "add",
+      "delete",
+      "select",
+      "save",
+      "toggleEnabled"
+    ],
+    "slots": [],
+    "visualSpec": {
+      "cardBg": "#262626",
+      "inputBg": "#000",
+      "greenButton": "#35D34A"
+    },
+    "states": [
+      "empty",
+      "editing",
+      "enabled",
+      "disabled",
+      "validationError"
+    ],
+    "interactionSpec": "最多5项；保存前校验名称、价格、库存、限购、观演人",
+    "usedByPages": [
+      "activity-create-ticket-config"
+    ],
+    "implementationSuggestion": "补强 minimal validation 和错误 toast。"
+  },
+  {
+    "componentName": "VerifyResultDialog",
+    "componentType": "dialog",
+    "purpose": "核销成功/失败/无效码弹窗",
+    "recommendedPath": "src/pages/user-sub/organizer/verify/index.tsx",
+    "existingSimilarComponent": "modalVisible + modalStatus",
+    "props": [
+      "status",
+      "ticket"
+    ],
+    "data": [
+      "VerifyTicketItem"
+    ],
+    "events": [
+      "confirm",
+      "cancel",
+      "continue"
+    ],
+    "slots": [],
+    "visualSpec": {
+      "cardBg": "#181818",
+      "success": "#35D34A",
+      "danger": "#FF3150"
+    },
+    "states": [
+      "success",
+      "failed",
+      "invalidCode",
+      "reverify"
+    ],
+    "interactionSpec": "确认成功后刷新已核销列表；失败只关闭或继续扫码",
+    "usedByPages": [
+      "verify-ticket",
+      "verify-success",
+      "verify-failed",
+      "verify-invalid-code"
+    ],
+    "implementationSuggestion": "补后端 reasonCode 映射。"
+  },
+  {
+    "componentName": "WithdrawalDialog",
+    "componentType": "dialog/form",
+    "purpose": "提现信息查看和编辑",
+    "recommendedPath": "src/pages/user-sub/organizer/account/index.tsx",
+    "existingSimilarComponent": "withdrawalModal",
+    "props": [
+      "mode",
+      "withdrawal"
+    ],
+    "data": [
+      "WithdrawalInfo"
+    ],
+    "events": [
+      "open",
+      "edit",
+      "submit",
+      "close"
+    ],
+    "slots": [],
+    "visualSpec": {
+      "panelBg": "#181818"
+    },
+    "states": [
+      "view",
+      "edit",
+      "submitting",
+      "error"
+    ],
+    "interactionSpec": "非空校验，保存后关闭并回显",
+    "usedByPages": [
+      "account-withdrawal-info",
+      "account-withdrawal-edit"
+    ],
+    "implementationSuggestion": "接口缺失时保持 mock + TODO。"
+  }
+]

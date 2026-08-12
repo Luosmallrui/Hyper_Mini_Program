@@ -1,0 +1,380 @@
+{
+  "pageName": "后台主页",
+  "lanhuPageId": "c4b3fa43-0173-4182-99a2-4a971234c990",
+  "lanhuIndex": 9,
+  "updateTime": "2026-05-25T16:25:24.378277Z",
+  "sourceUrl": "https://lanhuapp.com/web/#/item/project/stage?pid=5adab28a-d9b0-4b1d-9f3f-e83a4902dc83&tid=d55baf76-3040-46e7-acae-37a0ded883fa",
+  "recommendedRoute": "pages/user-sub/organizer/index",
+  "currentRoute": "pages/user-sub/organizer/index",
+  "internalView": "account",
+  "implementationStatus": "未按蓝湖实现",
+  "priority": "P0",
+  "canvas": {
+    "lanhuWidth": 187.5,
+    "lanhuHeight": 406,
+    "exportedSpecWidth": 750,
+    "exportedSpecHeight": 1624,
+    "unit": "Lanhu CSS px; map 750px design width to 750rpx in mini program"
+  },
+  "layout": {
+    "page": {
+      "width": 750,
+      "height": 1624,
+      "background": "rgba(0,0,0,1)",
+      "overflow": "hidden"
+    },
+    "topNav": {
+      "height": 185,
+      "background": "rgba(20,19,26,1)",
+      "title": "管理后台",
+      "titleColor": "rgba(243,243,244,1)",
+      "titleFontSize": 28,
+      "titleFontWeight": 600
+    },
+    "profileCard": {
+      "x": 30,
+      "width": 690,
+      "background": "rgba(27,27,27,1)",
+      "borderRadius": 12,
+      "padding": "18px 50px 17px 16px",
+      "marginTopAfterNav": 29,
+      "logo": {
+        "width": 112,
+        "height": 112,
+        "borderRadius": 12,
+        "border": "1px solid rgba(151,151,151,1)"
+      },
+      "name": "POWER FLOW",
+      "verifiedText": "已认证",
+      "verifiedColor": "rgba(0,219,126,1)",
+      "stats": [
+        {
+          "label": "入驻天数",
+          "value": "210"
+        },
+        {
+          "label": "当前等级",
+          "value": "LV1"
+        },
+        {
+          "label": "服务费比例",
+          "value": "5%"
+        }
+      ]
+    },
+    "sections": [
+      {
+        "title": "基本信息",
+        "titleMargin": "44px 0 20px 30px",
+        "card": {
+          "x": 30,
+          "width": 690,
+          "background": "rgba(27,27,27,1)",
+          "borderRadius": 12,
+          "padding": "44px 478px 48px 20px"
+        },
+        "rows": [
+          {
+            "text": "主办方编辑",
+            "icon": "label_2",
+            "iconSize": "36x28"
+          },
+          {
+            "text": "主办方区域",
+            "icon": "label_3",
+            "iconSize": "31x31"
+          }
+        ]
+      },
+      {
+        "title": "账户信息",
+        "titleMargin": "40px 0 20px 30px",
+        "card": {
+          "x": 30,
+          "width": 690,
+          "background": "rgba(27,27,27,1)",
+          "borderRadius": 12,
+          "padding": "44px 504px 40px 20px"
+        },
+        "rows": [
+          {
+            "text": "认证信息",
+            "icon": "label_4",
+            "iconSize": "36x27"
+          },
+          {
+            "text": "提现信息",
+            "icon": "label_5",
+            "iconSize": "36x24"
+          },
+          {
+            "text": "修改密码",
+            "icon": "label_6",
+            "iconSize": "29x29"
+          },
+          {
+            "text": "退出登录",
+            "icon": "image_3",
+            "iconSize": "29x18"
+          }
+        ]
+      }
+    ],
+    "bottomNav": {
+      "height": 156,
+      "background": "rgba(25,25,25,1)",
+      "activeItem": "账户",
+      "items": [
+        "首页",
+        "活动",
+        "更多",
+        "账户"
+      ]
+    }
+  },
+  "nodeTree": [
+    {
+      "id": "accountPage",
+      "name": "账户主页",
+      "type": "page",
+      "x": 0,
+      "y": 0,
+      "width": 750,
+      "height": 1624,
+      "background": "rgba(0,0,0,1)",
+      "children": [
+        "topNav",
+        "profileCard",
+        "basicInfoSection",
+        "accountInfoSection",
+        "bottomNav"
+      ]
+    },
+    {
+      "id": "profileCard",
+      "name": "主办方信息卡",
+      "type": "card",
+      "x": 30,
+      "width": 690,
+      "background": "rgba(27,27,27,1)",
+      "borderRadius": 12,
+      "padding": "18px 50px 17px 16px",
+      "children": [
+        "logo",
+        "name",
+        "verified",
+        "stats"
+      ]
+    },
+    {
+      "id": "basicInfoSection",
+      "name": "基本信息",
+      "type": "section",
+      "rows": [
+        "主办方编辑",
+        "主办方区域"
+      ]
+    },
+    {
+      "id": "accountInfoSection",
+      "name": "账户信息",
+      "type": "section",
+      "rows": [
+        "认证信息",
+        "提现信息",
+        "修改密码",
+        "退出登录"
+      ]
+    }
+  ],
+  "components": [
+    "AdminCustomNav",
+    "AdminBottomNav",
+    "AccountProfileCard",
+    "AccountSettingSection",
+    "AccountSettingRow"
+  ],
+  "texts": [
+    "管理后台",
+    "POWER FLOW",
+    "已认证",
+    "入驻天数",
+    "210",
+    "当前等级",
+    "LV1",
+    "服务费比例",
+    "5%",
+    "基本信息",
+    "主办方编辑",
+    "主办方区域",
+    "账户信息",
+    "认证信息",
+    "提现信息",
+    "修改密码",
+    "退出登录",
+    "首页",
+    "活动",
+    "更多",
+    "账户"
+  ],
+  "assets": [
+    {
+      "name": "organizerLogo",
+      "lanhuSource": "block_1",
+      "size": "112x112",
+      "required": true,
+      "status": "待确认是否复用现有活动/主办方头像资源"
+    },
+    {
+      "name": "basicInfoIcons",
+      "lanhuSource": "label_2,label_3",
+      "required": true,
+      "status": "可用现有 icon 近似，但需与蓝湖视觉一致"
+    },
+    {
+      "name": "accountInfoIcons",
+      "lanhuSource": "label_4,label_5,label_6,image_3",
+      "required": true,
+      "status": "可用现有 icon 近似，但需与蓝湖视觉一致"
+    }
+  ],
+  "interactions": [
+    {
+      "name": "onOpenOrganizerEdit",
+      "trigger": "主办方编辑",
+      "status": "need-human-confirm",
+      "notes": "设计稿只给入口，目标页面/弹窗未知"
+    },
+    {
+      "name": "onOpenOrganizerRegion",
+      "trigger": "主办方区域",
+      "status": "need-human-confirm",
+      "notes": "设计稿只给入口，目标页面/弹窗未知"
+    },
+    {
+      "name": "onOpenCertification",
+      "trigger": "认证信息",
+      "status": "need-human-confirm",
+      "notes": "设计稿只给入口，目标页面/弹窗未知"
+    },
+    {
+      "name": "onOpenWithdrawal",
+      "trigger": "提现信息",
+      "status": "mock-first",
+      "targetSpec": "account-withdrawal-info.json"
+    },
+    {
+      "name": "onChangePassword",
+      "trigger": "修改密码",
+      "status": "need-human-confirm"
+    },
+    {
+      "name": "onLogout",
+      "trigger": "退出登录",
+      "status": "mock-first",
+      "feedback": "Taro.showModal 二次确认"
+    }
+  ],
+  "states": [
+    "loaded",
+    "dialogOpen",
+    "needHumanConfirmForUnsupportedEntry"
+  ],
+  "dataBindingHints": {
+    "profile": {
+      "name": "POWER FLOW",
+      "logo": "organizer logo url",
+      "verified": true,
+      "settledDays": 210,
+      "level": "LV1",
+      "serviceFeeRate": "5%"
+    },
+    "settingRows": {
+      "basicInfo": [
+        "organizerEdit",
+        "organizerRegion"
+      ],
+      "accountInfo": [
+        "certification",
+        "withdrawal",
+        "changePassword",
+        "logout"
+      ]
+    }
+  },
+  "apiHints": {
+    "existing": [],
+    "proposed": [
+      {
+        "name": "getOrganizerAccountProfile",
+        "status": "proposed-only",
+        "notes": "后端未完成；第一轮只能 mock/adapter"
+      }
+    ]
+  },
+  "eventHandlers": [
+    {
+      "eventName": "handleRowAction",
+      "rules": [
+        "withdrawal opens withdrawal modal",
+        "logout opens confirm modal",
+        "other rows keep TODO/Toast until target flow confirmed"
+      ]
+    }
+  ],
+  "formValidation": [],
+  "permissionHints": [
+    {
+      "operation": "提现信息",
+      "rule": "是否只有已认证主办方可见/可编辑 need-human-confirm"
+    },
+    {
+      "operation": "退出登录",
+      "rule": "danger action, must confirm"
+    }
+  ],
+  "lifecycleHints": {
+    "onShow": "Load profile from mock adapter; do not call real backend",
+    "onPullDownRefresh": "optional refresh mock profile"
+  },
+  "wxssHints": [
+    "Do not add sections not present in Lanhu account home.",
+    "Do not split 修改密码/退出登录 into a separate 安全性 section.",
+    "Do not add 付款信息/付费记录 unless product confirms as non-Lanhu extension.",
+    "Rows in Lanhu account home do not show chevron assets; if keeping chevrons, mark as product extension and fail strict visual parity."
+  ],
+  "implementationHints": [
+    "Replace current SETTING_GROUPS with exactly two groups for strict Lanhu parity: 基本信息 and 账户信息.",
+    "Move 修改密码 and 退出登录 into 账户信息 group.",
+    "Remove 付款信息/付费记录 from first visual parity pass.",
+    "Keep mock-first adapter; do not add real backend calls.",
+    "After implementation, capture account page screenshot and compare against Lanhu index 9."
+  ],
+  "reuseHints": [
+    "Can reuse OrganizerAccountView and account/index.scss, but structure must be corrected.",
+    "Can reuse current withdrawal modal logic for 提现信息 entry."
+  ],
+  "dynamicBehaviorSpec": {
+    "pageInitialization": "Render mock profile and two Lanhu sections.",
+    "withdrawalBehavior": "Click 提现信息 opens withdrawal view modal.",
+    "logoutBehavior": "Click 退出登录 opens confirm dialog; no real auth changes in visual parity pass unless existing behavior already works.",
+    "unsupportedRows": "主办方编辑/主办方区域/认证信息/修改密码 may show TODO toast until target designs are confirmed."
+  },
+  "acceptanceCriteria": [
+    "账户主页只出现 基本信息 and 账户信息 two section titles.",
+    "不得出现 付款信息/付费记录 section.",
+    "不得出现 安全性 section.",
+    "账户信息 group contains 认证信息、提现信息、修改密码、退出登录 four rows.",
+    "Profile card matches Lanhu index 9 structure: logo + POWER FLOW + 已认证 + 210/LV1/5%.",
+    "Bottom nav active item is 账户.",
+    "Click 提现信息 opens modal matching account-withdrawal-info.json.",
+    "No real backend calls are introduced."
+  ],
+  "unknowns": [
+    "主办方编辑 target page/modal",
+    "主办方区域 target page/modal",
+    "认证信息 target page/modal",
+    "修改密码 target page/modal",
+    "whether rows should keep chevrons; Lanhu exported HTML does not include chevrons"
+  ]
+}

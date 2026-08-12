@@ -1,6 +1,7 @@
 import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Image, Input, Text, Video, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import { cacheUserInfo } from '@/utils/user-info'
 import { request, saveTokens } from '@/utils/request'
 import hyperIcon from '../../assets/images/hyper-icon.png'
 import './index.less'
@@ -10,6 +11,7 @@ const VERIFY_CODE_LEN = 6
 
 type AuthMode = 'quick' | 'code'
 type CodeStep = 'phone' | 'verify'
+type AgreementType = 'user' | 'privacy'
 
 interface AuthGateProps {
   visible?: boolean
@@ -25,6 +27,25 @@ interface NavMetrics {
   menuWidth: number
 }
 
+const AGREEMENT_DETAIL_MAP: Record<AgreementType, { title: string; sections: string[] }> = {
+  user: {
+    title: '用户协议',
+    sections: [
+      '欢迎使用 HYPER。使用本服务前，请确认你已具备完全民事行为能力，并理解平台将按照活动报名、票务履约、社区互动和客服支持所需处理账号信息。',
+      '你应保证提交的手机号、昵称、头像、观演人实名信息真实、合法、有效，不得发布违法违规内容，不得扰乱活动现场和社区秩序。',
+      '平台会基于活动规则、订单状态、退款规则和社区规范提供服务，并在发现异常交易、违规内容或安全风险时采取必要处置。',
+    ],
+  },
+  privacy: {
+    title: '隐私协议',
+    sections: [
+      'HYPER 会在登录注册、活动报名、票务核验、消息通知和客户服务场景中收集必要信息，包括账号资料、手机号、定位授权结果、订单和实名观演人信息。',
+      '平台仅在完成服务、保障交易安全、履行法定义务和获得你授权的范围内使用相关信息，并会采用访问控制、加密传输等方式保护数据安全。',
+      '你可以在个人中心维护头像、昵称等资料，也可以通过客服渠道咨询个人信息查询、更正、删除和授权撤回事宜。',
+    ],
+  },
+}
+
 const normalizeResponse = (payload: any) => {
   if (typeof payload === 'string') {
     try {
@@ -34,14 +55,6 @@ const normalizeResponse = (payload: any) => {
     }
   }
   return payload
-}
-
-const normalizeUserInfo = (user: any) => {
-  if (!user || typeof user !== 'object') return {}
-  return {
-    ...user,
-    avatar_url: user.avatar_url || user.avatar || user.headimgurl || user.head_img || '',
-  }
 }
 
 const isApiSuccess = (res: any, body: any) => {
@@ -77,12 +90,14 @@ export default function AuthGate(props: AuthGateProps) {
   const [codeStep, setCodeStep] = useState<CodeStep>('phone')
   const [countdown, setCountdown] = useState(0)
   const [showAgreementSheet, setShowAgreementSheet] = useState(false)
+  const [agreementDetailType, setAgreementDetailType] = useState<AgreementType | null>(null)
   const [videoReady, setVideoReady] = useState(false)
   const [videoError, setVideoError] = useState(false)
   const [sendingCode, setSendingCode] = useState(false)
   const [loggingIn, setLoggingIn] = useState(false)
   const [logoLoadFailed, setLogoLoadFailed] = useState(false)
   const [codeInputFocus, setCodeInputFocus] = useState(false)
+  const [canGoBack, setCanGoBack] = useState(false)
   const [navMetrics, setNavMetrics] = useState<NavMetrics>({
     top: 44,
     height: 32,
@@ -90,6 +105,11 @@ export default function AuthGate(props: AuthGateProps) {
     menuWidth: 88,
   })
   const pendingActionRef = useRef<null | (() => void)>(null)
+
+  useEffect(() => {
+    // 游客模式下登录页由 navigateTo 打开，允许用户放弃返回
+    setCanGoBack(Taro.getCurrentPages().length > 1)
+  }, [])
 
   useEffect(() => {
     const winInfo = Taro.getWindowInfo()
@@ -126,6 +146,7 @@ export default function AuthGate(props: AuthGateProps) {
   useEffect(() => {
     if (!visible) {
       setShowAgreementSheet(false)
+      setAgreementDetailType(null)
       pendingActionRef.current = null
       setCodeInputFocus(false)
     }
@@ -183,8 +204,7 @@ export default function AuthGate(props: AuthGateProps) {
     })
     const userBody = normalizeResponse(userRes?.data)
     if (userBody?.code === 200 && userBody?.data?.user) {
-      const normalized = normalizeUserInfo(userBody.data.user)
-      Taro.setStorageSync('userInfo', normalized)
+      const normalized = cacheUserInfo(userBody.data)
       Taro.eventCenter.trigger('USER_INFO_UPDATED', normalized)
     }
   }
@@ -356,11 +376,17 @@ export default function AuthGate(props: AuthGateProps) {
   const handleAgreeAndContinue = () => {
     setAgreeProtocol(true)
     setShowAgreementSheet(false)
+    setAgreementDetailType(null)
     const action = pendingActionRef.current
     pendingActionRef.current = null
     if (action) {
       action()
     }
+  }
+
+  const handleOpenAgreementDetail = (type: AgreementType, event?: any) => {
+    event?.stopPropagation?.()
+    setAgreementDetailType(type)
   }
 
   if (!visible) return null
@@ -389,7 +415,7 @@ export default function AuthGate(props: AuthGateProps) {
 
       <View className='auth-gate__top' style={topBarStyle}>
         <View className='auth-gate__top-left'>
-          {mode === 'code' ? (
+          {mode === 'code' || canGoBack || onBack ? (
             <View className='auth-gate__back' style={backButtonStyle} onClick={handleBack}>
               <Text className='auth-gate__back-arrow'>‹</Text>
             </View>
@@ -434,9 +460,9 @@ export default function AuthGate(props: AuthGateProps) {
             </View>
             <Text className='auth-gate__agreement-text'>
               我已阅读并同意
-              <Text className='auth-gate__agreement-link'>《HYPER服务协议》</Text>
+              <Text className='auth-gate__agreement-link' onClick={(event) => handleOpenAgreementDetail('user', event)}>《用户协议》</Text>
               和
-              <Text className='auth-gate__agreement-link'>《隐私政策》</Text>
+              <Text className='auth-gate__agreement-link' onClick={(event) => handleOpenAgreementDetail('privacy', event)}>《隐私协议》</Text>
               ，允许HYPER统一管理本人账号信息
             </Text>
           </View>
@@ -519,9 +545,9 @@ export default function AuthGate(props: AuthGateProps) {
             </View>
             <Text className='auth-gate__agreement-text auth-gate__agreement-text--code'>
               我已阅读并同意
-              <Text className='auth-gate__agreement-link'>《HYPER服务协议》</Text>
+              <Text className='auth-gate__agreement-link' onClick={(event) => handleOpenAgreementDetail('user', event)}>《用户协议》</Text>
               和
-              <Text className='auth-gate__agreement-link'>《隐私政策》</Text>
+              <Text className='auth-gate__agreement-link' onClick={(event) => handleOpenAgreementDetail('privacy', event)}>《隐私协议》</Text>
               ，允许HYPER统一管理本人账号信息
             </Text>
           </View>
@@ -534,7 +560,7 @@ export default function AuthGate(props: AuthGateProps) {
             <View className='auth-gate__agreement-dialog'>
               <Text className='auth-gate__dialog-title'>用户登录指引协议</Text>
               <Text className='auth-gate__dialog-content'>
-                阅读并同意《HYPER服务协议》和《隐私政策》，允许HYPER统一管理本人账号信息
+                阅读并同意《用户协议》和《隐私协议》，允许HYPER统一管理本人账号信息
               </Text>
               <View className='auth-gate__dialog-actions'>
                 <View
@@ -562,9 +588,9 @@ export default function AuthGate(props: AuthGateProps) {
 
               <Text className='auth-gate__sheet-desc'>
                 请阅读并同意
-                <Text className='auth-gate__agreement-link'>《HYPER服务协议》</Text>
+                <Text className='auth-gate__agreement-link' onClick={(event) => handleOpenAgreementDetail('user', event)}>《用户协议》</Text>
                 和
-                <Text className='auth-gate__agreement-link'>《隐私政策》</Text>
+                <Text className='auth-gate__agreement-link' onClick={(event) => handleOpenAgreementDetail('privacy', event)}>《隐私协议》</Text>
                 ，允许HYPER统一管理本人账号信息
               </Text>
 
@@ -573,6 +599,22 @@ export default function AuthGate(props: AuthGateProps) {
               </Button>
             </View>
           )}
+        </View>
+      )}
+
+      {agreementDetailType && (
+        <View className='auth-gate__detail-overlay' onClick={() => setAgreementDetailType(null)}>
+          <View className='auth-gate__detail-card' onClick={(event) => event.stopPropagation()}>
+            <Text className='auth-gate__detail-title'>{AGREEMENT_DETAIL_MAP[agreementDetailType].title}</Text>
+            <View className='auth-gate__detail-body'>
+              {AGREEMENT_DETAIL_MAP[agreementDetailType].sections.map((section) => (
+                <Text key={section} className='auth-gate__detail-paragraph'>{section}</Text>
+              ))}
+            </View>
+            <Button className='auth-gate__detail-btn' onClick={() => setAgreementDetailType(null)}>
+              我知道了
+            </Button>
+          </View>
         </View>
       )}
     </View>

@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "lanhu": {
+      "command": "/bin/bash",
+      "args": [
+        "/Users/zijian_nong/Desktop/code/lanhu-mcp/run-stdio.sh"
+      ],
+      "env": {
+        "LANHU_USER_NAME": "Zijian",
+        "LANHU_USER_ROLE": "Developer"
+      }
+    },
+    "weixin-devtools": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "--package",
+        "weixin-devtools-mcp@0.6.0",
+        "weixin-devtools-mcp",
+        "--tools-profile=full"
+      ]
+    }
+  }
+}

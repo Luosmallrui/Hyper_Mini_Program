@@ -1,0 +1,206 @@
+page {
+  background-color: #000;
+}
+
+.organizer-home-page {
+  min-height: 100vh;
+  background: #000;
+  color: #fff;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.custom-nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+
+  .nav-content {
+    display: flex; align-items: center; padding: 0 24rpx; box-sizing: border-box;
+  }
+  .nav-back {
+    width: 64rpx; height: 64rpx;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .nav-title {
+    flex: 1; text-align: center;
+    font-size: 32rpx; font-weight: 600; color: #fff;
+  }
+}
+
+.hero-section {
+  position: relative;
+  height: 560rpx;
+  width: 100%;
+  overflow: hidden;
+
+  .hero-bg-img {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .hero-placeholder {
+    background: linear-gradient(135deg, #1f1f1f, #303030);
+  }
+  .hero-mask {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 55%, rgba(0,0,0,1) 100%);
+    pointer-events: none;
+  }
+}
+
+.content-scroll {
+  position: relative;
+  z-index: 3;
+  margin-top: -60rpx;
+  padding: 0 24rpx;
+  background: transparent;
+}
+
+.merchant-card {
+  background: #1C1C1E;
+  border-radius: 20rpx;
+  padding: 24rpx;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 10rpx 30rpx rgba(0,0,0,0.3);
+  margin-bottom: 24rpx;
+
+  .merchant-left {
+    display: flex; align-items: center; gap: 20rpx;
+    flex: 1; overflow: hidden;
+
+    .merchant-logo {
+      width: 96rpx; height: 96rpx; border-radius: 20rpx;
+      background: #333; flex-shrink: 0;
+    }
+    .merchant-logo-placeholder {
+      background: linear-gradient(135deg, #2a2a2c, #3a3a3e);
+    }
+    .merchant-info {
+      display: flex; flex-direction: column; gap: 8rpx; overflow: hidden;
+
+      .merchant-name {
+        font-size: 32rpx; font-weight: bold; color: #fff;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .merchant-sub-row { display: flex; align-items: center; gap: 16rpx; }
+      .merchant-owner { font-size: 22rpx; color: #999; }
+      .merchant-fans { font-size: 22rpx; color: #999; }
+    }
+  }
+  .follow-btn {
+    padding: 10rpx 32rpx;
+    border: 1rpx solid #555;
+    border-radius: 30rpx;
+    font-size: 24rpx;
+    color: #ccc;
+    flex-shrink: 0;
+
+    &.followed { color: #888; }
+  }
+}
+
+.info-card {
+  background: #1C1C1E;
+  border-radius: 20rpx;
+  padding: 8rpx 24rpx;
+  margin-bottom: 24rpx;
+
+  .info-row {
+    display: flex; align-items: center; gap: 12rpx;
+    padding: 20rpx 0;
+
+    & + .info-row { border-top: 1rpx solid rgba(255,255,255,0.06); }
+
+    .info-label { font-size: 24rpx; color: #999; flex-shrink: 0; }
+    .info-value {
+      flex: 1; text-align: right;
+      font-size: 24rpx; color: #eee;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .info-phone { color: #5a70fe; }
+  }
+}
+
+.section {
+  margin-bottom: 32rpx;
+
+  .section-title {
+    display: block;
+    font-size: 30rpx; font-weight: bold; color: #fff;
+    margin-bottom: 20rpx; padding-left: 10rpx;
+  }
+  .desc-text {
+    display: block;
+    font-size: 24rpx; color: #bbb; line-height: 1.6;
+    padding: 0 10rpx;
+  }
+}
+
+.gallery-scroll { width: 100%; white-space: nowrap; }
+.gallery-row { display: flex; gap: 16rpx; padding: 0 10rpx; }
+.gallery-img {
+  width: 240rpx; height: 240rpx;
+  border-radius: 16rpx;
+  background: #1C1C1E;
+  flex-shrink: 0;
+}
+
+.card-list {
+  display: flex; flex-direction: column; gap: 20rpx;
+
+  .list-card {
+    background: #1C1C1E;
+    border-radius: 16rpx;
+    overflow: hidden;
+    display: flex; align-items: center;
+    padding: 16rpx;
+
+    .list-card-img {
+      width: 160rpx; height: 160rpx;
+      border-radius: 12rpx;
+      background: #333;
+      flex-shrink: 0;
+    }
+    .list-card-img-placeholder {
+      background: linear-gradient(135deg, #2a2a2c, #3a3a3e);
+    }
+    .list-card-info {
+      flex: 1; margin-left: 20rpx; overflow: hidden;
+      display: flex; flex-direction: column; gap: 12rpx;
+
+      .list-card-title {
+        font-size: 28rpx; color: #eee; font-weight: 600;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .list-card-sub {
+        font-size: 22rpx; color: #888;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+    }
+  }
+}
+
+.load-more {
+  margin-top: 20rpx;
+  text-align: center;
+  font-size: 24rpx; color: #999;
+  padding: 20rpx 0;
+  border: 1rpx solid rgba(255,255,255,0.12);
+  border-radius: 30rpx;
+}
+
+.empty-block { text-align: center; padding: 48rpx 0; }
+.empty-text { color: #666; font-size: 24rpx; }
+
+.page-state {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 48rpx;
+}
+.page-state-text { color: #888; font-size: 28rpx; }
+
+.bottom-space { height: 60rpx; }

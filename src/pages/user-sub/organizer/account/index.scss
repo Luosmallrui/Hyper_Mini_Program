@@ -1,0 +1,878 @@
+// Account page - design values from 后台主页-提现信息 design spec
+.account-page {
+  height: 100%;
+  overflow-y: auto;
+
+  // 全局工具类 .flex-row/.flex-col 只设 flex-direction，不含 display:flex，
+  // 页面内大量使用这两个类做布局，这里在本页作用域内补全，避免 label 和值挤在一行
+  .flex-row {
+    display: flex;
+    flex-direction: row;
+  }
+
+  .flex-col {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .justify-between {
+    justify-content: space-between;
+  }
+}
+
+// Brand card - rgba(27,27,27,1) bg, border-radius: 12px
+.account-brand-card {
+  background-color: rgba(27, 27, 27, 1.0);
+  border-radius: 24rpx;
+  width: calc(100% - 60rpx);
+  margin-left: 30rpx;
+  margin-right: 30rpx;
+  height: 268rpx;
+  margin-top: 29rpx;
+  padding: 0;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.account-level-card {
+  margin: 20rpx 32rpx 0;
+  padding: 24rpx;
+  border-radius: 16rpx;
+  background: #151515;
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+}
+
+.account-level-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16rpx;
+}
+
+.account-level-label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.account-level-value {
+  font-size: 26rpx;
+  color: #fff;
+  font-weight: 700;
+}
+
+.account-level-tip {
+  display: block;
+  margin-top: 14rpx;
+  font-size: 22rpx;
+  line-height: 34rpx;
+  color: rgba(255, 255, 255, 0.52);
+}
+
+.account-brand-top {
+  position: absolute;
+  left: 32rpx;
+  right: 46rpx;
+  top: 24rpx;
+  align-items: center;
+  gap: 32rpx;
+}
+
+.account-brand-logo-wrap {
+  border-radius: 24rpx;
+  width: 112rpx;
+  height: 112rpx;
+  border: 2rpx solid rgba(151, 151, 151, 1);
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: rgba(216, 216, 216, 1);
+}
+
+.account-brand-logo {
+  width: 100%;
+  height: 100%;
+}
+
+.account-brand-main {
+  gap: 16rpx;
+}
+
+.account-brand-name {
+  color: rgba(255, 255, 255, 1);
+  font-size: 30rpx;
+  letter-spacing: 2rpx;
+  font-family: PingFangSC-Semibold;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 42rpx;
+}
+
+.account-brand-verified {
+  align-items: center;
+  gap: 16rpx;
+}
+
+.account-verified-icon {
+  width: 32rpx;
+  height: 32rpx;
+  background-color: rgba(0, 219, 126, 1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.account-verified-icon text {
+  color: rgba(0, 0, 0, 1);
+  font-size: 18rpx;
+  font-weight: 600;
+}
+
+.account-verified-text {
+  color: rgba(0, 219, 126, 1);
+  font-size: 30rpx;
+  letter-spacing: 2rpx;
+  font-family: PingFangSC-Semibold;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 42rpx;
+}
+
+.account-brand-stats {
+  position: absolute;
+  left: 66rpx;
+  right: 68rpx;
+  bottom: 28rpx;
+  margin-top: 0;
+  justify-content: space-between;
+}
+
+.account-brand-stat {
+  align-items: center;
+  min-width: 150rpx;
+}
+
+.account-brand-stat-label {
+  color: rgba(116, 116, 116, 1);
+  font-size: 30rpx;
+  font-family: PingFangSC-Regular;
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 42rpx;
+}
+
+.account-brand-stat-value {
+  color: rgba(255, 255, 255, 1);
+  font-size: 38rpx;
+  letter-spacing: 3rpx;
+  font-family: DOUYINSANSBOLD-GB;
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 46rpx;
+  margin-top: 18rpx;
+}
+
+// Section title
+.account-section-title {
+  display: block;
+  color: rgba(255, 255, 255, 1);
+  font-size: 30rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 42rpx;
+  margin: 31rpx 0 25rpx 30rpx;
+}
+
+.account-group-block.is-account .account-section-title {
+  margin-top: 53rpx;
+  margin-bottom: 20rpx;
+}
+
+// Setting group
+.account-setting-group {
+  background-color: rgba(27, 27, 27, 1.0);
+  border-radius: 24rpx;
+  width: calc(100% - 60rpx);
+  margin-left: 30rpx;
+  margin-right: 30rpx;
+  padding: 0 20rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.account-setting-group.is-basic {
+  height: 214rpx;
+  padding-top: 50rpx;
+}
+
+.account-setting-group.is-account {
+  height: 362rpx;
+  padding-top: 52rpx;
+}
+
+.account-setting-row-wrap.is-following {
+  margin-top: 45rpx;
+}
+
+.account-setting-row {
+  align-items: center;
+  padding: 0;
+}
+
+.account-setting-left {
+  align-items: center;
+  gap: 36rpx;
+}
+
+.account-row-icon-img {
+  width: 42rpx;
+  height: 42rpx;
+  flex-shrink: 0;
+}
+
+.account-row-icon {
+  position: relative;
+  width: 38rpx;
+  height: 38rpx;
+  flex-shrink: 0;
+  color: rgba(142, 142, 142, 1);
+  box-sizing: border-box;
+}
+
+.account-row-icon.group::before,
+.account-row-icon.group::after {
+  content: '';
+  position: absolute;
+  background: currentColor;
+}
+
+.account-row-icon.group::before {
+  left: 9rpx;
+  top: 4rpx;
+  width: 17rpx;
+  height: 17rpx;
+  border-radius: 50%;
+  box-shadow: -12rpx 5rpx 0 -3rpx currentColor, 15rpx 5rpx 0 -3rpx currentColor;
+}
+
+.account-row-icon.group::after {
+  left: 0;
+  bottom: 1rpx;
+  width: 30rpx;
+  height: 15rpx;
+  border-radius: 18rpx 18rpx 10rpx 10rpx;
+  box-shadow: 16rpx 0 0 -5rpx currentColor;
+}
+
+.account-row-icon.globe {
+  border: 7rpx solid currentColor;
+  border-radius: 50%;
+}
+
+.account-row-icon.globe::before,
+.account-row-icon.globe::after {
+  content: '';
+  position: absolute;
+  background: rgba(27, 27, 27, 1);
+}
+
+.account-row-icon.globe::before {
+  left: 5rpx;
+  top: -4rpx;
+  width: 13rpx;
+  height: 38rpx;
+  transform: rotate(-38deg);
+}
+
+.account-row-icon.globe::after {
+  right: -5rpx;
+  bottom: 5rpx;
+  width: 22rpx;
+  height: 10rpx;
+  transform: rotate(28deg);
+}
+
+.account-row-icon.user-list::before,
+.account-row-icon.user-list::after {
+  content: '';
+  position: absolute;
+  background: currentColor;
+}
+
+.account-row-icon.user-list::before {
+  left: 0;
+  top: 4rpx;
+  width: 17rpx;
+  height: 17rpx;
+  border-radius: 50%;
+}
+
+.account-row-icon.user-list::after {
+  left: 0;
+  bottom: 2rpx;
+  width: 23rpx;
+  height: 14rpx;
+  border-radius: 16rpx 16rpx 10rpx 10rpx;
+  box-shadow: 26rpx -20rpx 0 -9rpx currentColor, 26rpx -8rpx 0 -9rpx currentColor, 26rpx 4rpx 0 -9rpx currentColor;
+}
+
+.account-row-icon.bank-card {
+  width: 42rpx;
+  height: 30rpx;
+  border-radius: 5rpx;
+  background: currentColor;
+  margin-top: 4rpx;
+}
+
+.account-row-icon.bank-card::before,
+.account-row-icon.bank-card::after {
+  content: '';
+  position: absolute;
+  background: rgba(27, 27, 27, 1);
+}
+
+.account-row-icon.bank-card::before {
+  left: 0;
+  right: 0;
+  top: 9rpx;
+  height: 6rpx;
+}
+
+.account-row-icon.bank-card::after {
+  left: 7rpx;
+  bottom: 5rpx;
+  width: 10rpx;
+  height: 4rpx;
+  border-radius: 4rpx;
+  box-shadow: 17rpx 0 0 rgba(27, 27, 27, 1);
+}
+
+.account-row-icon.pen {
+  width: 36rpx;
+  height: 10rpx;
+  border-radius: 8rpx 2rpx 2rpx 8rpx;
+  background: currentColor;
+  transform: rotate(-45deg);
+  margin-left: 3rpx;
+}
+
+.account-row-icon.pen::before {
+  content: '';
+  position: absolute;
+  right: -9rpx;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-left: 10rpx solid currentColor;
+  border-top: 5rpx solid transparent;
+  border-bottom: 5rpx solid transparent;
+}
+
+.account-row-icon.toggle {
+  width: 38rpx;
+  height: 23rpx;
+  border-radius: 999rpx;
+  background: currentColor;
+  margin-top: 6rpx;
+}
+
+.account-row-icon.toggle::before {
+  content: '';
+  position: absolute;
+  left: 7rpx;
+  top: 6rpx;
+  width: 11rpx;
+  height: 11rpx;
+  border-radius: 50%;
+  background: rgba(27, 27, 27, 1);
+}
+
+.account-setting-label {
+  color: rgba(255, 255, 255, 1);
+  font-size: 30rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 42rpx;
+}
+
+// Modal overlay - rgba(0,0,0,0.52)
+.account-modal-overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.52);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+// Modal card - rgba(44,44,46,1), border-radius: 24px
+.account-modal-card {
+  background-color: rgba(44, 44, 46, 1.0);
+  border-radius: 48rpx;
+  width: 690rpx;
+  padding: 41rpx 31rpx 57rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  // 内容超出屏幕时可滚动（如修改密码表单在小屏机上）
+  max-height: 82vh;
+  overflow-y: auto;
+}
+
+.account-modal-header {
+  width: 100%;
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.account-modal-title-row {
+  width: 187rpx;
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+}
+
+.account-modal-title-icon {
+  width: 47rpx;
+  height: 31rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.account-modal-icon-bar {
+  width: 47rpx;
+  height: 4rpx;
+  background-color: rgba(255, 255, 255, 1);
+  border-radius: 2rpx;
+}
+
+.account-modal-title {
+  color: rgba(255, 255, 255, 1);
+  font-size: 30rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 42rpx;
+}
+
+.account-modal-close {
+  color: rgba(246, 246, 246, 1);
+  font-size: 30rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 42rpx;
+}
+
+// Info blocks in view mode
+.account-info-block {
+  margin-top: 58rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.account-info-label {
+  color: rgba(183, 183, 183, 1);
+  font-size: 22rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 30rpx;
+}
+
+.account-info-value {
+  color: rgba(255, 255, 255, 1);
+  font-size: 26rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 37rpx;
+  margin-top: 10rpx;
+}
+
+.account-audit-card {
+  margin-top: 40rpx;
+  padding: 24rpx;
+  border-radius: 22rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  gap: 8rpx;
+}
+
+.account-audit-card.pending {
+  border-color: rgba(255, 184, 77, 0.28);
+  background: rgba(255, 184, 77, 0.08);
+}
+
+.account-audit-card.rejected {
+  border-color: rgba(255, 49, 80, 0.32);
+  background: rgba(255, 49, 80, 0.08);
+}
+
+.account-audit-card.approved {
+  border-color: rgba(72, 218, 97, 0.22);
+  background: rgba(72, 218, 97, 0.06);
+}
+
+.account-audit-title {
+  color: rgba(255, 255, 255, 1);
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 34rpx;
+}
+
+.account-audit-line,
+.account-audit-tip {
+  color: rgba(183, 183, 183, 1);
+  font-size: 22rpx;
+  line-height: 32rpx;
+}
+
+.account-audit-tip {
+  color: rgba(255, 184, 77, 0.9);
+}
+
+// Required field label
+.account-field-required {
+  color: rgba(255, 255, 255, 1);
+  font-size: 26rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+  line-height: 37rpx;
+  margin-top: 48rpx;
+}
+
+// Input shell - rgba(42,41,41,1), border-radius: 12px, border: 1px rgba(151,151,151,1)
+.account-input-shell {
+  background-color: rgba(42, 41, 41, 1.0);
+  border-radius: 24rpx;
+  border: 2rpx solid rgba(151, 151, 151, 1);
+  margin-top: 18rpx;
+  height: 98rpx;
+  padding: 0 19rpx;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.account-input {
+  color: rgba(255, 255, 255, 1);
+  font-size: 22rpx;
+  letter-spacing: 2rpx;
+  font-family: PingFangSC-Regular;
+  font-weight: normal;
+  text-align: left;
+  line-height: 30rpx;
+  width: 100%;
+}
+
+.account-input-placeholder {
+  color: rgba(142, 142, 142, 1);
+}
+
+.account-edit-tip {
+  margin-top: 28rpx;
+  color: rgba(183, 183, 183, 1);
+  font-size: 22rpx;
+  line-height: 34rpx;
+}
+
+// Modal button - rgba(216,216,216,1), border-radius: 66px
+.account-modal-btn {
+  background-color: rgba(216, 216, 216, 1.0);
+  border-radius: 66rpx;
+  margin-top: 100rpx;
+  padding: 35rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.account-modal-btn.disabled {
+  opacity: 0.48;
+}
+
+.account-modal-btn-text {
+  color: rgba(0, 0, 0, 1);
+  font-size: 26rpx;
+  letter-spacing: 2rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 37rpx;
+}
+
+.account-safe-bottom {
+  height: 200rpx;
+}
+
+.account-page {
+  .account-brand-card,
+  .account-setting-group,
+  .account-modal-card,
+  .account-section-title,
+  .account-setting-row,
+  .account-setting-left,
+  .account-setting-label,
+  .account-brand-name,
+  .account-brand-verified,
+  .account-brand-stat-label,
+  .account-brand-stat-value {
+    box-sizing: border-box;
+  }
+}
+
+// Balance card - 可提现金额与提现入口
+.account-balance-card {
+  margin: 20rpx 32rpx 0;
+  padding: 28rpx 24rpx;
+  border-radius: 16rpx;
+  background: #151515;
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  box-sizing: border-box;
+}
+
+.account-balance-head {
+  align-items: center;
+}
+
+.account-balance-head-main {
+  gap: 10rpx;
+}
+
+.account-balance-label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.58);
+  line-height: 34rpx;
+}
+
+.account-balance-value {
+  font-size: 48rpx;
+  color: #fff;
+  font-weight: 700;
+  line-height: 60rpx;
+}
+
+.account-balance-btn {
+  background-color: rgba(216, 216, 216, 1.0);
+  border-radius: 66rpx;
+  padding: 18rpx 36rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.account-balance-btn-text {
+  color: rgba(0, 0, 0, 1);
+  font-size: 26rpx;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.account-balance-stats {
+  margin-top: 28rpx;
+  justify-content: space-between;
+}
+
+.account-balance-stat {
+  gap: 8rpx;
+}
+
+.account-balance-stat-label {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.52);
+  line-height: 32rpx;
+}
+
+.account-balance-stat-value {
+  font-size: 26rpx;
+  color: #fff;
+  font-weight: 600;
+  line-height: 36rpx;
+}
+
+.account-balance-tip {
+  display: block;
+  margin-top: 22rpx;
+  font-size: 22rpx;
+  line-height: 32rpx;
+  color: rgba(255, 255, 255, 0.52);
+}
+
+// Withdraw records
+.account-record-group {
+  background-color: rgba(27, 27, 27, 1.0);
+  border-radius: 24rpx;
+  width: calc(100% - 60rpx);
+  margin-left: 30rpx;
+  margin-right: 30rpx;
+  padding: 8rpx 24rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.account-record-empty {
+  padding: 48rpx 0;
+  text-align: center;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.52);
+}
+
+.account-record-row {
+  padding: 26rpx 0;
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.06);
+}
+
+.account-record-row:last-child {
+  border-bottom: none;
+}
+
+.account-record-main {
+  gap: 8rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.account-record-amount {
+  font-size: 30rpx;
+  color: #fff;
+  font-weight: 700;
+  line-height: 40rpx;
+}
+
+.account-record-line {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.52);
+  line-height: 32rpx;
+}
+
+.account-record-reason {
+  font-size: 22rpx;
+  color: rgba(255, 49, 80, 0.9);
+  line-height: 32rpx;
+}
+
+.account-record-status {
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 34rpx;
+  white-space: nowrap;
+  margin-left: 24rpx;
+}
+
+.account-record-status.s0 {
+  color: rgba(255, 184, 77, 1);
+}
+
+.account-record-status.s1 {
+  color: rgba(77, 159, 255, 1);
+}
+
+.account-record-status.s2 {
+  color: rgba(72, 218, 97, 1);
+}
+
+.account-record-status.s3 {
+  color: rgba(255, 49, 80, 1);
+}
+
+// Withdraw apply modal extra info
+.account-apply-info {
+  margin-top: 28rpx;
+  gap: 10rpx;
+}
+
+.account-apply-info-line {
+  font-size: 22rpx;
+  color: rgba(183, 183, 183, 1);
+  line-height: 32rpx;
+}
+
+// Organizer setting modals (主办方编辑 / 主办方区域 / 修改密码)
+.account-logo-picker {
+  align-items: center;
+  margin-top: 18rpx;
+}
+
+.account-logo-preview {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 24rpx;
+  background-color: rgba(42, 41, 41, 1.0);
+  border: 2rpx solid rgba(151, 151, 151, 1);
+}
+
+.account-logo-picker-text {
+  margin-left: 24rpx;
+  color: rgba(142, 142, 142, 1);
+  font-size: 24rpx;
+}
+
+.account-region-text {
+  color: rgba(255, 255, 255, 1);
+  font-size: 22rpx;
+  letter-spacing: 2rpx;
+  line-height: 30rpx;
+}
+
+.account-region-text.is-placeholder {
+  color: rgba(142, 142, 142, 1);
+}
+
+.account-code-row {
+  align-items: stretch;
+}
+
+.account-code-input {
+  flex: 1;
+}
+
+.account-code-btn {
+  margin-top: 18rpx;
+  margin-left: 16rpx;
+  height: 98rpx;
+  padding: 0 28rpx;
+  border-radius: 24rpx;
+  background-color: rgba(216, 216, 216, 1.0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.account-code-btn.disabled {
+  opacity: 0.48;
+}
+
+.account-code-btn-text {
+  color: rgba(0, 0, 0, 1);
+  font-size: 24rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+}

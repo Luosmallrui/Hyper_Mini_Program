@@ -17,7 +17,7 @@ interface ViewerItem {
   updated_at: string
 }
 
-type PageMode = 'list' | 'create'
+type PageMode = 'list' | 'create' | 'edit'
 
 export default function ActivityAttendeePage() {
   const router = useRouter()
@@ -29,11 +29,13 @@ export default function ActivityAttendeePage() {
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
   const [mode, setMode] = useState<PageMode>(initialMode)
+  const [editingViewerId, setEditingViewerId] = useState<number | null>(null)
 
   const [name, setName] = useState('')
   const [idCard, setIdCard] = useState('')
   const [phone, setPhone] = useState('')
   const [agreed, setAgreed] = useState(false)
+  const [showRealNameNotice, setShowRealNameNotice] = useState(false)
   const [viewers, setViewers] = useState<ViewerItem[]>([])
   const [selectedViewerId, setSelectedViewerId] = useState<number | null>(initialSelectedViewerId)
   const [loading, setLoading] = useState(false)
@@ -76,10 +78,10 @@ export default function ActivityAttendeePage() {
     try {
       setLoading(true)
       const res = await request({
-        url: '/api/v1/order/list-viewer',
+        url: '/api/v1/viewers',
         method: 'GET',
       })
-      const list: ViewerItem[] = Array.isArray(res?.data?.data?.viewers) ? res.data.data.viewers : []
+      const list: ViewerItem[] = Array.isArray(res?.data?.data?.list) ? res.data.data.list : []
       setViewers(list)
       if (list.length === 0) {
         setSelectedViewerId(null)
@@ -101,9 +103,8 @@ export default function ActivityAttendeePage() {
     try {
       setDeletingId(id)
       const res = await request({
-        url: '/api/v1/order/delete-viewer',
-        method: 'POST',
-        data: { id },
+        url: `/api/v1/viewers/${id}`,
+        method: 'DELETE',
       })
       const payload = res?.data
       if (payload?.code !== 200) {
@@ -124,7 +125,7 @@ export default function ActivityAttendeePage() {
     }
   }
 
-  const validateForm = () => {
+  const validateForm = (isEdit = false) => {
     const trimmedName = name.trim()
     const trimmedIdCard = idCard.trim().toUpperCase()
     const trimmedPhone = phone.trim()
@@ -132,7 +133,7 @@ export default function ActivityAttendeePage() {
       Taro.showToast({ title: '请输入真实姓名', icon: 'none' })
       return null
     }
-    if (!/^\d{17}(\d|X)$/.test(trimmedIdCard)) {
+    if (!isEdit && !/^\d{17}(\d|X)$/.test(trimmedIdCard)) {
       Taro.showToast({ title: '请输入正确身份证号', icon: 'none' })
       return null
     }
@@ -151,6 +152,23 @@ export default function ActivityAttendeePage() {
     }
   }
 
+  const resetForm = () => {
+    setName('')
+    setIdCard('')
+    setPhone('')
+    setAgreed(false)
+    setEditingViewerId(null)
+  }
+
+  const startEditViewer = (viewer: ViewerItem) => {
+    setEditingViewerId(viewer.id)
+    setName(viewer.real_name || '')
+    setIdCard(viewer.id_card || '')
+    setPhone(viewer.phone || '')
+    setAgreed(true)
+    setMode('edit')
+  }
+
   const handleCreateViewer = async () => {
     if (saving) return
     const payload = validateForm()
@@ -158,7 +176,7 @@ export default function ActivityAttendeePage() {
     try {
       setSaving(true)
       const res = await request({
-        url: '/api/v1/order/create-viewer',
+        url: '/api/v1/viewers',
         method: 'POST',
         data: payload,
       })
@@ -168,10 +186,7 @@ export default function ActivityAttendeePage() {
       }
       const createdId = Number(body?.data?.id || body?.data?.viewer?.id || 0) || null
       markChanged()
-      setName('')
-      setIdCard('')
-      setPhone('')
-      setAgreed(false)
+      resetForm()
       setMode('list')
       await fetchViewerList(createdId ?? -1)
       Taro.showToast({ title: '创建成功', icon: 'none' })
@@ -183,12 +198,50 @@ export default function ActivityAttendeePage() {
     }
   }
 
+  const handleUpdateViewer = async () => {
+    if (saving || !editingViewerId) return
+    const payload = validateForm(true)
+    if (!payload) return
+    try {
+      setSaving(true)
+      const res = await request({
+        url: `/api/v1/viewers/${editingViewerId}`,
+        method: 'PUT',
+        data: {
+          real_name: payload.real_name,
+          phone: payload.phone,
+        },
+      })
+      const body = res?.data
+      if (body?.code !== 200) {
+        throw new Error(body?.msg || '更新观演人失败')
+      }
+      markChanged()
+      const updatedId = editingViewerId
+      resetForm()
+      setMode('list')
+      await fetchViewerList(updatedId)
+      Taro.showToast({ title: '更新成功', icon: 'none' })
+    } catch (error: any) {
+      console.error('update viewer failed:', error)
+      Taro.showToast({ title: error?.message || '更新失败', icon: 'none' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleBack = () => {
     if (mode === 'create') {
       if (initialMode === 'create') {
         emitAndBack()
         return
       }
+      resetForm()
+      setMode('list')
+      return
+    }
+    if (mode === 'edit') {
+      resetForm()
       setMode('list')
       return
     }
@@ -202,13 +255,18 @@ export default function ActivityAttendeePage() {
     }
   }
 
+  const openRealNameNotice = (event?: any) => {
+    event?.stopPropagation?.()
+    setShowRealNameNotice(true)
+  }
+
   return (
     <View className='attendee-page'>
       <View className='custom-nav' style={{ paddingTop: `${statusBarHeight}px`, height: `${navBarHeight}px` }}>
         <View className='nav-left' onClick={handleBack}>
           <AtIcon value='chevron-left' size='24' color='#fff' />
         </View>
-        <View className='nav-title'>{mode === 'list' ? '观演人管理' : '新增观演人'}</View>
+        <View className='nav-title'>{mode === 'list' ? '观演人管理' : mode === 'edit' ? '编辑观演人' : '新增观演人'}</View>
       </View>
 
       <View className='form-body' style={{ paddingTop: `${statusBarHeight + navBarHeight}px` }}>
@@ -229,6 +287,15 @@ export default function ActivityAttendeePage() {
                   </View>
                   <View className='viewer-actions'>
                     <View className={`viewer-radio ${selectedViewerId === item.id ? 'active' : ''}`} />
+                    <View
+                      className='viewer-delete'
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        startEditViewer(item)
+                      }}
+                    >
+                      编辑
+                    </View>
                     <View
                       className={`viewer-delete ${deletingId === item.id ? 'disabled' : ''}`}
                       onClick={(e) => {
@@ -261,6 +328,7 @@ export default function ActivityAttendeePage() {
                 className='input'
                 placeholder='请输入您的身份证号'
                 value={idCard}
+                disabled={mode === 'edit'}
                 onInput={(e) => setIdCard(e.detail.value)}
               />
             </View>
@@ -278,7 +346,7 @@ export default function ActivityAttendeePage() {
             <View className='agree-row' onClick={() => setAgreed(!agreed)}>
               <View className={`agree-dot ${agreed ? 'checked' : ''}`} />
               <Text className='agree-text'>请阅读并同意</Text>
-              <Text className='agree-link'>《实名须知》</Text>
+              <Text className='agree-link' onClick={openRealNameNotice}>《实名须知》</Text>
               <Text className='agree-text'>允许 HYPER 统一管理本人信息</Text>
             </View>
           </>
@@ -296,11 +364,31 @@ export default function ActivityAttendeePage() {
             </View>
           </View>
         ) : (
-          <View className={`submit-btn ${saving ? 'disabled' : 'active'}`} onClick={handleCreateViewer}>
-            {saving ? '保存中...' : '确认保存'}
+            <View className={`submit-btn ${saving ? 'disabled' : 'active'}`} onClick={mode === 'edit' ? handleUpdateViewer : handleCreateViewer}>
+            {saving ? '保存中...' : mode === 'edit' ? '确认更新' : '确认保存'}
           </View>
         )}
       </View>
+
+      {showRealNameNotice && (
+        <View className='notice-mask' onClick={() => setShowRealNameNotice(false)}>
+          <View className='notice-card' onClick={(event) => event.stopPropagation()}>
+            <Text className='notice-title'>实名须知</Text>
+            <Text className='notice-text'>
+              为完成票务购买、现场入场核验、退款售后和安全管理，HYPER 需要保存观演人的真实姓名、证件号码和手机号。
+            </Text>
+            <Text className='notice-text'>
+              相关信息仅用于本平台活动履约和依法配合必要核验，不会用于与票务服务无关的商业推广。
+            </Text>
+            <Text className='notice-text'>
+              请确认填写信息真实有效。证件号码创建后不可直接修改，如需变更请删除后重新新增观演人。
+            </Text>
+            <View className='notice-btn' onClick={() => setShowRealNameNotice(false)}>
+              我知道了
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
