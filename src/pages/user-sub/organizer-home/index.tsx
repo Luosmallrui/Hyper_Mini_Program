@@ -31,13 +31,14 @@ interface OrganizerVenueItem {
 }
 
 // C 端商家公开主页数据，见 docs/public_organizer_home_api_20260811.md
+// 头部展示 organizers 表的 name/logo（商家名称与 Logo），不使用 owner_nickname/owner_avatar（申请人个人昵称头像）
 interface OrganizerHomeData {
   id: number | string
   user_id?: number | string
+  // 商家类型（注册时确定）：party 只展示活动区，venue 只展示场地区；未返回时两区都展示
+  type?: string
   name?: string
   logo?: string
-  owner_nickname?: string
-  owner_avatar?: string
   cover_image?: string
   gallery?: string[]
   description?: string
@@ -245,6 +246,9 @@ export default function OrganizerHomePage() {
   const fansCount = Number(organizer?.follow_count) || 0
   const isFollowed = Boolean(organizer?.is_follow)
   const hasInfoRow = Boolean(organizer?.business_hours || addressText || organizer?.service_phone) || averageSpend > 0
+  // 商家注册时已确定类型：按类型只展示对应区；接口未返回 type 时保持两区都展示
+  const showActivitySection = organizer?.type !== 'venue'
+  const showVenueSection = organizer?.type !== 'party'
 
   return (
     <View className='organizer-home-page'>
@@ -293,9 +297,6 @@ export default function OrganizerHomePage() {
                   <View className='merchant-info'>
                     <Text className='merchant-name'>{organizer.name || '商家'}</Text>
                     <View className='merchant-sub-row'>
-                      {organizer.owner_nickname ? (
-                        <Text className='merchant-owner'>{organizer.owner_nickname}</Text>
-                      ) : null}
                       <Text className='merchant-fans'>{formatNumber(fansCount)} 粉丝</Text>
                     </View>
                   </View>
@@ -361,7 +362,8 @@ export default function OrganizerHomePage() {
                 </View>
               ) : null}
 
-              {/* 活动区 */}
+              {/* 活动区（仅派对类商家展示） */}
+              {showActivitySection ? (
               <View className='section'>
                 <Text className='section-title'>活动·{activityTotal}</Text>
                 {activities.length > 0 ? (
@@ -391,8 +393,10 @@ export default function OrganizerHomePage() {
                   </View>
                 ) : null}
               </View>
+              ) : null}
 
-              {/* 场地区 */}
+              {/* 场地区（仅场地类商家展示） */}
+              {showVenueSection ? (
               <View className='section'>
                 <Text className='section-title'>场地·{venueTotal}</Text>
                 {venues.length > 0 ? (
@@ -422,6 +426,7 @@ export default function OrganizerHomePage() {
                   </View>
                 ) : null}
               </View>
+              ) : null}
 
               <View className='bottom-space' />
             </View>

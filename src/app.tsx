@@ -1,5 +1,5 @@
-import { PropsWithChildren, useEffect, useState } from 'react'
-import { Text, View } from '@tarojs/components'
+import { PropsWithChildren, useEffect } from 'react'
+import { View } from '@tarojs/components'
 import Taro, { useLaunch } from '@tarojs/taro'
 import { appUpdate } from './utils'
 import IMService from './utils/im'
@@ -24,8 +24,6 @@ if (typeof console.time !== 'function') {
 }
 
 function App({ children }: PropsWithChildren<any>) {
-  const [isSwitching, setIsSwitching] = useState(false)
-
   const enableWeappShareMenu = () => {
     if (process.env.TARO_ENV !== 'weapp') return
     if (typeof Taro.showShareMenu !== 'function') return
@@ -104,25 +102,9 @@ function App({ children }: PropsWithChildren<any>) {
     }
   }, [])
 
-  useEffect(() => {
-    const handleSwitchLoading = (flag: boolean) => {
-      setIsSwitching(Boolean(flag))
-    }
-    Taro.eventCenter.on('TAB_SWITCH_LOADING', handleSwitchLoading)
-    return () => {
-      Taro.eventCenter.off('TAB_SWITCH_LOADING', handleSwitchLoading)
-    }
-  }, [])
-
   return (
     <View className='app-root'>
       {children}
-      {isSwitching && (
-        <View className='global-loading-mask'>
-          <View className='global-loading-spinner' />
-          <Text className='global-loading-text'>Loading...</Text>
-        </View>
-      )}
     </View>
   )
 }

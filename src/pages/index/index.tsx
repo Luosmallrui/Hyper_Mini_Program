@@ -530,7 +530,6 @@ export default function IndexPage() {
 
   Taro.useDidShow(() => {
     setTabBarIndex(0)
-    Taro.eventCenter.trigger('TAB_SWITCH_LOADING', false)
     // 游客模式：未登录也照常加载浏览数据，仅用户态能力（如位置 marker）按登录态降级
     syncAuthState()
     resetFirstScreenInitState()

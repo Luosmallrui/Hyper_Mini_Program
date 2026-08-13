@@ -465,7 +465,6 @@ export default function SquarePage() {
 
   Taro.useDidShow(() => {
     setTabBarIndex(1)
-    Taro.eventCenter.trigger('TAB_SWITCH_LOADING', false)
   })
 
   const fetchNotes = async (

@@ -157,7 +157,6 @@ export default function UserPage() {
 
   useEffect(() => {
     setTabBarIndex(4);
-    Taro.eventCenter.trigger('TAB_SWITCH_LOADING', false);
 
     const sysInfo = Taro.getWindowInfo();
     const menuInfo = Taro.getMenuButtonBoundingClientRect();

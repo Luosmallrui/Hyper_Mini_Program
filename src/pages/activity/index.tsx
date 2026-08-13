@@ -1,4 +1,4 @@
-import { View, Text, Image, Swiper, SwiperItem, ScrollView, Input, RichText } from '@tarojs/components'
+import { View, Text, Image, ScrollView, Input, RichText } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AtIcon, AtFloatLayout } from 'taro-ui'
@@ -727,6 +727,13 @@ export default function ActivityPage() {
         }}
       >
         <View
+          className='activity-hero-hit'
+          onClick={() => {
+            const url = heroImage || posterImage
+            if (url) Taro.previewImage({ urls: [url], current: url })
+          }}
+        />
+        <View
           className='activity-nav'
           style={{
             top: `${statusBarHeight}px`,
@@ -799,63 +806,66 @@ export default function ActivityPage() {
             ))}
           </View>
 
-          <Swiper
-            className='section-swiper'
-            current={activeTab}
-            onChange={(e) => setActiveTab(e.detail.current)}
-            circular={false}
-          >
-            <SwiperItem>
-              <View className='section-pane'>
-                {activity?.description ? (
-                  <RichText className='activity-desc' nodes={activity.description} />
-                ) : (
+          {activeTab === 0 && (
+            <View className='section-pane'>
+              {activity?.description ? (
+                <RichText className='activity-desc' nodes={activity.description} />
+              ) : (
+                !activity?.poster_long && (
                   <Text className='empty-tip'>{isVenue ? '暂无场地详情' : '暂无活动详情'}</Text>
-                )}
-              </View>
-            </SwiperItem>
-            <SwiperItem>
-              <View className='section-pane'>
-                {relatedActivities.length > 0 ? (
-                      relatedActivities.map((item) => (
-                        <View key={item.id} className='related-item'>
-                          <Text className='related-title'>{item.product_name}</Text>
-                          <Text className='related-price'>¥{formatYuanFromCents(item.price)}</Text>
-                        </View>
-                      ))
-                ) : (
-                  <Text className='empty-tip'>{isVenue ? '暂无相关场地' : '暂无相关活动'}</Text>
-                )}
-              </View>
-            </SwiperItem>
-            <SwiperItem>
-              <View className='section-pane'>
-                {relatedNotes.length > 0 ? (
-                  <View className='activity-related-note-list'>
-                    {relatedNotes.map((note) => {
-                      const cover = getRelatedNoteCover(note)
-                      return (
-                        <View key={note.id} className='activity-related-note-card' onClick={() => handleRelatedNoteClick(note.id)}>
-                          {cover ? (
-                            <Image className='activity-related-note-cover' src={cover} mode='aspectFill' />
-                          ) : (
-                            <View className='activity-related-note-cover placeholder' />
-                          )}
-                          <View className='activity-related-note-info'>
-                            <Text className='activity-related-note-title'>{note.title}</Text>
-                            <Text className='activity-related-note-meta'>{note.authorName} · {note.likeCount} 赞</Text>
-                          </View>
-                          <AtIcon value='chevron-right' size='14' color='#777' />
-                        </View>
-                      )
-                    })}
+                )
+              )}
+              {!!activity?.poster_long && (
+                <Image
+                  className='activity-long-poster'
+                  src={activity.poster_long}
+                  mode='widthFix'
+                  onClick={() => Taro.previewImage({ urls: [activity.poster_long as string], current: activity.poster_long as string })}
+                />
+              )}
+            </View>
+          )}
+          {activeTab === 1 && (
+            <View className='section-pane'>
+              {relatedActivities.length > 0 ? (
+                relatedActivities.map((item) => (
+                  <View key={item.id} className='related-item'>
+                    <Text className='related-title'>{item.product_name}</Text>
+                    <Text className='related-price'>¥{formatYuanFromCents(item.price)}</Text>
                   </View>
-                ) : (
-                  <Text className='empty-tip'>{relatedNotesLoading ? '动态加载中...' : '暂无相关动态'}</Text>
-                )}
-              </View>
-            </SwiperItem>
-          </Swiper>
+                ))
+              ) : (
+                <Text className='empty-tip'>{isVenue ? '暂无相关场地' : '暂无相关活动'}</Text>
+              )}
+            </View>
+          )}
+          {activeTab === 2 && (
+            <View className='section-pane'>
+              {relatedNotes.length > 0 ? (
+                <View className='activity-related-note-list'>
+                  {relatedNotes.map((note) => {
+                    const cover = getRelatedNoteCover(note)
+                    return (
+                      <View key={note.id} className='activity-related-note-card' onClick={() => handleRelatedNoteClick(note.id)}>
+                        {cover ? (
+                          <Image className='activity-related-note-cover' src={cover} mode='aspectFill' />
+                        ) : (
+                          <View className='activity-related-note-cover placeholder' />
+                        )}
+                        <View className='activity-related-note-info'>
+                          <Text className='activity-related-note-title'>{note.title}</Text>
+                          <Text className='activity-related-note-meta'>{note.authorName} · {note.likeCount} 赞</Text>
+                        </View>
+                        <AtIcon value='chevron-right' size='14' color='#777' />
+                      </View>
+                    )
+                  })}
+                </View>
+              ) : (
+                <Text className='empty-tip'>{relatedNotesLoading ? '动态加载中...' : '暂无相关动态'}</Text>
+              )}
+            </View>
+          )}
 
           {activity?.is_hidden ? (
             <View className='ticket-bar'>

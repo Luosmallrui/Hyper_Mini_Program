@@ -15,6 +15,15 @@ page {
   min-height: 100vh;
 }
 
+/* 封面可点击放大：仅覆盖信息面板（top: 430px）以上的纯封面区域，避免拦截面板内点击 */
+.activity-hero-hit {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 750px;
+  height: 430px;
+}
+
 .activity-nav {
   position: fixed;
   left: 50%;
@@ -272,6 +281,13 @@ page {
   color: #747474;
   font-size: 22px;
   line-height: 38px;
+}
+
+/* 活动详情长图：全宽展示，点击可放大 */
+.activity-long-poster {
+  display: block;
+  width: 690px;
+  margin-top: 24px;
 }
 
 .section-swiper {
@@ -969,6 +985,13 @@ page {
   font-size: 24px;
   color: rgba(255, 255, 255, 0.75);
   line-height: 1.6;
+}
+
+/* 购票弹层长图：补全宽度（原生 Image 默认仅 300px 宽） */
+.drawer-long-poster {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
 }
 
 /* 下架兜底详情：底部按钮置灰不可点 */

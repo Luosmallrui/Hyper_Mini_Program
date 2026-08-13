@@ -1558,16 +1558,12 @@ export default function OrganizerPage() {
 
   const handleNextStep = () => {
     if (!validateStep(wizardStep)) return
-    // 场地流程：第 3 步（上传海报）之后直接到第 5 步（活动资质），跳过票券配置
-    if (draft.type === 'venue' && wizardStep === 3) {
-      setWizardStep(5)
-      return
-    }
     setWizardStep((prev) => Math.min(prev + 1, 5))
   }
 
   const handleSubmitAudit = async () => {
-    if (!validateStep(5)) return
+    // 场地流程第 3 步（上传海报）即最后一步，提交前校验海报
+    if (!validateStep(draft.type === 'venue' ? 3 : 5)) return
     Taro.showLoading({ title: '提交中...', mask: true })
     try {
       const activityId = await submitActivityDraft(draft)
@@ -1888,8 +1884,8 @@ export default function OrganizerPage() {
   }
 
   const renderStepHeader = () => {
-    // 场地发布不含票券配置步骤（后端对场地会拒绝 ticket_specs）
-    const steps = draft.type === 'venue' ? [1, 2, 3, 5] : [1, 2, 3, 4, 5]
+    // 场地发布不含票券配置与活动资质步骤（后端对场地会拒绝 ticket_specs）
+    const steps = draft.type === 'venue' ? [1, 2, 3] : [1, 2, 3, 4, 5]
     return (
       <View className="wizard-steps">
         {steps.map((step, index) => {
@@ -2622,17 +2618,20 @@ export default function OrganizerPage() {
     )
   }
 
-  const renderWizardFooter = () => (
+  const renderWizardFooter = () => {
+    // 场地流程到第 3 步（上传海报）即可提交审核，无活动资质步骤
+    const isLastStep = draft.type === 'venue' ? wizardStep === 3 : wizardStep === 5
+    return (
     <View className={`wizard-footer ${wizardStep === 1 ? 'single' : 'multi'}`}>
       {wizardStep > 1 ? (
         <Button
           className="text-button"
-          onClick={() => setWizardStep((prev) => (draft.type === 'venue' && prev === 5 ? 3 : Math.max(prev - 1, 1)))}
+          onClick={() => setWizardStep((prev) => Math.max(prev - 1, 1))}
         >
           上一步
         </Button>
       ) : null}
-      {wizardStep < 5 ? (
+      {!isLastStep ? (
         <Button className="white-pill-button" onClick={handleNextStep}>
           下一步
         </Button>
@@ -2642,7 +2641,8 @@ export default function OrganizerPage() {
         </Button>
       )}
     </View>
-  )
+    )
+  }
 
   const renderCreateWizard = () => (
     <ScrollView className="organizer-scroll wizard-scroll" scrollY key={`wizard-step-${wizardStep}`} scrollTop={wizardScrollTop}>

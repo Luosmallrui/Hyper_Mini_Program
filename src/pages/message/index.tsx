@@ -72,7 +72,6 @@ export default function MessagePage() {
 
   Taro.useDidShow(() => {
     setTabBarIndex(3)
-    Taro.eventCenter.trigger('TAB_SWITCH_LOADING', false)
     // 游客模式：未登录展示登录引导，不请求会话接口
     const loggedIn = isLoggedIn()
     setIsLogin(loggedIn)
