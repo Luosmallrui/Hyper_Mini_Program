@@ -589,8 +589,10 @@ export default function OrganizerPage() {
   const loadSalesSummary = async () => {
     try {
       setSalesSummaryData(await fetchSalesSummary())
-    } catch {
-      Taro.showToast({ title: '销售数据加载失败', icon: 'none' })
+    } catch (error: any) {
+      // 透出后端真实报错（vConsole 可见），便于定位是建表缺失还是接口异常
+      console.error('销售数据加载失败:', error?.code, error?.message, error?.data)
+      Taro.showToast({ title: error?.message ? `销售数据：${error.message}` : '销售数据加载失败', icon: 'none' })
     }
   }
 
