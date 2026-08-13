@@ -757,7 +757,8 @@ page {
   box-sizing: border-box;
 }
 
-.activity-item-card.rejected .activity-item-content {
+.activity-item-card.rejected .activity-item-content,
+.activity-item-card.published .activity-item-content {
   padding-right: 156rpx;
 }
 

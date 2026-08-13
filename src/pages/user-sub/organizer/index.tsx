@@ -15,6 +15,7 @@ import {
 } from './mock'
 import {
   createVerifier,
+  fetchActivityDetail,
   fetchContentTags,
   fetchDashboard,
   fetchOrders,
@@ -93,6 +94,12 @@ const createActivityFromDraft = (draft: CreateActivityDraft): OrganizerActivityI
 const getDisplayStatus = (item: OrganizerActivityItem): { label: string; color: string } => {
   if (item.status === 'rejected') {
     return { label: '审核未通过', color: '#FF3150' }
+  }
+  // 待审核：按 audit_type 区分首次审核 vs 修改后二次审核（后端 2026-08-13 新增字段）
+  if (item.auditStatus === 'pending') {
+    return item.auditType === 're_audit'
+      ? { label: '修改审核中', color: '#A0A0A0' }
+      : { label: '审核中', color: '#A0A0A0' }
   }
   const key = `${item.auditStatus}-${item.lifeStatus}`
   return DISPLAY_STATUS_MAP[key] || { label: '未知', color: '#747474' }
@@ -220,6 +227,8 @@ const EDITOR_COLORS: { label: string; value: string }[] = [
 export default function OrganizerPage() {
   const calendarApplyCallbackRef = useRef<((value: string) => void) | null>(null)
   const editorContextRef = useRef<any>(null)
+  // 编辑回填时待注入富文本编辑器的 HTML（编辑器就绪后再 setContents）
+  const pendingEditorHtmlRef = useRef('')
   const locationRequestSeqRef = useRef(0)
   const mapContextRef = useRef<any>(null)
   const mapRegionChangeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -679,29 +688,30 @@ export default function OrganizerPage() {
     setDraft(nextDraft)
   }
 
-  const createEditableDraftFromActivity = (item: OrganizerActivityItem): CreateActivityDraft => {
-    const nextDraft = createInitialDraft()
-    const startDate = item.eventStartAt ? formatCalendarDisplayDate(item.eventStartAt) : ''
-    const endDate = item.eventEndAt ? formatCalendarDisplayDate(item.eventEndAt) : startDate
-    const dateRange = startDate && endDate ? `${startDate} · ${endDate}` : item.eventTime
-
-    return {
-      ...nextDraft,
-      // 编辑草稿同样按入驻类型锁定（主办方只能发布一种类型）
-      type: organizerType,
-      name: item.title,
-      shareTitle: item.title.slice(0, 20),
-      dateRange,
-      summary: '',
-    }
-  }
-
-  const openEditableActivityWizard = (item: OrganizerActivityItem) => {
+  const openEditableActivityWizard = async (item: OrganizerActivityItem) => {
     rememberCurrentView()
-    setDashboardView('createWizard')
-    setActivityTab('mine')
-    setWizardStep(1)
-    setDraft(createEditableDraftFromActivity(item))
+    Taro.showLoading({ title: '加载中...', mask: true })
+    try {
+      const fullDraft = await fetchActivityDetail(item.id)
+      // 详情可能不含 type（旧数据），保持按入驻类型锁定
+      fullDraft.type = organizerType
+      // 保存原始详情快照，供提交时做字段级 diff（后端以“字段是否出现”判断修改）
+      fullDraft.originalDraft = { ...fullDraft }
+      setDashboardView('createWizard')
+      setActivityTab('mine')
+      setWizardStep(1)
+      setDraft(fullDraft)
+      // 历史概要注入富文本编辑器（编辑器未就绪则挂起，等 onReady 后再 setContents）
+      if (fullDraft.summary) {
+        const editor = editorContextRef.current
+        if (editor) editor.setContents({ html: fullDraft.summary })
+        else pendingEditorHtmlRef.current = fullDraft.summary
+      }
+    } catch {
+      Taro.showToast({ title: '活动详情加载失败，请重试', icon: 'none' })
+    } finally {
+      Taro.hideLoading()
+    }
   }
 
   const openActivityDetail = (activityId: string) => {
@@ -712,11 +722,20 @@ export default function OrganizerPage() {
 
     const currentActivity = activityItems.find((item) => item.id === activityId)
     if (currentActivity?.auditStatus === 'draft' || currentActivity?.auditStatus === 'rejected') {
-      openEditableActivityWizard(currentActivity)
+      void openEditableActivityWizard(currentActivity)
       return
     }
 
     Taro.navigateTo({ url: `/pages/activity/index?id=${encodeURIComponent(activityId)}` })
+  }
+
+  const openEditActivity = (activityId: string) => {
+    const currentActivity = activityItems.find((item) => item.id === activityId)
+    if (!currentActivity) {
+      Taro.showToast({ title: '活动信息缺失', icon: 'none' })
+      return
+    }
+    void openEditableActivityWizard(currentActivity)
   }
 
   const handleBottomTabChange = (nextView: OrganizerDashboardTab) => {
@@ -1169,6 +1188,11 @@ export default function OrganizerPage() {
   const handleEditorReady = () => {
     resolveEditorContext((ctx) => {
       editorContextRef.current = ctx
+      // 编辑回填：编辑器就绪后注入历史概要，避免用户一编辑就丢失原介绍
+      if (pendingEditorHtmlRef.current) {
+        ctx.setContents({ html: pendingEditorHtmlRef.current })
+        pendingEditorHtmlRef.current = ''
+      }
     })
   }
 
@@ -2706,6 +2730,7 @@ export default function OrganizerPage() {
             onChangeKeyword={setActivityKeyword}
             onOpenCreateWizard={() => openCreateWizard(1)}
             onOpenActivityDetail={openActivityDetail}
+            onEditActivity={openEditActivity}
             onRefresh={refreshActivityCenter}
             refreshing={activityRefreshing}
             filterPanelOpen={filterPanelOpen}

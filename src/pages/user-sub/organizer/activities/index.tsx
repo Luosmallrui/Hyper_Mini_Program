@@ -42,6 +42,7 @@ interface OrganizerActivitiesViewProps {
   onChangeKeyword: (value: string) => void
   onOpenCreateWizard: () => void
   onOpenActivityDetail: (activityId: string) => void
+  onEditActivity: (activityId: string) => void
   onRefresh: () => void
   refreshing: boolean
   filterPanelOpen: boolean
@@ -69,6 +70,7 @@ const renderActivityList = (
   filteredActivities: OrganizerActivityItem[],
   onOpenCreateWizard: () => void,
   onOpenActivityDetail: (activityId: string) => void,
+  onEditActivity: (activityId: string) => void,
   getDisplayStatus: (item: OrganizerActivityItem) => { label: string; color: string },
 ) => {
   if (filteredActivities.length === 0) {
@@ -91,7 +93,7 @@ const renderActivityList = (
         return (
           <View
             key={item.id}
-            className={`activity-item-card ${isRejected ? 'rejected' : ''}`}
+            className={`activity-item-card ${isRejected ? 'rejected' : ''} ${isPublishedUp ? 'published' : ''}`}
             onClick={() => onOpenActivityDetail(item.id)}
           >
             <Image className="activity-item-cover" src={item.cover} mode="aspectFill" />
@@ -115,12 +117,13 @@ const renderActivityList = (
                 </>
               )}
             </View>
-            {isRejected ? (
+            {isPublishedUp || isRejected ? (
               <View
                 className="activity-edit-pill"
                 onClick={(event) => {
                   event.stopPropagation()
-                  onOpenActivityDetail(item.id)
+                  if (isRejected) onOpenActivityDetail(item.id)
+                  else onEditActivity(item.id)
                 }}
               >
                 <Text className="activity-edit-text">编辑</Text>
@@ -400,6 +403,7 @@ export default function OrganizerActivitiesView(props: OrganizerActivitiesViewPr
     onChangeKeyword,
     onOpenCreateWizard,
     onOpenActivityDetail,
+    onEditActivity,
     onRefresh,
     refreshing,
     filterPanelOpen,
@@ -678,7 +682,7 @@ export default function OrganizerActivitiesView(props: OrganizerActivitiesViewPr
         )}
         {(pageState === 'loaded' || pageState === 'empty' || activityTab !== 'mine') && (
           <>
-            {activityTab === 'mine' && renderActivityList(filteredActivities, onOpenCreateWizard, onOpenActivityDetail, getDisplayStatus)}
+            {activityTab === 'mine' && renderActivityList(filteredActivities, onOpenCreateWizard, onOpenActivityDetail, onEditActivity, getDisplayStatus)}
             {activityTab === 'sales' && (filteredActivities.length === 0 ? renderSalesEmpty() : renderSalesView(salesSummary))}
             {activityTab === 'orders' && (
               ordersLoading && visibleOrders.length === 0 ? (

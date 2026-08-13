@@ -83,6 +83,8 @@ export interface OrganizerActivityItem {
   eventEndAt: string
   status: OrganizerActivityStatus
   auditStatus: OrganizerAuditStatus
+  /** 审核类型：initial 首次审核 / re_audit 修改后二次审核 */
+  auditType?: 'initial' | 're_audit'
   lifeStatus: OrganizerActivityLifeStatus
   orders: number
   sales: number
@@ -157,6 +159,8 @@ export interface OrganizerSalesSummary {
 
 export interface TicketSpec {
   id: string
+  /** 后端票券原始 int64 id（字符串形式保存/比较/提交，绝不转成 JS number）；前端新增票券无此值 */
+  sourceId?: string
   name: string
   enabled: boolean
   startAt: string
@@ -176,6 +180,15 @@ export interface UploadSlotState {
 }
 
 export interface CreateActivityDraft {
+  /** 编辑目标活动 ID；新建时为 undefined */
+  id?: string
+  /** 编辑前的原始审核状态（0草稿/1待审核/2审核中/3已上架/4审核未通过）；新建时为 undefined */
+  originalStatus?: number
+  /** 编辑回填时的原始详情草稿，用于字段级 diff（只提交用户实际改动的字段） */
+  originalDraft?: CreateActivityDraft
+  /** 省份/城市（向导不展示，编辑回填时保留原值，避免提交空串清空） */
+  province?: string
+  city?: string
   type: 'party' | 'venue'
   name: string
   shareTitle: string

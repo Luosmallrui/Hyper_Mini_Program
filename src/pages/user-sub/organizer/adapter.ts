@@ -4,6 +4,7 @@ import { request, saveTokens } from '@/utils/request'
 import {
   createInitialDraft,
   organizerDistricts,
+  organizerPosterSlots,
   organizerTicketSpecs,
   settlementApplyInitialForm,
   todayDateString,
@@ -95,6 +96,7 @@ interface ApiActivityItem {
   start_time?: string
   end_time?: string
   status: ActivityStatusValue
+  audit_type?: 'initial' | 're_audit' | string
   reject_reason?: string
 }
 
@@ -243,6 +245,7 @@ const mapActivityItem = (item: ApiActivityItem): OrganizerActivityItem => {
     eventStartAt: item.start_time || '',
     eventEndAt: item.end_time || '',
     ...mappedStatus,
+    auditType: item.audit_type === 're_audit' ? 're_audit' : 'initial',
     orders: 0,
     sales: 0,
     subscribers: 0,
@@ -909,121 +912,348 @@ export const uploadOrganizerAsset = async (filePath: string, type: string): Prom
   return data.data.url
 }
 
+/** 活动详情原始字段（GET /api/v1/activity/:id），仅取编辑回填所需的字段 */
+interface ActivityDetailRaw {
+  id: number | string
+  name?: string
+  type?: 'party' | 'venue' | string
+  share_title?: string
+  description?: string
+  start_time?: string
+  end_time?: string
+  business_hours?: string
+  real_name_mode?: number
+  minor_check?: number
+  province?: string
+  city?: string
+  district?: string
+  address?: string
+  latitude?: number
+  longitude?: number
+  poster_detail?: string
+  poster_long?: string
+  poster_list?: string
+  poster_wechat?: string
+  qualification_doc?: string
+  status?: number
+  audit_type?: 'initial' | 're_audit' | string
+  reject_reason?: string
+  tag_ids?: Array<number | string>
+  tags?: Array<{ id?: number | string; name?: string }>
+  ticket_specs?: Array<{
+    id?: number | string
+    name?: string
+    is_enabled?: number
+    sale_start?: string
+    sale_end?: string
+    price?: number
+    stock?: number
+    purchase_limit?: number
+    max_attendees?: number
+  }>
+}
+
+/** 仅取 "YYYY-MM-DD" 日期部分（活动/票券时间可能带时分秒） */
+const formatDateOnly = (value?: string) => {
+  const match = String(value || '').match(/^\d{4}-\d{1,2}-\d{1,2}/)
+  return match ? match[0] : ''
+}
+
+/** 分 -> 元字符串（票券价格后端按分存储，向导按元字符串编辑） */
+const fenToYuanText = (cents?: number) => {
+  const yuan = Number(cents || 0) / 100
+  return Number.isInteger(yuan) ? String(yuan) : yuan.toFixed(2)
+}
+
+/** 把活动详情映射为可编辑草稿，供编辑向导全量回填 */
+const mapActivityDetailToDraft = (detail: ActivityDetailRaw): CreateActivityDraft => {
+  const base = createInitialDraft()
+  const isVenue = detail.type === 'venue'
+  const startDate = formatDateOnly(detail.start_time)
+  const endDate = formatDateOnly(detail.end_time)
+
+  const posterSlots = organizerPosterSlots.map((slot) => {
+    const urlMap: Record<string, string | undefined> = {
+      detailPoster: detail.poster_detail,
+      detailLong: detail.poster_long,
+      listPoster: detail.poster_list,
+    }
+    const url = urlMap[slot.key] || ''
+    // 已有海报为 http(s) 地址：fileName 用于展示，filePath 用于提交（http 地址会原样回传，不重复上传）
+    return { ...slot, fileName: url, filePath: url }
+  })
+
+  const ticketSpecs: CreateActivityDraft['ticketSpecs'] = (Array.isArray(detail.ticket_specs) ? detail.ticket_specs : [])
+    .map((spec, index) => ({
+      id: String(spec.id || `ticket-${index + 1}`),
+      // 后端票券 int64 id 以字符串保存（后端已保证返回字符串），更新/删除时原样传回，不转 JS number
+      sourceId: spec.id === undefined || spec.id === null ? undefined : String(spec.id),
+      name: spec.name || '',
+      enabled: Number(spec.is_enabled ?? 1) === 1,
+      startAt: formatDateTime(spec.sale_start),
+      endAt: formatDateTime(spec.sale_end),
+      price: fenToYuanText(spec.price),
+      stock: String(spec.stock ?? 0),
+      limit: String(spec.purchase_limit ?? 0),
+      attendees: String(spec.max_attendees ?? 1),
+    }))
+
+  const tagIds = (detail.tag_ids || (Array.isArray(detail.tags) ? detail.tags.map((tag) => tag.id) : []))
+    .map((id) => Number(id))
+    .filter((id) => Number.isFinite(id) && id > 0)
+
+  return {
+    ...base,
+    id: String(detail.id),
+    originalStatus: detail.status,
+    province: detail.province || '',
+    city: detail.city || '',
+    type: isVenue ? 'venue' : 'party',
+    name: detail.name || '',
+    shareTitle: detail.share_title || '',
+    dateRange: !isVenue && startDate && endDate ? `${startDate} · ${endDate}` : '',
+    businessHours: detail.business_hours || '',
+    realNameRequired: Number(detail.real_name_mode ?? 0) === 1,
+    minorCheckRequired: Number(detail.minor_check ?? 0) === 1,
+    summary: detail.description || '',
+    district: detail.district || base.district,
+    address: detail.address || '',
+    locationName: detail.address || '',
+    latitude: typeof detail.latitude === 'number' ? detail.latitude : base.latitude,
+    longitude: typeof detail.longitude === 'number' ? detail.longitude : base.longitude,
+    posterSlots,
+    qualificationFileName: detail.qualification_doc || '',
+    ticketSpecs: isVenue ? [] : ticketSpecs,
+    tagIds,
+  }
+}
+
+/** 拉取单个活动完整详情并映射为可编辑草稿（编辑已上架/被驳回/草稿活动用） */
+export const fetchActivityDetail = async (id: string | number): Promise<CreateActivityDraft> => {
+  const detail = await apiRequest<ActivityDetailRaw>({
+    url: `/api/v1/activity/${id}`,
+    method: 'GET',
+  })
+  return mapActivityDetailToDraft(detail)
+}
+
+/** 是否后端票券：编辑回填的票券带原始 sourceId（字符串），前端新增票券无此值 */
+const hasTicketSourceId = (spec: TicketSpec) => !!spec.sourceId
+
+const ticketSpecEquals = (a: TicketSpec, b: TicketSpec) =>
+  a.name === b.name &&
+  a.enabled === b.enabled &&
+  a.startAt === b.startAt &&
+  a.endAt === b.endAt &&
+  a.price === b.price &&
+  a.stock === b.stock &&
+  a.limit === b.limit &&
+  a.attendees === b.attendees
+
+/** 组装单个票券的提交载荷；id 为字符串 int64，更新时原样带上，新增时省略 */
+const buildTicketSpecPayload = (spec: TicketSpec) => ({
+  ...(hasTicketSourceId(spec) ? { id: spec.sourceId } : {}),
+  name: spec.name,
+  is_enabled: spec.enabled ? 1 : 0,
+  sale_start: ensureTimeSuffix(spec.startAt),
+  sale_end: ensureTimeSuffix(spec.endAt),
+  price: yuanToFen(spec.price),
+  stock: normalizeCount(spec.stock),
+  purchase_limit: normalizeCount(spec.limit),
+  max_attendees: normalizeCount(spec.attendees, 1),
+})
+
+/** 编辑票券 diff：新增/变更批量走 POST /activity/:id/ticket-specs（body 为 { specs: [...] }，带 id=更新，不带 id=新增）；删除逐条走 DELETE /ticket-spec/:id */
+const syncTicketSpecs = async (
+  activityId: number,
+  current: CreateActivityDraft['ticketSpecs'],
+  original: CreateActivityDraft['ticketSpecs'],
+) => {
+  // 新增/变更
+  const specsToSave: ReturnType<typeof buildTicketSpecPayload>[] = []
+  for (const spec of current) {
+    if (hasTicketSourceId(spec)) {
+      const prev = original.find((s) => hasTicketSourceId(s) && s.sourceId === spec.sourceId)
+      if (prev && ticketSpecEquals(spec, prev)) continue // 未变更
+      specsToSave.push(buildTicketSpecPayload(spec)) // 变更（带原始 id）
+    } else {
+      specsToSave.push(buildTicketSpecPayload(spec)) // 新增（不带 id）
+    }
+  }
+  if (specsToSave.length > 0) {
+    await apiRequest<{ success?: boolean }>({
+      url: `/api/v1/activity/${activityId}/ticket-specs`,
+      method: 'POST',
+      data: { specs: specsToSave },
+    })
+  }
+
+  // 删除：原始里被移除的旧票券
+  for (const prev of original) {
+    if (!hasTicketSourceId(prev)) continue
+    const stillExists = current.some((s) => hasTicketSourceId(s) && s.sourceId === prev.sourceId)
+    if (!stillExists) {
+      await apiRequest<{ success?: boolean }>({
+        url: `/api/v1/ticket-spec/${prev.sourceId}`,
+        method: 'DELETE',
+      })
+    }
+  }
+}
+
 export const submitActivityDraft = async (draft: CreateActivityDraft): Promise<number> => {
   const range = parseDateRangeValue(draft.dateRange)
   // 场地类型为长期展示，不选活动日期：按“长期有效”提交（今天 ~ 2099-12-31）
   const isVenue = draft.type === 'venue'
+  // 编辑已有活动：所有 step 都携带 activity_id；后端在 status=3 被修改时自动转为 status=1（二次审核）
+  const editingId = draft.id ? Number(draft.id) : undefined
+  const orig = draft.originalDraft
+  const isEdit = editingId !== undefined && !!orig
+
+  // 后端以“字段是否出现在请求体”判断是否修改（不比较新旧值），
+  // 因此编辑时必须做字段级 diff，只提交用户实际改动的字段；新建则全量提交。
+  const changed = (current: unknown, previous: unknown) => {
+    if (!isEdit) return true
+    return JSON.stringify(current ?? null) !== JSON.stringify(previous ?? null)
+  }
+
   const startTime = isVenue ? ensureTimeSuffix(todayDateString()) : ensureTimeSuffix(range.start)
   const endTime = isVenue ? '2099-12-31 23:59:59' : ensureTimeSuffix(range.end)
-  const step1 = await apiRequest<{ activity_id: number }>({
-    url: '/api/v1/activity/create',
-    method: 'POST',
-    data: {
-      step: 1,
-      type: draft.type,
-      name: draft.name,
-      share_title: draft.shareTitle,
-      start_time: startTime,
-      end_time: endTime,
-      // 场地不含任何票务/实名配置；经营时间直接入 step1（docs/frontend_integration_today_11_items_20260812.md §1.2）
-      ...(isVenue
-        ? { business_hours: draft.businessHours.trim() }
-        : {
-            real_name_mode: draft.realNameRequired ? 1 : 0,
-            minor_check: draft.minorCheckRequired ? 1 : 0,
-          }),
-      // 优惠标签（多选）；空数组表示清空
-      tag_ids: draft.tagIds,
-      description: draft.summary,
-    },
-  })
-  const activityId = step1.activity_id
 
-  await apiRequest<{ activity_id: number }>({
-    url: '/api/v1/activity/create',
-    method: 'POST',
-    data: {
-      activity_id: activityId,
-      step: 2,
-      province: '',
-      city: '',
-      district: draft.district,
-      address: draft.address || draft.locationName,
-      latitude: draft.latitude,
-      longitude: draft.longitude,
-    },
-  })
+  // Step 1：基础资料
+  const step1Fields: Record<string, unknown> = {}
+  if (changed(draft.type, orig?.type)) step1Fields.type = draft.type
+  if (changed(draft.name, orig?.name)) step1Fields.name = draft.name
+  if (changed(draft.shareTitle, orig?.shareTitle)) step1Fields.share_title = draft.shareTitle
+  if (isVenue) {
+    if (changed(draft.businessHours.trim(), orig?.businessHours?.trim())) step1Fields.business_hours = draft.businessHours.trim()
+  } else {
+    const origStart = orig ? ensureTimeSuffix(parseDateRangeValue(orig.dateRange).start) : undefined
+    if (changed(startTime, origStart)) {
+      step1Fields.start_time = startTime
+      step1Fields.end_time = endTime
+    }
+    if (changed(draft.realNameRequired, orig?.realNameRequired)) step1Fields.real_name_mode = draft.realNameRequired ? 1 : 0
+    if (changed(draft.minorCheckRequired, orig?.minorCheckRequired)) step1Fields.minor_check = draft.minorCheckRequired ? 1 : 0
+  }
+  if (changed(draft.tagIds, orig?.tagIds ?? [])) step1Fields.tag_ids = draft.tagIds
+  if (changed(draft.summary, orig?.summary)) step1Fields.description = draft.summary
 
-  const posterUrls: Record<string, string> = {}
+  let activityId: number
+  if (editingId) {
+    activityId = editingId
+    if (Object.keys(step1Fields).length > 0) {
+      await apiRequest<{ activity_id: number }>({
+        url: '/api/v1/activity/create',
+        method: 'POST',
+        data: { activity_id: activityId, step: 1, ...step1Fields },
+      })
+    }
+  } else {
+    const step1 = await apiRequest<{ activity_id: number }>({
+      url: '/api/v1/activity/create',
+      method: 'POST',
+      data: { step: 1, ...step1Fields },
+    })
+    activityId = step1.activity_id
+  }
+
+  // Step 2：地址
+  const step2Fields: Record<string, unknown> = {}
+  if (changed(draft.province || '', orig?.province || '')) step2Fields.province = draft.province || ''
+  if (changed(draft.city || '', orig?.city || '')) step2Fields.city = draft.city || ''
+  if (changed(draft.district, orig?.district)) step2Fields.district = draft.district
+  const addressValue = draft.address || draft.locationName
+  const origAddressValue = orig ? orig.address || orig.locationName : undefined
+  if (changed(addressValue, origAddressValue)) step2Fields.address = addressValue
+  if (changed(draft.latitude, orig?.latitude)) step2Fields.latitude = draft.latitude
+  if (changed(draft.longitude, orig?.longitude)) step2Fields.longitude = draft.longitude
+  if (!isEdit || Object.keys(step2Fields).length > 0) {
+    await apiRequest<{ activity_id: number }>({
+      url: '/api/v1/activity/create',
+      method: 'POST',
+      data: { activity_id: activityId, step: 2, ...step2Fields },
+    })
+  }
+
+  // Step 3：海报（逐槽位 diff，仅上传/提交变化的槽位；清空槽位提交空串）
+  const posterApiKeyMap: Record<string, string> = {
+    detailPoster: 'poster_detail',
+    detailLong: 'poster_long',
+    listPoster: 'poster_list',
+  }
+  const posterFields: Record<string, string> = {}
   for (const slot of draft.posterSlots) {
-    // 后端已确认 poster_wechat 无任何使用场景，对应上传槽位（wechatGroup）已下线
-    const typeMap: Record<string, string> = {
-      detailPoster: 'poster_detail',
-      detailLong: 'poster_long',
-      listPoster: 'poster_list',
-    }
-    const apiKeyMap: Record<string, string> = {
-      detailPoster: 'poster_detail',
-      detailLong: 'poster_long',
-      listPoster: 'poster_list',
-    }
-    if (slot.filePath) {
-      posterUrls[apiKeyMap[slot.key]] = await uploadOrganizerAsset(slot.filePath, typeMap[slot.key])
+    const apiKey = posterApiKeyMap[slot.key]
+    if (!apiKey) continue
+    const origSlot = orig?.posterSlots?.find((s) => s.key === slot.key)
+    const currentPath = slot.filePath || ''
+    const prevPath = origSlot?.filePath || ''
+    if (!isEdit || currentPath !== prevPath) {
+      posterFields[apiKey] = currentPath ? await uploadOrganizerAsset(currentPath, apiKey) : ''
     }
   }
-  await apiRequest<{ activity_id: number }>({
-    url: '/api/v1/activity/create',
-    method: 'POST',
-    data: {
-      activity_id: activityId,
-      step: 3,
-      poster_detail: posterUrls.poster_detail || '',
-      poster_long: posterUrls.poster_long || '',
-      poster_list: posterUrls.poster_list || '',
-      poster_wechat: posterUrls.poster_wechat || '',
-    },
-  })
-
-  // 场地不支持票券配置：跳过 step 4，后端对场地收到非空 ticket_specs 会直接拒绝
-  if (!isVenue) {
+  if (!isEdit || Object.keys(posterFields).length > 0) {
     await apiRequest<{ activity_id: number }>({
       url: '/api/v1/activity/create',
       method: 'POST',
       data: {
         activity_id: activityId,
-        step: 4,
-        ticket_specs: draft.ticketSpecs.map((item) => ({
-          name: item.name,
-          is_enabled: item.enabled ? 1 : 0,
-          sale_start: ensureTimeSuffix(item.startAt),
-          sale_end: ensureTimeSuffix(item.endAt),
-          price: yuanToFen(item.price),
-          stock: normalizeCount(item.stock),
-          purchase_limit: normalizeCount(item.limit),
-          max_attendees: normalizeCount(item.attendees, 1),
-        })),
+        step: 3,
+        poster_detail: posterFields.poster_detail || '',
+        poster_long: posterFields.poster_long || '',
+        poster_list: posterFields.poster_list || '',
+        poster_wechat: posterFields.poster_wechat || '',
       },
     })
   }
 
-  let qualificationDoc = ''
-  if (/^https?:\/\//.test(draft.qualificationFileName)) {
-    qualificationDoc = draft.qualificationFileName
+  // 场地不支持票券配置：跳过，后端对场地收到非空 ticket_specs 会直接拒绝
+  // 票券：新建走 step4 全量创建；编辑走专用接口 diff（step4 是旧兼容入口，缺失票券不会自动删除）
+  if (!isVenue) {
+    if (editingId) {
+      await syncTicketSpecs(activityId, draft.ticketSpecs, orig?.ticketSpecs ?? [])
+    } else {
+      await apiRequest<{ activity_id: number }>({
+        url: '/api/v1/activity/create',
+        method: 'POST',
+        data: {
+          activity_id: activityId,
+          step: 4,
+          ticket_specs: draft.ticketSpecs.map((item) => ({
+            name: item.name,
+            is_enabled: item.enabled ? 1 : 0,
+            sale_start: ensureTimeSuffix(item.startAt),
+            sale_end: ensureTimeSuffix(item.endAt),
+            price: yuanToFen(item.price),
+            stock: normalizeCount(item.stock),
+            purchase_limit: normalizeCount(item.limit),
+            max_attendees: normalizeCount(item.attendees, 1),
+          })),
+        },
+      })
+    }
   }
-  await apiRequest<{ activity_id: number }>({
-    url: '/api/v1/activity/create',
-    method: 'POST',
-    data: {
-      activity_id: activityId,
-      step: 5,
-      qualification_doc: qualificationDoc,
-    },
-  })
 
-  await apiRequest<{ success?: boolean }>({
-    url: `/api/v1/activity/${activityId}/submit-audit`,
-    method: 'POST',
-  })
+  // Step 5：资质（仅 http 地址会提交，与既有逻辑一致）
+  const qualificationDoc = /^https?:\/\//.test(draft.qualificationFileName) ? draft.qualificationFileName : ''
+  if (!isEdit || qualificationDoc !== (orig?.qualificationFileName || '')) {
+    await apiRequest<{ activity_id: number }>({
+      url: '/api/v1/activity/create',
+      method: 'POST',
+      data: { activity_id: activityId, step: 5, qualification_doc: qualificationDoc },
+    })
+  }
+
+  // 已上架（status=3）活动被修改后，后端会自动转为 status=1（二次审核），无需再显式提交审核；
+  // 草稿（0）/审核未通过（4）编辑后仍需 submit-audit 进入/回到待审核。
+  const isSecondaryReview = editingId !== undefined && draft.originalStatus === 3
+  if (!isSecondaryReview) {
+    await apiRequest<{ success?: boolean }>({
+      url: `/api/v1/activity/${activityId}/submit-audit`,
+      method: 'POST',
+    })
+  }
 
   return activityId
 }
