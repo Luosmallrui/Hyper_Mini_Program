@@ -1428,6 +1428,13 @@ page {
   color: #121212;
 }
 
+.activity-type-fixed-hint {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: $organizer-text-muted;
+  line-height: 32rpx;
+}
+
 .field-label,
 .toggle-title,
 .ticket-detail-title {

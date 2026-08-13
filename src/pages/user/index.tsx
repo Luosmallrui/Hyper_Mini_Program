@@ -118,7 +118,9 @@ export default function UserPage() {
   const [cursor, setCursor] = useState<string>('');
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'activity' | 'dynamic' | 'likes' | 'collects'>('activity');
+  const [activeTab, setActiveTab] = useState<'activity' | 'dynamic'>('activity');
+  // 「我的动态」下的子 Tab：动态 / 赞过 / 收藏（赞过、收藏仅本人主页可见，本页即本人页）
+  const [dynamicSubTab, setDynamicSubTab] = useState<'notes' | 'likes' | 'collects'>('notes');
   // 赞过/收藏两个 Tab 的列表数据（仅本人主页展示）
   const [likedNotes, setLikedNotes] = useState<Note[]>([]);
   const [collectedNotes, setCollectedNotes] = useState<Note[]>([]);
@@ -214,20 +216,30 @@ export default function UserPage() {
   // 个人主页下拉刷新：全量重拉用户资料、活动与动态
   Taro.usePullDownRefresh(async () => {
     const accessToken = Taro.getStorageSync('access_token');
+    if (!accessToken) {
+      Taro.stopPullDownRefresh();
+      return;
+    }
+    let success = true;
     try {
-      if (accessToken) {
-        await Promise.all([
-          fetchLatestUserInfo(),
-          fetchJoinedActivities(),
-          fetchSubscribedActivities(),
-          refreshOrganizerAuditStatus(),
-          loadMyNotes(),
-          ...(likeTabFetchedRef.current.likes ? [fetchLikeCollectNotes('likes')] : []),
-          ...(likeTabFetchedRef.current.collects ? [fetchLikeCollectNotes('collects')] : [])
-        ]);
-      }
+      await Promise.all([
+        fetchLatestUserInfo(),
+        fetchJoinedActivities(),
+        fetchSubscribedActivities(),
+        refreshOrganizerAuditStatus(),
+        loadMyNotes(),
+        ...(likeTabFetchedRef.current.likes ? [fetchLikeCollectNotes('likes')] : []),
+        ...(likeTabFetchedRef.current.collects ? [fetchLikeCollectNotes('collects')] : [])
+      ]);
+    } catch {
+      success = false;
     } finally {
       Taro.stopPullDownRefresh();
+      // 与消息页一致：刷新结束给出明确结果提示
+      Taro.showToast({
+        title: success ? '刷新成功' : '刷新失败，请重试',
+        icon: success ? 'success' : 'none'
+      });
     }
   });
 
@@ -393,8 +405,8 @@ export default function UserPage() {
     }
   };
 
-  const handleTabSwitch = (tab: 'activity' | 'dynamic' | 'likes' | 'collects') => {
-    setActiveTab(tab);
+  const handleDynamicSubTabSwitch = (tab: 'notes' | 'likes' | 'collects') => {
+    setDynamicSubTab(tab);
     if ((tab === 'likes' || tab === 'collects') && isLogin && !likeTabFetchedRef.current[tab]) {
       void fetchLikeCollectNotes(tab);
     }
@@ -1201,27 +1213,15 @@ export default function UserPage() {
       <View className="activity-tabs">
         <Text
           className={`tab-text ${activeTab === 'activity' ? 'active' : ''}`}
-          onClick={() => handleTabSwitch('activity')}
+          onClick={() => setActiveTab('activity')}
         >
           我的活动
         </Text>
         <Text
           className={`tab-text ${activeTab === 'dynamic' ? 'active' : ''}`}
-          onClick={() => handleTabSwitch('dynamic')}
+          onClick={() => setActiveTab('dynamic')}
         >
           我的动态
-        </Text>
-        <Text
-          className={`tab-text ${activeTab === 'likes' ? 'active' : ''}`}
-          onClick={() => handleTabSwitch('likes')}
-        >
-          赞过
-        </Text>
-        <Text
-          className={`tab-text ${activeTab === 'collects' ? 'active' : ''}`}
-          onClick={() => handleTabSwitch('collects')}
-        >
-          收藏
         </Text>
       </View>
 
@@ -1304,53 +1304,80 @@ export default function UserPage() {
 
       {activeTab === 'dynamic' && (
         <View className="notes-section">
-          {noteList.length > 0 ? (
-            renderNoteWaterfall(noteList, true)
-          ) : (
-            <View className="empty-state">
-              <Text className="empty-icon">暂无</Text>
-              <Text className="empty-text">还没有发布动态</Text>
-            </View>
-          )}
+          <View className="activity-header">
+            <Text
+              className={`activity-title ${dynamicSubTab === 'notes' ? 'active' : ''}`}
+              onClick={() => handleDynamicSubTabSwitch('notes')}
+            >
+              动态
+            </Text>
+            <View className="activity-divider" />
+            <Text
+              className={`activity-title ${dynamicSubTab === 'likes' ? 'active' : ''}`}
+              onClick={() => handleDynamicSubTabSwitch('likes')}
+            >
+              赞过
+            </Text>
+            <View className="activity-divider" />
+            <Text
+              className={`activity-title ${dynamicSubTab === 'collects' ? 'active' : ''}`}
+              onClick={() => handleDynamicSubTabSwitch('collects')}
+            >
+              收藏
+            </Text>
+          </View>
 
-          {loading && (
-            <View className="loading-state">
-              <Text className="loading-text">加载中...</Text>
-            </View>
+          {dynamicSubTab === 'notes' ? (
+            <>
+              {noteList.length > 0 ? (
+                renderNoteWaterfall(noteList, true)
+              ) : (
+                <View className="empty-state">
+                  <Text className="empty-icon">暂无</Text>
+                  <Text className="empty-text">还没有发布动态</Text>
+                </View>
+              )}
+
+              {loading && (
+                <View className="loading-state">
+                  <Text className="loading-text">加载中...</Text>
+                </View>
+              )}
+            </>
+          ) : (
+            (() => {
+              const isLikes = dynamicSubTab === 'likes';
+              const notes = isLikes ? likedNotes : collectedNotes;
+              const total = isLikes ? likedTotal : collectedTotal;
+              return (
+                <>
+                  {notes.length > 0 ? (
+                    renderNoteWaterfall(notes, false)
+                  ) : likeTabLoading ? (
+                    <View className="loading-state">
+                      <Text className="loading-text">加载中...</Text>
+                    </View>
+                  ) : (
+                    <View className="empty-state">
+                      <Text className="empty-icon">暂无</Text>
+                      <Text className="empty-text">{isLikes ? '还没有赞过的内容' : '还没有收藏的内容'}</Text>
+                    </View>
+                  )}
+
+                  {notes.length > 0 && notes.length < total && (
+                    <View
+                      className="loading-state"
+                      onClick={() => void fetchLikeCollectNotes(dynamicSubTab, Math.floor(notes.length / 20) + 1)}
+                    >
+                      <Text className="loading-text">{likeTabLoading ? '加载中...' : '加载更多'}</Text>
+                    </View>
+                  )}
+                </>
+              );
+            })()
           )}
         </View>
       )}
-
-      {(activeTab === 'likes' || activeTab === 'collects') && (() => {
-        const isLikes = activeTab === 'likes';
-        const notes = isLikes ? likedNotes : collectedNotes;
-        const total = isLikes ? likedTotal : collectedTotal;
-        return (
-          <View className="notes-section">
-            {notes.length > 0 ? (
-              renderNoteWaterfall(notes, false)
-            ) : likeTabLoading ? (
-              <View className="loading-state">
-                <Text className="loading-text">加载中...</Text>
-              </View>
-            ) : (
-              <View className="empty-state">
-                <Text className="empty-icon">暂无</Text>
-                <Text className="empty-text">{isLikes ? '还没有赞过的内容' : '还没有收藏的内容'}</Text>
-              </View>
-            )}
-
-            {notes.length > 0 && notes.length < total && (
-              <View
-                className="loading-state"
-                onClick={() => void fetchLikeCollectNotes(activeTab, Math.floor(notes.length / 20) + 1)}
-              >
-                <Text className="loading-text">{likeTabLoading ? '加载中...' : '加载更多'}</Text>
-              </View>
-            )}
-          </View>
-        );
-      })()}
 
       {showAuthModal && (
         <View className="auth-modal-overlay">

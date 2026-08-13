@@ -47,7 +47,7 @@ export interface SettlementApplyForm {
   province: string
   city: string
   district: string
-  /** 入驻类型：venue 场地 / party 派对（用于入驻申请与审核分类，不限制后续可发布的内容类型） */
+  /** 入驻类型：venue 场地 / party 派对（创建活动时按该类型锁定，向导内不可切换） */
   type: 'party' | 'venue'
 }
 

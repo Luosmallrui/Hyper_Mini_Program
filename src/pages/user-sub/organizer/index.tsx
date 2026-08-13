@@ -239,6 +239,8 @@ export default function OrganizerPage() {
   const [organizerName, setOrganizerName] = useState('')
 
   const [organizerBusinessHours, setOrganizerBusinessHours] = useState('')
+  // 入驻类型（audit-status 返回）：创建活动只能按该类型发布，向导里不可切换
+  const [organizerType, setOrganizerType] = useState<'party' | 'venue'>('party')
 
   useEffect(() => {
     fetchOrganizerProfile()
@@ -484,6 +486,7 @@ export default function OrganizerPage() {
       if (!isEntryView && !isMerchantUser(userInfo, roleOverride)) {
         try {
           const audit = await fetchOrganizerAuditStatus()
+          setOrganizerType(audit.type === 'venue' ? 'venue' : 'party')
           if (audit.status === 2 && Number(audit.enabled ?? 1) === 0) {
             setDashboardView('accountStopped')
             return
@@ -499,6 +502,11 @@ export default function OrganizerPage() {
           setDashboardView('nonMerchant')
           return
         }
+      } else if (!isEntryView) {
+        // 已登录商家走快捷通道时也要拿到入驻类型，创建向导按它锁定活动类型
+        fetchOrganizerAuditStatus()
+          .then((audit) => setOrganizerType(audit.type === 'venue' ? 'venue' : 'party'))
+          .catch(() => {})
       }
 
       applyInitialDebugState(params)
@@ -532,6 +540,7 @@ export default function OrganizerPage() {
     try {
       await loginOrganizerPassword(phone, password)
       const audit = await fetchOrganizerAuditStatus()
+      setOrganizerType(audit.type === 'venue' ? 'venue' : 'party')
       if (audit.status === 2 && Number(audit.enabled ?? 1) === 0) {
         Taro.showToast({ title: '商家账号已停用', icon: 'none' })
         setDashboardView('accountStopped')
@@ -658,7 +667,14 @@ export default function OrganizerPage() {
     setDashboardView('createWizard')
     setActivityTab('mine')
     setWizardStep(step)
-    setDraft(ALLOW_ORGANIZER_DEBUG ? createDevPrefillDraft() : createInitialDraft())
+    const nextDraft = ALLOW_ORGANIZER_DEBUG ? createDevPrefillDraft() : createInitialDraft()
+    // 活动类型跟随入驻类型，向导内不可切换
+    nextDraft.type = organizerType
+    // 场地用经营时间：默认带出主办方资料里的经营时间
+    if (organizerType === 'venue' && !nextDraft.businessHours && organizerBusinessHours) {
+      nextDraft.businessHours = organizerBusinessHours
+    }
+    setDraft(nextDraft)
   }
 
   const createEditableDraftFromActivity = (item: OrganizerActivityItem): CreateActivityDraft => {
@@ -669,6 +685,8 @@ export default function OrganizerPage() {
 
     return {
       ...nextDraft,
+      // 编辑草稿同样按入驻类型锁定（主办方只能发布一种类型）
+      type: organizerType,
       name: item.title,
       shareTitle: item.title.slice(0, 20),
       dateRange,
@@ -1900,25 +1918,11 @@ export default function OrganizerPage() {
       <View className="field-block">
         <Text className="field-label">活动类型</Text>
         <View className="activity-type-options">
-          <View
-            className={`activity-type-option ${draft.type === 'party' ? 'active' : ''}`}
-            onClick={() => updateDraft('type', 'party')}
-          >
-            <Text className={`activity-type-option-text ${draft.type === 'party' ? 'active' : ''}`}>派对</Text>
-          </View>
-          <View
-            className={`activity-type-option ${draft.type === 'venue' ? 'active' : ''}`}
-            onClick={() => {
-              updateDraft('type', 'venue')
-              // 场地用经营时间：默认带出主办方资料里的经营时间
-              if (!draft.businessHours && organizerBusinessHours) {
-                updateDraft('businessHours', organizerBusinessHours)
-              }
-            }}
-          >
-            <Text className={`activity-type-option-text ${draft.type === 'venue' ? 'active' : ''}`}>场地</Text>
+          <View className="activity-type-option active">
+            <Text className="activity-type-option-text active">{draft.type === 'venue' ? '场地' : '派对'}</Text>
           </View>
         </View>
+        <Text className="activity-type-fixed-hint">活动类型与入驻类型一致，不可切换</Text>
       </View>
 
       <View className="field-block">
