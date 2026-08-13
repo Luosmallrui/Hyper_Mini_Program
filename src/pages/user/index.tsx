@@ -202,7 +202,8 @@ export default function UserPage() {
 
   Taro.useDidShow(() => {
     setTabBarIndex(4);
-    hideNativeTabBar();
+    // 注意：自定义 tabBar 下原生 tabBar 不会渲染，无需 hideTabBar；
+    // 在 useDidShow 中反复调用会触发原生布局抖动，iOS 上表现为切 tab 闪白
     const accessToken = Taro.getStorageSync('access_token');
     if (accessToken) {
       fetchLatestUserInfo();
