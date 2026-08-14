@@ -66,6 +66,8 @@ export default function ChatPage() {
   const msgListRef = useRef<MessageItem[]>([])
 
   const [inputText, setInputText] = useState('')
+  // 输入框光标位置：受控 value 重渲染会丢光标，这里记录并回设，避免中间删除时光标跳到末尾
+  const [inputCursor, setInputCursor] = useState(0)
   const [loading, setLoading] = useState(false)
   const [nextCursor, setNextCursor] = useState<number | null>(null)
   const nextCursorRef = useRef<number | null>(null)
@@ -526,6 +528,7 @@ export default function ChatPage() {
     if (!inputText.trim()) return
     const contentToSend = inputText
     setInputText('')
+    setInputCursor(0)
     const currentUserId = Number(myUserId || Taro.getStorageSync('userInfo')?.user_id || 0)
     if (!myUserId && currentUserId) {
       setMyUserId(currentUserId)
@@ -597,6 +600,102 @@ export default function ChatPage() {
       console.error('[ChatPage] send failed', err)
       setMsgList(prev => prev.filter(m => m.id !== tempId))
       Taro.showToast({ title: '发送失败，请重试', icon: 'none' })
+    }
+  }
+
+  // 发送图片消息（msg_type=2）：content 与 ext.image_url 都传图片地址
+  const sendImageMessage = async (url: string, meta?: { width?: number; height?: number }) => {
+    const currentUserId = Number(myUserId || Taro.getStorageSync('userInfo')?.user_id || 0)
+    if (!myUserId && currentUserId) setMyUserId(currentUserId)
+    const clientMsgId = `${currentUserId || '0'}_${Date.now()}_${Math.random().toString(16).slice(2)}`
+
+    const tempId = `temp_${Date.now()}`
+    const tempMsg: MessageItem = {
+      id: tempId,
+      sender_id: currentUserId,
+      content: url,
+      msg_type: 2,
+      time: Math.floor(Date.now() / 1000),
+      ext: { image_url: url, ...(meta || {}) },
+      is_self: true,
+      nickname: myNickname,
+      avatar: selfAvatar,
+      client_msg_id: clientMsgId
+    }
+    setMsgList(prev => { const list = [...prev, tempMsg]; scrollToBottom(list); return list })
+
+    try {
+      const res = await request({
+        url: '/api/v1/message/send',
+        method: 'POST',
+        data: {
+          target_id: String(peer_id),
+          session_type: sessionType,
+          msg_type: 2,
+          content: url,
+          ext: { image_url: url, ...(meta || {}) },
+          client_msg_id: clientMsgId
+        }
+      })
+      let resData: any = res.data
+      if (typeof resData === 'string') { try { resData = JSON.parse(resData) } catch (e) {} }
+      if (resData && resData.code === 200 && resData.data) {
+        const serverMsg = resData.data
+        setMsgList(prev => prev.map(m => {
+          if (m.id === tempId) {
+            return { ...m, id: serverMsg.msg_id || serverMsg.id || m.id, time: serverMsg.time || m.time, client_msg_id: serverMsg.client_msg_id || m.client_msg_id }
+          }
+          return m
+        }))
+        Taro.eventCenter.trigger('CHAT_MESSAGE_SENT', { peer_id: Number(peer_id), session_type: sessionType })
+      } else {
+        setMsgList(prev => prev.filter(m => m.id !== tempId))
+        Taro.showToast({ title: resData?.msg || '发送失败', icon: 'none' })
+      }
+    } catch (err) {
+      setMsgList(prev => prev.filter(m => m.id !== tempId))
+      Taro.showToast({ title: '发送失败，请重试', icon: 'none' })
+    }
+  }
+
+  // 选择图片 → 上传 → 发送图片消息
+  const handleChooseImage = async () => {
+    try {
+      const res = await Taro.chooseMedia({
+        count: 1,
+        mediaType: ['image'],
+        sourceType: ['album', 'camera'],
+        sizeType: ['compressed']
+      })
+      const file = res.tempFiles?.[0]
+      const filePath = file?.tempFilePath
+      if (!filePath) return
+
+      Taro.showLoading({ title: '发送中...', mask: true })
+      const token = Taro.getStorageSync('access_token')
+      const uploadRes = await Taro.uploadFile({
+        url: 'https://www.hypercn.cn/api/v1/upload',
+        filePath,
+        name: 'file',
+        formData: { type: 'misc' },
+        header: { Authorization: `Bearer ${token}` }
+      })
+      Taro.hideLoading()
+
+      let data: any = uploadRes.data
+      if (typeof data === 'string') { try { data = JSON.parse(data) } catch (e) { data = null } }
+      const url = data?.data?.url || data?.url
+      if (!url) {
+        Taro.showToast({ title: data?.msg || '图片上传失败', icon: 'none' })
+        return
+      }
+      await sendImageMessage(url, {
+        width: Number(file?.width) || 0,
+        height: Number(file?.height) || 0
+      })
+    } catch (e) {
+      Taro.hideLoading()
+      // 用户取消选择等场景不提示
     }
   }
 
@@ -757,6 +856,40 @@ export default function ChatPage() {
       )
     }
 
+    if (msg.msg_type === 2) {
+      const imageUrl = msg.ext?.image_url || msg.content
+      if (!imageUrl) {
+        return (
+          <View className='bubble'>
+            <Text className='text'>[图片]</Text>
+          </View>
+        )
+      }
+      const width = Number(msg.ext?.width) || 0
+      const height = Number(msg.ext?.height) || 0
+      const maxW = 200
+      const maxH = 260
+      let w = width
+      let h = height
+      if (w > 0 && h > 0) {
+        const ratio = Math.min(maxW / w, maxH / h, 1)
+        w = Math.round(w * ratio)
+        h = Math.round(h * ratio)
+      } else {
+        w = maxW
+        h = maxH
+      }
+      return (
+        <Image
+          src={imageUrl}
+          className='image-bubble'
+          mode='aspectFill'
+          style={{ width: `${w}px`, height: `${h}px` }}
+          onClick={() => Taro.previewImage({ current: imageUrl, urls: [imageUrl] })}
+        />
+      )
+    }
+
     return (
       <View className='bubble'>
         <Text className='text'>{msg.content}</Text>
@@ -864,8 +997,11 @@ export default function ChatPage() {
       </ScrollView>
 
       <View className='input-bar' style={{ bottom: `${keyboardHeight}px`, paddingBottom: keyboardHeight > 0 ? '10px' : 'calc(10px + env(safe-area-inset-bottom))' }}>
+        <View className='image-btn' onClick={handleChooseImage}>
+          <AtIcon value='camera' size='22' color='#fff' />
+        </View>
         <View className='input-wrapper'>
-          <Input className='chat-input' value={inputText} onInput={e => setInputText(e.detail.value)} confirmType='send' onConfirm={handleSend} cursorSpacing={0} adjustPosition={false} holdKeyboard />
+          <Input className='chat-input' value={inputText} cursor={inputCursor} onInput={e => { setInputText(e.detail.value); setInputCursor(e.detail.cursor) }} confirmType='send' onConfirm={handleSend} cursorSpacing={0} adjustPosition={false} holdKeyboard />
         </View>
         <View className={`send-btn ${inputText ? 'active' : ''}`} onClick={handleSend}><AtIcon value='chevron-right' size='20' color='#fff' /></View>
       </View>

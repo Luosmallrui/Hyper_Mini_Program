@@ -332,6 +332,25 @@
   background-color: #5691ff;
 }
 
+.image-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background-color: #2c2c2e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 20px;
+}
+
+.image-bubble {
+  border-radius: 12px;
+  overflow: hidden;
+  display: block;
+  background: #2c2c2e;
+}
+
 /* 卡片气泡样式 */
 .card-bubble {
   width: 540px;
