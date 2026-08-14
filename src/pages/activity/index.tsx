@@ -718,6 +718,20 @@ export default function ActivityPage() {
     }
   }
 
+  // 返回：分享/转发直达详情页时没有页面栈，navigateBack 会失败，兜底回首页
+  const handleBack = async () => {
+    const pageStack = Taro.getCurrentPages()
+    if (pageStack.length > 1) {
+      try {
+        await Taro.navigateBack({ delta: 1 })
+        return
+      } catch (error) {
+        console.warn('[ActivityPage] navigateBack failed, fallback to switchTab:', error)
+      }
+    }
+    Taro.switchTab({ url: '/pages/index/index' }).catch(() => {})
+  }
+
   return (
     <View className='activity-page'>
       <View
@@ -741,7 +755,7 @@ export default function ActivityPage() {
             paddingRight: `${menuButtonWidth}px`,
           }}
         >
-          <View className='nav-back' onClick={() => Taro.navigateBack()}>
+          <View className='nav-back' onClick={handleBack}>
             <AtIcon value='chevron-left' size='24' color='#fff' />
           </View>
         </View>

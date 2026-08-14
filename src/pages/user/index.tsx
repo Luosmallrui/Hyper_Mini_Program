@@ -137,6 +137,8 @@ export default function UserPage() {
   const [subscribedActivityError, setSubscribedActivityError] = useState('');
   // 标记订阅活动是否已拉取过（无论结果是否为空），防止空结果时被 effect 循环拉取
   const subscribedFetchedRef = useRef(false);
+  // 标记参加过的活动是否已拉取过：首次加载才显示 loading，切 tab 刷新时静默更新避免闪烁
+  const joinedFetchedRef = useRef(false);
   const [showSettlementModal, setShowSettlementModal] = useState(false);
   const [settlementForm, setSettlementForm] = useState<SettlementApplyForm>(getSettlementApplyInitialForm());
   const [settlementDistricts, setSettlementDistricts] = useState<string[]>(CHENGDU_DISTRICTS);
@@ -413,9 +415,12 @@ export default function UserPage() {
   };
 
   const fetchSubscribedActivities = async () => {
-    // 标记已拉取过，空结果时不再被 effect 反复触发（修复"加载中/无结果"闪烁）
+    // 首次加载才显示 loading；切 tab 刷新时静默更新，避免"加载中"闪烁
+    const isFirstLoad = !subscribedFetchedRef.current;
     subscribedFetchedRef.current = true;
-    setSubscribedActivityLoading(true);
+    if (isFirstLoad) {
+      setSubscribedActivityLoading(true);
+    }
     setSubscribedActivityError('');
     try {
       const res = await request({
@@ -424,8 +429,10 @@ export default function UserPage() {
       });
       const body: any = res?.data;
       if (body?.code !== 200 || !Array.isArray(body?.data?.list)) {
-        setSubscribedActivityList([]);
-        setSubscribedActivityError('加载失败，点击重试');
+        if (isFirstLoad) {
+          setSubscribedActivityList([]);
+          setSubscribedActivityError('加载失败，点击重试');
+        }
         return;
       }
       const source = Array.isArray(body?.data?.list) ? body.data.list : [];
@@ -438,15 +445,22 @@ export default function UserPage() {
         .filter((item: StackPosterItem) => item.id > 0);
       setSubscribedActivityList(mapped);
     } catch (error) {
-      setSubscribedActivityList([]);
-      setSubscribedActivityError('加载失败，点击重试');
+      if (isFirstLoad) {
+        setSubscribedActivityList([]);
+        setSubscribedActivityError('加载失败，点击重试');
+      }
     } finally {
       setSubscribedActivityLoading(false);
     }
   };
 
   const fetchJoinedActivities = async () => {
-    setJoinedActivityLoading(true);
+    // 首次加载才显示 loading；切 tab 刷新时静默更新，避免"加载中"闪烁
+    const isFirstLoad = !joinedFetchedRef.current;
+    joinedFetchedRef.current = true;
+    if (isFirstLoad) {
+      setJoinedActivityLoading(true);
+    }
     setJoinedActivityError('');
     try {
       const res = await request({
@@ -479,8 +493,10 @@ export default function UserPage() {
         });
       setJoinedActivityList(Array.from(unique.values()));
     } catch (error) {
-      setJoinedActivityList([]);
-      setJoinedActivityError('加载失败，点击重试');
+      if (isFirstLoad) {
+        setJoinedActivityList([]);
+        setJoinedActivityError('加载失败，点击重试');
+      }
     } finally {
       setJoinedActivityLoading(false);
     }
