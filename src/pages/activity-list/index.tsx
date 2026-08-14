@@ -39,7 +39,7 @@ interface MerchantItem {
 
 interface PartyItem {
   id: string | number
-  source?: 'activity'
+  source?: 'activity' | 'venue'
   sourceId?: string | number
   detailUrl?: string
   userId: string
@@ -398,17 +398,18 @@ export default function ActivityListPage() {
       const mapped: PartyItem[] = filteredDataList
         ? filteredDataList.map((item: MerchantItem | any) => {
             const sourceId = normalizeActivityMarkerSourceId(item)
+            const isVenue = String((item as any)?.source || '').toLowerCase() === 'venue' || item.type === 'venue'
             const createdAt = item.start_time || item.created_at ? new Date(item.start_time || item.created_at) : null
             const formattedTime =
               createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt.toISOString().slice(0, 10) : item.start_time || item.created_at || ''
             return {
               id: sourceId,
-              source: 'activity',
+              source: isVenue ? 'venue' : 'activity',
               sourceId,
               detailUrl: getActivityMarkerDetailUrl(item),
               userId: String((item as any)?.user_id ?? ''),
               title: item.title || item.name || '',
-              type: '活动',
+              type: isVenue ? '场地' : '活动',
               location: item.location,
               lat: item.lat,
               lng: item.lng,

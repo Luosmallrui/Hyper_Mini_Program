@@ -64,7 +64,7 @@ const DEFAULT_DISTANCE_OPTIONS: Array<{ label: string; value: number | null }> =
 
 interface PartyItem {
   id: string | number
-  source?: 'activity'
+  source?: 'activity' | 'venue'
   sourceId?: string | number
   detailUrl?: string
   title: string
@@ -893,13 +893,14 @@ export default function IndexPage() {
         .filter((item: any) => isActivityMarker(item))
       const mappedList: PartyItem[] = filteredRawList.map((item: any) => {
         const sourceId = normalizeActivityMarkerSourceId(item)
+        const isVenue = String(item.source || '').toLowerCase() === 'venue' || item.type === 'venue'
         return {
           id: sourceId,
-          source: 'activity',
+          source: isVenue ? 'venue' : 'activity',
           sourceId,
           detailUrl: getActivityMarkerDetailUrl(item),
           title: item.title,
-          type: item.type === 'venue' ? '场地' : '活动',
+          type: isVenue ? '场地' : '活动',
           userId: String(item.user_id ?? ''),
           location: item.location,
           lat: item.lat,
@@ -908,7 +909,7 @@ export default function IndexPage() {
           userAvatar: item.user_avatar || item.userAvatar || '',
           image: item.cover_image,
           icon: item.icon,
-          time: item.type === 'venue' && item.business_hours
+          time: isVenue && item.business_hours
             ? item.business_hours
             : (item.start_time || item.created_at || ''),
           price: typeof item.avg_price === 'number' && item.avg_price > 0 ? (item.avg_price / 100).toFixed(0) : '--',
