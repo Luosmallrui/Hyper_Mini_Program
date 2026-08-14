@@ -11,7 +11,6 @@ export default function GroupCreatePage() {
   const [navBarHeight, setNavBarHeight] = useState(44)
   const [menuButtonWidth, setMenuButtonWidth] = useState(0)
 
-  const [groupId, setGroupId] = useState<number>(0)
   const [name, setName] = useState('')
   const [avatar, setAvatar] = useState('')
   const [description, setDescription] = useState('')
@@ -27,7 +26,6 @@ export default function GroupCreatePage() {
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
     const rightPadding = sysInfo.screenWidth - menuInfo.left
     setMenuButtonWidth(rightPadding)
-    setGroupId(Date.now())
   }, [])
 
   const canSubmit = name.trim().length > 0 && !submitting
@@ -40,7 +38,7 @@ export default function GroupCreatePage() {
     return resBody
   }
 
-  const createGroup = async (payload: { name: string; avatar: string; description: string; group_id: number }) => {
+  const createGroup = async (payload: { name: string; avatar: string; description: string }) => {
     const res = await request({ url: '/api/v1/group/create', method: 'POST', data: payload })
     return parseResponse(res)
   }
@@ -81,8 +79,6 @@ export default function GroupCreatePage() {
   }
 
   const handleCreate = async () => {
-    Taro.showToast({ title: '创建群聊暂未开放', icon: 'none' })
-    return
     const groupName = name.trim()
     if (!groupName) {
       Taro.showToast({ title: '请输入群名称', icon: 'none' })
@@ -96,8 +92,7 @@ export default function GroupCreatePage() {
       const resBody = await createGroup({
         name: groupName,
         avatar: avatar.trim(),
-        description: description.trim(),
-        group_id: groupId || Date.now()
+        description: description.trim()
       })
 
       if (resBody && resBody.code === 200) {

@@ -85,6 +85,9 @@ export interface OrganizerActivityItem {
   auditStatus: OrganizerAuditStatus
   /** 审核类型：initial 首次审核 / re_audit 修改后二次审核 */
   auditType?: 'initial' | 're_audit'
+  /** 已上架活动存在待审核的修改快照（二审进行中，线上仍展示旧版本） */
+  hasPendingRevision?: boolean
+  pendingRevisionReason?: string
   lifeStatus: OrganizerActivityLifeStatus
   orders: number
   sales: number

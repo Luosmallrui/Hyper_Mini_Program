@@ -24,6 +24,10 @@ interface OrganizerActivityItem {
 
 interface OrganizerVenueItem {
   id: number | string
+  /** 场地对应的活动 id（场地是 type=venue 的活动），跳活动页用 */
+  activity_id?: number | string
+  /** 场地活动标题，卡片标题优先展示 */
+  activity_name?: string
   name?: string
   cover_image?: string
   description?: string
@@ -233,8 +237,10 @@ export default function OrganizerHomePage() {
     Taro.navigateTo({ url: `/pages/activity/index?id=${String(id)}` })
   }
 
-  const handleOpenVenue = (id: number | string) => {
-    Taro.navigateTo({ url: `/pages/venue/index?id=${String(id)}` })
+  const handleOpenVenue = (item: OrganizerVenueItem) => {
+    // 场地是 type=venue 的活动，统一跳活动详情页（activity_id 优先，兼容旧数据回退 id）
+    const targetId = item.activity_id ?? item.id
+    Taro.navigateTo({ url: `/pages/activity/index?id=${String(targetId)}` })
   }
 
   const heroImage = organizer?.cover_image || organizer?.logo || ''
@@ -246,9 +252,9 @@ export default function OrganizerHomePage() {
   const fansCount = Number(organizer?.follow_count) || 0
   const isFollowed = Boolean(organizer?.is_follow)
   const hasInfoRow = Boolean(organizer?.business_hours || addressText || organizer?.service_phone) || averageSpend > 0
-  // 商家注册时已确定类型：按类型只展示对应区；接口未返回 type 时保持两区都展示
+  // 商家类型确定：venue 只展示场地区，party/merchant 只展示活动区，不能两个都展示
   const showActivitySection = organizer?.type !== 'venue'
-  const showVenueSection = organizer?.type !== 'party'
+  const showVenueSection = organizer?.type === 'venue'
 
   return (
     <View className='organizer-home-page'>
@@ -402,14 +408,14 @@ export default function OrganizerHomePage() {
                 {venues.length > 0 ? (
                   <View className='card-list'>
                     {venues.map((item) => (
-                      <View key={item.id} className='list-card' onClick={() => handleOpenVenue(item.id)}>
+                      <View key={item.id} className='list-card' onClick={() => handleOpenVenue(item)}>
                         {item.cover_image ? (
                           <Image className='list-card-img' src={item.cover_image} mode='aspectFill' />
                         ) : (
                           <View className='list-card-img list-card-img-placeholder' />
                         )}
                         <View className='list-card-info'>
-                          <Text className='list-card-title'>{item.name || '场地'}</Text>
+                          <Text className='list-card-title'>{item.activity_name || item.name || '场地'}</Text>
                           <Text className='list-card-sub'>{item.address || ''}</Text>
                         </View>
                       </View>

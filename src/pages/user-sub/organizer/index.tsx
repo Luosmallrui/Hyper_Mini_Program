@@ -95,11 +95,14 @@ const getDisplayStatus = (item: OrganizerActivityItem): { label: string; color: 
   if (item.status === 'rejected') {
     return { label: '审核未通过', color: '#FF3150' }
   }
-  // 待审核：按 audit_type 区分首次审核 vs 修改后二次审核（后端 2026-08-13 新增字段）
+  // 已上架活动的二次审核：线上仍展示旧版本（status=3），但存在待审核修改快照
+  if (item.hasPendingRevision) {
+    return item.pendingRevisionReason
+      ? { label: '修改被驳回', color: '#FF9500' }
+      : { label: '修改审核中', color: '#A0A0A0' }
+  }
   if (item.auditStatus === 'pending') {
-    return item.auditType === 're_audit'
-      ? { label: '修改审核中', color: '#A0A0A0' }
-      : { label: '审核中', color: '#A0A0A0' }
+    return { label: '审核中', color: '#A0A0A0' }
   }
   const key = `${item.auditStatus}-${item.lifeStatus}`
   return DISPLAY_STATUS_MAP[key] || { label: '未知', color: '#747474' }

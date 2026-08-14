@@ -616,6 +616,7 @@ export default function ActivityListPage() {
 
         <View className='back-map-btn' onClick={handleBackToMap}>
           <Image className='back-map-icon' src={require('../../assets/icons/back-to-map.svg')} mode='aspectFit' />
+          <Text className='back-map-text'>返回</Text>
         </View>
       </View>
 

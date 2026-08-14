@@ -90,6 +90,7 @@ const renderActivityList = (
         const displayStatus = getDisplayStatus(item)
         const isPublishedUp = item.auditStatus === 'approved' && item.lifeStatus === 'up'
         const isRejected = item.auditStatus === 'rejected'
+        const hasPendingRevision = Boolean(item.hasPendingRevision)
         return (
           <View
             key={item.id}
@@ -99,7 +100,7 @@ const renderActivityList = (
             <Image className="activity-item-cover" src={item.cover} mode="aspectFill" />
             <View className="activity-item-content">
               <Text className="activity-item-title">{item.title}</Text>
-              {isPublishedUp ? (
+              {isPublishedUp && !hasPendingRevision ? (
                 <>
                   <Text className="activity-item-meta">上架时间：{item.publishedAt}</Text>
                   <Text className="activity-item-meta">活动时间：{item.eventTime}</Text>
@@ -112,7 +113,9 @@ const renderActivityList = (
                   <Text className="activity-item-meta">
                     {item.auditStatus === 'rejected'
                       ? item.rejectReason ? `原因：${item.rejectReason}` : ''
-                      : item.eventTime ? `活动时间：${item.eventTime}` : item.publishedAt ? `上架时间：${item.publishedAt}` : ''}
+                      : hasPendingRevision && item.pendingRevisionReason
+                        ? `原因：${item.pendingRevisionReason}`
+                        : item.eventTime ? `活动时间：${item.eventTime}` : item.publishedAt ? `上架时间：${item.publishedAt}` : ''}
                   </Text>
                 </>
               )}

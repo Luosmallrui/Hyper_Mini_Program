@@ -3,6 +3,8 @@ export interface ActivityMarkerLike {
   source?: string
   source_id?: string | number
   sourceId?: string | number
+  /** 活动 id：跳活动页/编辑页用；场地时是活动 id，派对时与 source_id 相同 */
+  activity_id?: string | number
   detail_type?: string
   detailType?: string
   detail_url?: string
@@ -18,7 +20,8 @@ const normalizeMarkerSource = (marker: ActivityMarkerLike) =>
   toTrimmedString(marker?.source).toLowerCase()
 
 export const normalizeActivityMarkerSourceId = (marker: ActivityMarkerLike) => {
-  const rawId = toTrimmedString(marker?.source_id ?? marker?.sourceId ?? marker?.id)
+  // 跳活动页/编辑页优先用 activity_id（场地是活动 id，派对时与 source_id 相同）；兼容旧数据回退 source_id
+  const rawId = toTrimmedString(marker?.activity_id ?? marker?.source_id ?? marker?.sourceId ?? marker?.id)
   return rawId.replace(/^(activity|venue)-/, '')
 }
 
@@ -34,20 +37,13 @@ export const isActivityMarker = (marker: ActivityMarkerLike) => {
 }
 
 export const getActivityMarkerDetailUrl = (marker: ActivityMarkerLike) => {
-  const detailUrl = toTrimmedString(marker?.detail_url ?? marker?.detailUrl)
-  if (detailUrl) return detailUrl
-
-  const source = normalizeMarkerSource(marker)
+  // 统一走活动详情接口 /activity/:id（activity_id 优先，场地/派对一致）
   const sourceId = normalizeActivityMarkerSourceId(marker)
-  return source === 'venue'
-    ? `/api/v1/venues/${encodeURIComponent(sourceId)}`
-    : `/api/v1/activity/${encodeURIComponent(sourceId)}`
+  return `/api/v1/activity/${encodeURIComponent(sourceId)}`
 }
 
 export const getActivityMarkerPageUrl = (marker: ActivityMarkerLike, extraParams = '') => {
-  const source = normalizeMarkerSource(marker)
   const sourceId = normalizeActivityMarkerSourceId(marker)
   const suffix = extraParams ? (extraParams.startsWith('&') ? extraParams : `&${extraParams}`) : ''
-  const page = source === 'venue' ? '/pages/venue/index' : '/pages/activity/index'
-  return `${page}?id=${encodeURIComponent(sourceId)}${suffix}`
+  return `/pages/activity/index?id=${encodeURIComponent(sourceId)}${suffix}`
 }

@@ -1,4 +1,4 @@
-import { View, Text, Image, ScrollView } from '@tarojs/components'
+import { View, Text, Image, ScrollView, Input } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect, useMemo, useState } from 'react'
 import { AtIcon } from 'taro-ui'
@@ -29,6 +29,7 @@ export default function GroupSelectPage() {
   const [creating, setCreating] = useState(false)
   const [myUserId, setMyUserId] = useState(0)
   const [groupAvatar, setGroupAvatar] = useState('')
+  const [groupNameInput, setGroupNameInput] = useState('')
   const [avatarUploading, setAvatarUploading] = useState(false)
 
   useEffect(() => {
@@ -82,7 +83,7 @@ export default function GroupSelectPage() {
     return resBody
   }
 
-  const createGroup = async (payload: { name: string; avatar: string; description: string; group_id: number }) => {
+  const createGroup = async (payload: { name: string; avatar: string; description: string }) => {
     const res = await request({ url: '/api/v1/group/create', method: 'POST', data: payload })
     return parseResponse(res)
   }
@@ -192,8 +193,6 @@ export default function GroupSelectPage() {
   }
 
   const handleCreateGroup = async () => {
-    Taro.showToast({ title: '创建群聊暂未开放', icon: 'none' })
-    return
     if (!selectedCount) {
       Taro.showToast({ title: '请选择好友', icon: 'none' })
       return
@@ -202,16 +201,15 @@ export default function GroupSelectPage() {
     setCreating(true)
 
     try {
-      const groupName = buildGroupName(selectedCount)
-      const groupIdSeed = Date.now()
-      const resBody = await createGroup({ name: groupName, avatar: groupAvatar || '', description: '', group_id: groupIdSeed })
+      const groupName = groupNameInput.trim() || buildGroupName(selectedCount)
+      const resBody = await createGroup({ name: groupName, avatar: groupAvatar || '', description: '' })
 
       if (!resBody || resBody.code !== 200) {
         Taro.showToast({ title: resBody?.msg || '创建失败', icon: 'none' })
         return
       }
 
-      const groupId = resBody.data?.id || groupIdSeed
+      const groupId = resBody.data?.id
       if (!groupId) {
         Taro.showToast({ title: '创建失败', icon: 'none' })
         return
@@ -219,11 +217,19 @@ export default function GroupSelectPage() {
 
       const inviteIds = selectedIds.filter(id => id !== myUserId)
       if (inviteIds.length > 0) {
-        await request({
+        const inviteRes = await request({
           url: '/api/v1/groupmember/invite',
           method: 'POST',
-          data: { group_id: groupId, user_ids: inviteIds }
+          data: { group_id: groupId, invited_user_ids: inviteIds }
         })
+        const inviteBody = parseResponse(inviteRes)
+        const successCount = Number(inviteBody?.data?.success_count || 0)
+        const failedCount = Number(inviteBody?.data?.failed_count || 0)
+        if (inviteBody?.code !== 200 || successCount === 0) {
+          Taro.showToast({ title: inviteBody?.msg || `邀请失败，成功 ${successCount} 人`, icon: 'none' })
+        } else if (failedCount > 0) {
+          Taro.showToast({ title: `已邀请 ${successCount} 人，${failedCount} 人失败`, icon: 'none' })
+        }
       }
 
       Taro.redirectTo({
@@ -252,14 +258,28 @@ export default function GroupSelectPage() {
       >
         <View className='group-config-card' onClick={handleChooseAvatar}>
           <Text className='section-title'>群头像</Text>
-          <View className='avatar-row'>
+          <View className='avatar-picker'>
             {groupAvatar ? (
               <Image src={groupAvatar} className='avatar-preview' mode='aspectFill' />
             ) : (
-              <View className='avatar-placeholder'>选择头像</View>
+              <View className='avatar-preview avatar-preview-empty' />
             )}
-            <Text className='avatar-action'>{avatarUploading ? '上传中...' : '上传头像'}</Text>
+            <View className='avatar-camera-badge'>
+              <AtIcon value='camera' size='18' color='#fff' />
+            </View>
           </View>
+          <Text className='avatar-hint'>{avatarUploading ? '上传中...' : (groupAvatar ? '点击更换头像' : '点击上传群头像')}</Text>
+        </View>
+        <View className='group-name-card'>
+          <Text className='section-title'>群名称</Text>
+          <Input
+            className='group-name-input'
+            placeholder={buildGroupName(selectedCount)}
+            placeholderClass='group-name-placeholder'
+            value={groupNameInput}
+            maxlength={100}
+            onInput={e => setGroupNameInput(e.detail.value)}
+          />
         </View>
         {loading && (
           <View className='loading-row'>

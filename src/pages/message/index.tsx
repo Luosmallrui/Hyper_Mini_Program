@@ -66,6 +66,7 @@ export default function MessagePage() {
 
   const [navBarPaddingTop, setNavBarPaddingTop] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
+  const [menuButtonWidth, setMenuButtonWidth] = useState(0)
   const [tabBarHeight, setTabBarHeight] = useState(0)
   const [scrollHeight, setScrollHeight] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -95,6 +96,7 @@ export default function MessagePage() {
 
     setNavBarPaddingTop(sbHeight)
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
+    setMenuButtonWidth(sysInfo.screenWidth - menuInfo.left)
     setScrollHeight(windowHeight)
     setTabBarHeight(getCustomTabBarHeight())
   }, [])
@@ -232,6 +234,10 @@ export default function MessagePage() {
     }
   }
 
+  const handleCreateGroup = () => {
+    Taro.navigateTo({ url: '/pages/chat/group-select/index' })
+  }
+
   const handleChat = (item: SessionItem) => {
     if (!item.peer_id) {
       Taro.showToast({ title: '会话信息缺失', icon: 'none' })
@@ -307,6 +313,13 @@ export default function MessagePage() {
           onClick={handleMarkAllRead}
         >
           <Text>{markingAllRead ? '处理中' : totalUnread > 0 ? '一键已读' : '已全部读'}</Text>
+        </View>
+        <View
+          className='header-create-group'
+          style={{ right: `${menuButtonWidth + 8}px` }}
+          onClick={handleCreateGroup}
+        >
+          <Text>发起群聊</Text>
         </View>
       </View>
 

@@ -250,6 +250,11 @@ export default function GroupMembersPage() {
 
   // ── 成员操作：禁言 / 设管理员 / 转让群主 / 踢出 ──
 
+  const handleOpenMemberProfile = (userId: number) => {
+    if (!userId) return
+    Taro.navigateTo({ url: `/pages/user-sub/profile/index?userId=${userId}` })
+  }
+
   const handleMemberPress = (member: GroupMember) => {
     if (member.is_current_user || actionBusy) return
     const actions: { key: string; label: string }[] = []
@@ -557,7 +562,13 @@ export default function GroupMembersPage() {
                 className='member-item'
                 onClick={() => handleMemberPress(member)}
               >
-                <View className='member-avatar'>
+                <View
+                  className='member-avatar'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleOpenMemberProfile(member.user_id)
+                  }}
+                >
                   {member.avatar ? (
                     <Image src={member.avatar} className='avatar-img' mode='aspectFill' />
                   ) : (

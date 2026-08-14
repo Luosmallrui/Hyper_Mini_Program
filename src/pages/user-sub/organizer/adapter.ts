@@ -98,6 +98,9 @@ interface ApiActivityItem {
   status: ActivityStatusValue
   audit_type?: 'initial' | 're_audit' | string
   reject_reason?: string
+  /** 已上架活动存在待审核的修改快照（二审进行中，线上仍展示旧版本） */
+  has_pending_revision?: boolean
+  pending_revision_reason?: string
 }
 
 interface ApiVerifierItem {
@@ -246,6 +249,8 @@ const mapActivityItem = (item: ApiActivityItem): OrganizerActivityItem => {
     eventEndAt: item.end_time || '',
     ...mappedStatus,
     auditType: item.audit_type === 're_audit' ? 're_audit' : 'initial',
+    hasPendingRevision: Boolean(item.has_pending_revision),
+    pendingRevisionReason: item.pending_revision_reason || '',
     orders: 0,
     sales: 0,
     subscribers: 0,
@@ -938,6 +943,8 @@ interface ActivityDetailRaw {
   status?: number
   audit_type?: 'initial' | 're_audit' | string
   reject_reason?: string
+  has_pending_revision?: boolean
+  pending_revision_reason?: string
   tag_ids?: Array<number | string>
   tags?: Array<{ id?: number | string; name?: string }>
   ticket_specs?: Array<{

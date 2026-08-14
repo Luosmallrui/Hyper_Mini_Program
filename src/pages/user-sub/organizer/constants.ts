@@ -77,7 +77,7 @@ export const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六']
 
 export const DISPLAY_STATUS_MAP: Record<string, { label: string; color: string }> = {
   'draft-up': { label: '待发布', color: '#747474' },
-  // pending 文案由 getDisplayStatus 按 audit_type 区分（修改审核中/审核中），此处仅作兜底
+  // pending / 修改审核中 / 修改被驳回 文案由 getDisplayStatus 处理（含 hasPendingRevision），此处仅作兜底
   'pending-up': { label: '审核中', color: '#A0A0A0' },
   'approved-up': { label: '已上架', color: '#35D34A' },
   'approved-down': { label: '已下架', color: '#747474' },
