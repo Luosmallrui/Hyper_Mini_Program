@@ -1,4 +1,4 @@
-import { View, Text, Image, ScrollView } from '@tarojs/components'
+import { View, Text, Image, ScrollView, Button } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { setTabBarIndex } from '@/store/tabbar'
@@ -34,35 +34,11 @@ interface SystemNoticeItem {
   unread: number
 }
 
-// 平台客服账号（模块级缓存，避免进页/点进入口重复请求）
-interface CustomerServiceAccount {
-  userId: number
-  name: string
-}
-
-let customerServiceCache: CustomerServiceAccount | null = null
-
-const fetchCustomerServiceAccount = async (): Promise<CustomerServiceAccount | null> => {
-  if (customerServiceCache) return customerServiceCache
-  try {
-    const res = await request({ url: '/api/v1/user/customer-service', method: 'GET' })
-    const body: any = res?.data
-    const serviceUserId = Number(body?.data?.user_id || 0)
-    if (body?.code === 200 && serviceUserId > 0) {
-      customerServiceCache = { userId: serviceUserId, name: String(body.data.nickname || 'Hyper 客服') }
-      return customerServiceCache
-    }
-  } catch {}
-  return null
-}
-
 export default function MessagePage() {
   const [sessionList, setSessionList] = useState<SessionItem[]>([])
   const [totalUnread, setTotalUnread] = useState(0)
   const [markingAllRead, setMarkingAllRead] = useState(false)
   const [isLogin, setIsLogin] = useState(false)
-  // 平台客服账号：客服会话合并进「客服消息」固定入口，不再单独出现在聊天列表
-  const [csAccount, setCsAccount] = useState<CustomerServiceAccount | null>(null)
 
   const [navBarPaddingTop, setNavBarPaddingTop] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
@@ -81,9 +57,6 @@ export default function MessagePage() {
       return
     }
     fetchSessionList()
-    fetchCustomerServiceAccount().then(acc => {
-      if (acc) setCsAccount(acc)
-    })
   })
 
   useEffect(() => {
@@ -190,22 +163,6 @@ export default function MessagePage() {
     }
   }
 
-  // 客服消息入口：先取平台客服账号（不写死 user_id），再进入单聊
-  const handleOpenCustomerService = async () => {
-    const account = await fetchCustomerServiceAccount()
-    if (account) {
-      // 与普通会话一致：进入聊天先本地清零未读
-      setSessionList(prev => prev.map(s => (
-        Number(s.session_type) === 1 && Number(s.peer_id) === account.userId ? { ...s, unread: 0 } : s
-      )))
-      Taro.navigateTo({
-        url: `/pages/chat/index?peer_id=${account.userId}&title=${encodeURIComponent(account.name)}&type=1`
-      })
-      return
-    }
-    Taro.showToast({ title: '客服暂不可用', icon: 'none' })
-  }
-
   const handleMarkAllRead = async () => {
     if (markingAllRead || totalUnread <= 0) return
     const unreadSessions = sessionList.filter(item => Number(item.unread) > 0 && item.peer_id)
@@ -273,12 +230,6 @@ export default function MessagePage() {
     return `${date.getMonth() + 1}/${date.getDate()}`
   }
 
-  // 客服会话（单聊 + peer_id 命中客服账号）合并进「客服消息」入口，聊天列表不再重复展示
-  const isCustomerServiceSession = (item: SessionItem) =>
-    !!csAccount && Number(item.session_type) === 1 && Number(item.peer_id) === csAccount.userId
-  const csSession = sessionList.find(isCustomerServiceSession)
-  const visibleSessions = csAccount ? sessionList.filter(item => !isCustomerServiceSession(item)) : sessionList
-
   const systemNotices: SystemNoticeItem[] = [
     { id: 'sys_1', title: '系统消息', desc: '暂无系统消息', time: '', iconSrc: systemMessageIcon, unread: 0 },
     { id: 'sys_2', title: '互动通知', desc: '暂无互动', time: '', iconSrc: interactionNotificationIcon, unread: 0 },
@@ -288,10 +239,10 @@ export default function MessagePage() {
     {
       id: 'sys_6',
       title: '客服消息',
-      desc: csSession?.last_msg || '遇到问题请联系客服',
-      time: csSession ? formatTime(csSession.last_msg_time) : '',
+      desc: '遇到问题请联系客服',
+      time: '',
       iconSrc: customerServiceIcon,
-      unread: csSession ? Number(csSession.unread) || 0 : 0
+      unread: 0
     },
   ]
 
@@ -352,33 +303,44 @@ export default function MessagePage() {
         {isLogin && (
         <>
         <View className='system-list'>
-          {systemNotices.map(item => (
-            <View
-              key={item.id}
-              className='msg-item system-item'
-              onClick={item.id === 'sys_6' ? () => void handleOpenCustomerService() : undefined}
-            >
-              <View className='avatar-box system-avatar'>
-                <Image src={item.iconSrc} className='system-icon' mode='aspectFit' />
-              </View>
-              <View className='content-box'>
-                <View className='top-row'>
-                  <Text className='title'>{item.title}</Text>
+          {systemNotices.map(item => {
+            const content = (
+              <>
+                <View className='avatar-box system-avatar'>
+                  <Image src={item.iconSrc} className='system-icon' mode='aspectFit' />
                 </View>
-                <View className='bottom-row'>
-                  <Text className='desc'>{item.desc}</Text>
+                <View className='content-box'>
+                  <View className='top-row'>
+                    <Text className='title'>{item.title}</Text>
+                  </View>
+                  <View className='bottom-row'>
+                    <Text className='desc'>{item.desc}</Text>
+                  </View>
                 </View>
+                <View className='right-meta'>
+                  <Text className='time'>{item.time}</Text>
+                  {item.unread > 0 && <View className='badge-dot' />}
+                </View>
+              </>
+            )
+            // 客服消息走微信原生客服（open-type=contact）
+            if (item.id === 'sys_6') {
+              return (
+                <Button key={item.id} className='msg-item system-item btn-reset' openType='contact'>
+                  {content}
+                </Button>
+              )
+            }
+            return (
+              <View key={item.id} className='msg-item system-item'>
+                {content}
               </View>
-              <View className='right-meta'>
-                <Text className='time'>{item.time}</Text>
-                {item.unread > 0 && <View className='badge-dot' />}
-              </View>
-            </View>
-          ))}
+            )
+          })}
         </View>
 
         <View className='chat-list'>
-          {visibleSessions.map(item => (
+          {sessionList.map(item => (
             <View key={item.peer_id} className='msg-item' onClick={() => handleChat(item)}>
               <View className='avatar-box'>
                 {item.peer_avatar ? (
@@ -407,7 +369,7 @@ export default function MessagePage() {
             </View>
           ))}
 
-          {visibleSessions.length === 0 && (
+          {sessionList.length === 0 && (
             <View className='empty-state'>
               <Text>暂无聊天消息</Text>
             </View>

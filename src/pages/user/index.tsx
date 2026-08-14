@@ -1025,29 +1025,6 @@ export default function UserPage() {
     }
   };
 
-  // 顶部客服入口：改走站内 IM（平台客服账号），不再用微信原生客服（无人值守，消息收不到）
-  const handleOpenCustomerService = async () => {
-    if (!isLogin) {
-      requireLogin();
-      return;
-    }
-    try {
-      const res = await request({ url: '/api/v1/user/customer-service', method: 'GET' });
-      const body: any = res?.data;
-      const serviceUserId = Number(body?.data?.user_id || 0);
-      if (body?.code === 200 && serviceUserId > 0) {
-        const name = String(body.data.nickname || 'Hyper 客服');
-        Taro.navigateTo({
-          url: `/pages/chat/index?peer_id=${serviceUserId}&title=${encodeURIComponent(name)}&type=1`
-        });
-        return;
-      }
-      Taro.showToast({ title: body?.code === 404 ? '客服暂不可用' : body?.msg || '客服暂不可用', icon: 'none' });
-    } catch (error) {
-      Taro.showToast({ title: '客服暂不可用', icon: 'none' });
-    }
-  };
-
   const hasData = isLogin || needPhoneAuth;
   const roleOverride = getUserCenterRoleOverride();
   const isActiveVerifier = isActiveVerifierUser(userInfo, roleOverride);
@@ -1133,13 +1110,13 @@ export default function UserPage() {
                 </View>
               </View>
             )}
-            <View className="nav-tool-btn contact" onClick={handleOpenCustomerService}>
+            <Button className="nav-tool-btn contact" openType="contact">
               <View className="contact-line-icon">
                 <View className="contact-arc" />
                 <View className="contact-dot left" />
                 <View className="contact-dot right" />
               </View>
-            </View>
+            </Button>
           </View>
           <View className="nav-center">
             <Image

@@ -97,6 +97,23 @@
   margin-top: 16px;
 }
 
+// 微信原生客服按钮（open-type=contact）：重置 button 默认背景与 ::after 边框，复用 .msg-item 布局
+.btn-reset {
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  line-height: normal;
+  text-align: left;
+  font-size: inherit;
+  color: inherit;
+
+  &::after {
+    border: none;
+  }
+}
+
 .msg-item {
   display: flex;
   align-items: center;
