@@ -158,6 +158,8 @@ export default function ActivityPage() {
   const [usePoints, setUsePoints] = useState(false)
   const [relatedNotes, setRelatedNotes] = useState<RelatedNote[]>([])
   const [relatedNotesLoading, setRelatedNotesLoading] = useState(false)
+  // 详情加载状态：loading 占位 / ready 正常详情 / offline 已下架或不存在（404、空数据、接口异常）
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'offline'>('loading')
   const viewerInitLoadedRef = useRef(false)
 
   const fallbackMapCenter = { latitude: 30.657, longitude: 104.066 }
@@ -180,7 +182,12 @@ export default function ActivityPage() {
 
   useEffect(() => {
     const fetchActivity = async () => {
-      if (!activityId) return
+      if (!activityId) {
+        setActivity(null)
+        setLoadState('offline')
+        return
+      }
+      setLoadState('loading')
       try {
         const res = await request({
           url: `/api/v1/activity/${activityId}`,
@@ -188,9 +195,11 @@ export default function ActivityPage() {
           // 游客 UV 去重：带上本地持久化的访客标识（后端据此统计 PV/UV 与转化率）
           header: { 'X-Visitor-Id': getVisitorId() },
         })
+        // 下架活动对未购票用户/游客返回 404；已物理删除活动同样 404，此时不渲染默认占位详情
         const detail = res?.data?.data || null
         if (!detail) {
           setActivity(null)
+          setLoadState('offline')
           return
         }
         setActivity({
@@ -213,8 +222,10 @@ export default function ActivityPage() {
             : detail.business_hours || '',
           ticket_specs: Array.isArray(detail.ticket_specs) ? detail.ticket_specs : [],
         })
+        setLoadState('ready')
       } catch (error) {
         console.error('Activity detail load failed:', error)
+        setLoadState('offline')
       }
     }
 
@@ -730,6 +741,30 @@ export default function ActivityPage() {
       }
     }
     Taro.switchTab({ url: '/pages/index/index' }).catch(() => {})
+  }
+
+  if (loadState === 'loading') {
+    return (
+      <View className='activity-page'>
+        <View className='activity-state'>
+          <Text className='activity-state-text'>加载中...</Text>
+        </View>
+      </View>
+    )
+  }
+
+  if (loadState === 'offline') {
+    return (
+      <View className='activity-page'>
+        <View className='activity-state'>
+          <Text className='activity-state-title'>活动已下架</Text>
+          <Text className='activity-state-text'>该活动已下架或不存在，去看看其他活动吧</Text>
+          <View className='activity-state-btn' onClick={handleBack}>
+            <Text className='activity-state-btn-text'>返回</Text>
+          </View>
+        </View>
+      </View>
+    )
   }
 
   return (
