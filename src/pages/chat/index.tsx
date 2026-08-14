@@ -664,6 +664,20 @@ export default function ChatPage() {
       url: `/pages/chat/group-members/index?group_id=${peer_id}&group_name=${encodeURIComponent(safeTitle)}`
     })
   }
+
+  // 返回上一页：Android 部分机型 navigateBack 偶发失效，无上一页或失败时兜底回消息 tab
+  const handleBack = async () => {
+    const pageStack = Taro.getCurrentPages()
+    if (pageStack.length > 1) {
+      try {
+        await Taro.navigateBack({ delta: 1 })
+        return
+      } catch (error) {
+        console.warn('[ChatPage] navigateBack failed, fallback to switchTab:', error)
+      }
+    }
+    Taro.switchTab({ url: '/pages/message/index' }).catch(() => {})
+  }
   // 处理卡片消息点击
   const handleCardClick = (msg: MessageItem) => {
     if (msg.msg_type === 8 && msg.ext?.card_type === 'note_forward') {
@@ -766,7 +780,7 @@ export default function ChatPage() {
       <View className='custom-navbar' style={{ height: `${statusBarHeight + navBarHeight + NAV_BOTTOM_EXTEND}px` }}>
         <View className='nav-main' style={{ top: `${statusBarHeight}px`, height: `${navBarHeight}px`, paddingRight: `${menuButtonWidth}px` }}>
           <View className='nav-left-group'>
-            <View className='nav-left' onClick={() => Taro.navigateBack()}><AtIcon value='chevron-left' size='24' color='#fff' /></View>
+            <View className='nav-left' onClick={handleBack}><AtIcon value='chevron-left' size='24' color='#fff' /></View>
             {unreadCount > 0 && (
               <View className='nav-badge'>
                 <Text className='nav-badge-text'>{unreadCount}</Text>
