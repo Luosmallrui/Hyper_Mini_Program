@@ -65,7 +65,6 @@ export default defineAppConfig({
     // 全局深色页面背景：避免下拉回弹/滑动时露出默认白色背景（异常白块）
     backgroundColor: '#000000',
     // iOS 切换 tab 时 WebView 内容层在首帧渲染前默认露白，需显式指定内容背景色
-    // @ts-expect-error 微信基础库字段，Taro 3.6 类型定义未收录
     backgroundColorContent: '#000000',
     navigationBarBackgroundColor: '#fff',
     navigationBarTitleText: 'WeChat',

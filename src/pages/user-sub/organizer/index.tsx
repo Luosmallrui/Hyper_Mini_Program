@@ -1774,7 +1774,8 @@ export default function OrganizerPage() {
     try {
       await submitSettlementApplyRequest(settlementForm)
       setDashboardView('settlementPending')
-      Taro.showToast({ title: '提交成功', icon: 'success' })
+      setAuditPendingSource('settlement')
+      setUrgeAuditModalOpen(true)
     } catch (error: any) {
       const message = String(error?.message || '')
       if (message.includes('审核中') || message.includes('重复提交')) {
@@ -2822,7 +2823,11 @@ export default function OrganizerPage() {
         <View className="urge-audit-overlay" onClick={() => setUrgeAuditModalOpen(false)}>
           <View className="urge-audit-card" onClick={(e) => e.stopPropagation()}>
             <Text className="urge-audit-title">提交审核成功</Text>
-            <Text className="urge-audit-text">扫码催一下，审核同事会收到本次活动的提醒。审核通过后，活动将自动上线。</Text>
+            <Text className="urge-audit-text">
+              {auditPendingSource === 'activity'
+                ? '扫码催一下，审核同事会收到本次活动的提醒。审核通过后，活动将自动上线。'
+                : '扫码催一下，审核同事会收到本次入驻申请的提醒。审核通过后即可使用主办方功能。'}
+            </Text>
             <Image className="urge-audit-qr" src={auditUrgeQrCode} mode="aspectFit" />
             <View className="urge-audit-btn" onClick={() => setUrgeAuditModalOpen(false)}>
               <Text className="urge-audit-btn-text">知道了</Text>
