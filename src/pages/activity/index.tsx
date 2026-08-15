@@ -27,6 +27,17 @@ const organizerAvatar =
   'https://lanhu-dds-backend.oss-cn-beijing.aliyuncs.com/merge_image/imgs/6c2cc88a7b944eb3b55c66ee51532f72_mergeImage.png'
 const posterImage = backgroundWebp
 
+// 解析 string 响应并保留 16 位以上的大数字 ID 为字符串，避免雪花 ID 丢精度
+const parseJSONWithBigInt = (jsonStr: string) => {
+  if (typeof jsonStr !== 'string') return jsonStr
+  try {
+    const fixedStr = jsonStr.replace(/"(id|user_id|note_id|root_id|parent_id|next_cursor|reply_to_user_id|peer_id)":\s*(\d{16,})/g, '"$1": "$2"')
+    return JSON.parse(fixedStr)
+  } catch (e) {
+    return {}
+  }
+}
+
 // 把 ISO 时间（2026-07-01T00:00:00+08:00）格式化为可读形式（2026-07-01 00:00），非 ISO 文本原样保留
 const formatActivityTimeText = (value?: string) => {
   if (!value) return ''
@@ -238,15 +249,16 @@ export default function ActivityPage() {
       if (!activityId) return
       setRelatedNotesLoading(true)
       try {
-        const res = await request({
-          url: '/api/v1/note/related',
+        const token = Taro.getStorageSync('access_token')
+        const res = await Taro.request({
+          url: `https://www.hypercn.cn/api/v1/note/related?activity_id=${activityId}&pageSize=20`,
           method: 'GET',
-          data: {
-            activity_id: activityId,
-            pageSize: 20,
-          },
+          header: token ? { 'Authorization': `Bearer ${token}` } : {},
+          dataType: 'string',
+          responseType: 'text',
         })
-        setRelatedNotes(normalizeRelatedNotes(res?.data?.data?.notes || []))
+        const resBody = parseJSONWithBigInt(res.data as string)
+        setRelatedNotes(normalizeRelatedNotes(resBody?.data?.notes || []))
       } catch (error) {
         console.error('Activity related notes load failed:', error)
         setRelatedNotes([])

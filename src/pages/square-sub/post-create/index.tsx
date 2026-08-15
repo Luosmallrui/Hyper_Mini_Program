@@ -812,7 +812,7 @@ export default function PostCreatePage() {
             <View className='meta-section'>
               <View className='section-header'>
                 <Text className='section-title'>活动</Text>
-                <Text className='section-sub'>关联已订阅活动</Text>
+                <Text className='section-sub'>关联已订阅的活动/场地</Text>
                 {selectedActivityId !== null && (
                   <Text className='section-action' onClick={() => setSelectedActivityId(null)}>清除</Text>
                 )}
@@ -825,7 +825,7 @@ export default function PostCreatePage() {
                   <Text className='location-hint-text' onClick={fetchSubscribedActivities}>{activityError}</Text>
                 )}
                 {!activityLoading && !activityError && subscribedActivities.length === 0 && (
-                  <Text className='location-hint-text'>暂无已订阅活动</Text>
+                  <Text className='location-hint-text'>暂无已订阅活动/场地</Text>
                 )}
                 {!activityLoading && !activityError && subscribedActivities.map((item) => (
                   <View

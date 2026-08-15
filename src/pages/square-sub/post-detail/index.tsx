@@ -97,8 +97,16 @@ const normalizeActivityImages = (activity: any): string[] => Array.from(new Set(
 ]))
 
 const formatActivityTimeRange = (startTime: unknown, endTime: unknown) => {
-  const start = readText(startTime)
-  const end = readText(endTime)
+  const fmt = (value: unknown) => {
+    const text = String(value ?? '').trim()
+    if (!text) return ''
+    return text.replace(
+      /(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::\d{2})?(?:\.\d+)?(?:[+-]\d{2}:?\d{2}|Z)?/g,
+      '$1-$2-$3 $4:$5',
+    )
+  }
+  const start = fmt(startTime)
+  const end = fmt(endTime)
   if (start && end) return `${start} - ${end}`
   return start || end
 }
