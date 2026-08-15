@@ -21,12 +21,44 @@ interface MediaItem {
   width: number
   height: number
   tags?: TopicItem[]
+  /** 图片上传后返回的 ID，用于关联异步标签结果 */
+  image_id?: string
+  /** 异步标签生成状态：pending 处理中 / completed 完成 / failed 失败 */
+  tag_status?: 'pending' | 'completed' | 'failed'
 }
 
 interface TopicItem {
   id: number
   name: string
 }
+
+// 服务端返回的标签名可能被错误编码，这里做一次兜底解码
+const normalizeTagName = (raw: any): string => {
+  const value = String(raw || '').trim()
+  if (!value) return ''
+  try {
+    if (/[ÃÂåäöüç]/.test(value)) {
+      return decodeURIComponent(escape(value))
+    }
+  } catch (_e) {}
+  return value
+}
+
+// 把 [{id, name, view_count}] 规范化为 [{id, name}]，过滤无效项
+const normalizeTags = (tags: any): TopicItem[] => {
+  if (!Array.isArray(tags)) return []
+  return tags
+    .map((tag: any) => {
+      const id = Number(tag?.id || 0)
+      const name = normalizeTagName(tag?.name)
+      if (!id || !name) return null
+      return { id, name }
+    })
+    .filter(Boolean) as TopicItem[]
+}
+
+// 标签 pending 超过该时长仍无结果时，主动查询一次兜底
+const TAG_PENDING_TIMEOUT = 5000
 
 type StepKey = 'photo' | 'text'
 
@@ -65,6 +97,7 @@ export default function PostCreatePage() {
 
   const userLatRef = useRef(0)
   const userLngRef = useRef(0)
+  const mediaListRef = useRef<MediaItem[]>([])
 
   // ========== 初始化 ==========
   useEffect(() => {
@@ -102,6 +135,12 @@ export default function PostCreatePage() {
 
   useDidShow(() => {
     void fetchSubscribedActivities()
+    // 断线兜底：页面恢复前台时，pending 图片补拉标签
+    mediaListRef.current.forEach(m => {
+      if (m.image_id && m.tag_status === 'pending') {
+        void fetchImageTags(m.image_id)
+      }
+    })
   })
 
   useEffect(() => {
@@ -122,6 +161,32 @@ export default function PostCreatePage() {
     setTopicCandidates(nextTopics)
     setSelectedTopics(prev => prev.filter(id => topicMap.has(id)))
   }, [mediaList])
+
+  // 同步最新 mediaList，供 useDidShow 兜底查询使用
+  useEffect(() => {
+    mediaListRef.current = mediaList
+  }, [mediaList])
+
+  // 订阅 IM WebSocket 的异步图片标签完成事件（note.image_tags）
+  useEffect(() => {
+    const onImageTags = (msg: any) => {
+      if (!msg || msg.event !== 'note.image_tags') return
+      const payload = msg.payload || {}
+      const imageId = String(payload.image_id || '')
+      if (!imageId) return
+      const status: MediaItem['tag_status'] = payload.status === 'completed' ? 'completed' : 'failed'
+      const tags = normalizeTags(payload.tags)
+      setMediaList(prev => prev.map(item =>
+        item.image_id === imageId
+          ? { ...item, tag_status: status, tags }
+          : item
+      ))
+    }
+    Taro.eventCenter.on('IM_NEW_MESSAGE', onImageTags)
+    return () => {
+      Taro.eventCenter.off('IM_NEW_MESSAGE', onImageTags)
+    }
+  }, [])
 
   // ========== 核心：按指定坐标获取附近地点 ==========
   const fetchNearbyPois = async (latitude: number, longitude: number) => {
@@ -276,6 +341,33 @@ export default function PostCreatePage() {
     })
   }
 
+  const fetchImageTags = async (imageId: string) => {
+    if (!imageId) return
+    try {
+      const res = await request({
+        url: `/api/v1/note/upload/${imageId}/tags`,
+        method: 'GET',
+      })
+      let data: any = res.data
+      if (typeof data === 'string') { try { data = JSON.parse(data) } catch (e) {} }
+      if (data?.code === 200 && data?.data) {
+        const status: MediaItem['tag_status'] =
+          data.data.status === 'completed' ? 'completed'
+            : data.data.status === 'failed' ? 'failed'
+              : 'pending'
+        if (status === 'pending') return
+        const tags = normalizeTags(data.data.tags)
+        setMediaList(prev => prev.map(item =>
+          item.image_id === imageId
+            ? { ...item, tag_status: status, tags }
+            : item
+        ))
+      }
+    } catch (e) {
+      // 查询失败静默，等待 WS 推送兜底
+    }
+  }
+
   const uploadFile = async (filePath: string) => {
     const token = Taro.getStorageSync('access_token')
     try {
@@ -290,27 +382,9 @@ export default function PostCreatePage() {
         try { data = JSON.parse(data) } catch (e) {}
       }
       if (data.code === 200 && data.data?.url) {
-        const { url, width, height } = data.data
-        const normalizeTag = (raw: any): string => {
-          const value = String(raw || '').trim()
-          if (!value) return ''
-          try {
-            if (/[ÃÂåäöüç]/.test(value)) {
-              return decodeURIComponent(escape(value))
-            }
-          } catch (_e) {}
-          return value
-        }
-        const tags = Array.isArray(data.data?.tags)
-          ? data.data.tags
-            .map((tag: any) => {
-              const id = Number(tag?.id || 0)
-              const name = normalizeTag(tag?.name)
-              if (!id || !name) return null
-              return { id, name }
-            })
-            .filter(Boolean) as TopicItem[]
-          : []
+        const { url, width, height, image_id, tag_status } = data.data
+        const imageId = image_id ? String(image_id) : ''
+        const status: MediaItem['tag_status'] = tag_status === 'failed' ? 'failed' : 'pending'
         setMediaList(prev => prev.map((item) =>
           item.tempPath === filePath
             ? {
@@ -319,10 +393,16 @@ export default function PostCreatePage() {
               isUploading: false,
               width: width || item.width,
               height: height || item.height,
-              tags,
+              image_id: imageId || undefined,
+              tag_status: status,
+              tags: [],
             }
             : item
         ))
+        // 兜底：pending 超过阈值仍无结果时查询一次
+        if (imageId && status === 'pending') {
+          setTimeout(() => { void fetchImageTags(imageId) }, TAG_PENDING_TIMEOUT)
+        }
       } else {
         Taro.showToast({ title: '图片上传失败', icon: 'none' })
         setMediaList(prev => prev.filter(item => item.tempPath !== filePath))
@@ -529,6 +609,7 @@ export default function PostCreatePage() {
   const activeMedia = mediaList[activeIndex]
   const canProceed = mediaList.length > 0 && !mediaList.some(m => m.isUploading)
   const canPublish = canProceed && title.trim().length > 0
+  const hasPendingTag = mediaList.some(m => m.tag_status === 'pending')
 
   // 弹窗列表：有搜索词显示搜索结果，否则显示附近列表
   const pickerDisplayList = locationSearchKey.trim() ? searchResults : nearbyPois
@@ -687,6 +768,8 @@ export default function PostCreatePage() {
                       {topic.name}
                     </View>
                   ))
+                ) : hasPendingTag ? (
+                  <Text className='location-hint-text'>识别话题中...</Text>
                 ) : (
                   <Text className='location-hint-text'>上传图片后自动识别话题</Text>
                 )}
