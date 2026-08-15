@@ -1,6 +1,6 @@
 import { View, Text, Image, Swiper, SwiperItem, ScrollView, Input } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { AtIcon, AtActivityIndicator, AtFloatLayout } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import 'taro-ui/dist/style/components/activity-indicator.scss'
@@ -128,6 +128,10 @@ export default function PostDetailPage() {
   const [hasMoreComments, setHasMoreComments] = useState(true)
   const [isCommentLoading, setIsCommentLoading] = useState(false)
   const [collectPending, setCollectPending] = useState(false)
+  // 双击点赞：爱心动画触发计数（每次双击 +1，驱动 CSS 动画重新播放）
+  const [likeBurst, setLikeBurst] = useState(0)
+  const lastTapTimeRef = useRef(0)
+  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [inputText, setInputText] = useState('')
   const [inputFocus, setInputFocus] = useState(false)
@@ -486,6 +490,41 @@ export default function PostDetailPage() {
     }
   }
 
+  // 双击点赞（仅未点赞时触发，避免误取消）
+  const handleDoubleTapLike = async () => {
+    if (!requireLogin()) return
+    if (!note || note.is_liked) return
+    const oldLikeCount = note.like_count
+    setNote(prev => prev ? ({ ...prev, is_liked: true, like_count: oldLikeCount + 1 }) : null)
+    setLikeBurst((prev) => prev + 1)
+    try {
+      const res = await request({ url: `/api/v1/note/${note.id}/like`, method: 'POST' })
+      const code = Number((res as any)?.data?.code)
+      if (code !== 200) throw new Error((res as any)?.data?.msg || '操作失败')
+    } catch (e) {
+      setNote(prev => prev ? ({ ...prev, is_liked: false, like_count: oldLikeCount }) : null)
+    }
+  }
+
+  // 媒体区点击：单击延迟预览，双击点赞
+  const handleMediaTap = (url: string) => {
+    const now = Date.now()
+    if (now - lastTapTimeRef.current < 300) {
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current)
+        singleTapTimerRef.current = null
+      }
+      lastTapTimeRef.current = 0
+      void handleDoubleTapLike()
+      return
+    }
+    lastTapTimeRef.current = now
+    if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current)
+    singleTapTimerRef.current = setTimeout(() => {
+      Taro.previewImage({ current: url, urls: note?.media_data.map(m => m.url) || [] })
+    }, 300)
+  }
+
   const handleToggleCollect = async () => {
     if (!requireLogin()) return
     if (!note || collectPending) return
@@ -519,10 +558,6 @@ export default function PostDetailPage() {
     if (!timeStr) return ''
     const date = new Date(timeStr)
     return `${date.getMonth()+1}-${date.getDate()}`
-  }
-
-  const handlePreviewImage = (url) => {
-    Taro.previewImage({ current: url, urls: note?.media_data.map(m=>m.url)||[] })
   }
 
   const handleOpenUserProfile = (e) => {
@@ -790,10 +825,14 @@ export default function PostDetailPage() {
         >
           {note.media_data.map((item, idx) => (
             <SwiperItem key={idx}>
-              <Image src={item.url} mode='aspectFill' className='media-img' onClick={() => handlePreviewImage(item.url)} />
+              <Image src={item.url} mode='aspectFill' className='media-img' onClick={() => handleMediaTap(item.url)} />
             </SwiperItem>
           ))}
         </Swiper>
+
+        {likeBurst > 0 && (
+          <View key={likeBurst} className='double-tap-heart'>❤️</View>
+        )}
 
         <View className='content-body'>
           <Text className='post-title'>{note.title}</Text>

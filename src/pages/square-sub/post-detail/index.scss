@@ -111,6 +111,24 @@ page {
   }
 }
 
+/* 双击点赞爱心动画 */
+.double-tap-heart {
+  position: fixed;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 80px;
+  z-index: 999;
+  pointer-events: none;
+  animation: doubleTapHeart 0.8s ease-out forwards;
+}
+
+@keyframes doubleTapHeart {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  30% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
 /* 4. 文本内容区 */
 .content-body {
   padding: 20px;
