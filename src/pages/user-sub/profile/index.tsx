@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Image, ScrollView } from '@tarojs/components';
-import Taro, { useRouter } from '@tarojs/taro';
+import Taro, { useRouter, useDidShow } from '@tarojs/taro';
 import { AtIcon } from 'taro-ui';
 import { requireLogin } from '../../../utils/auth';
 import { CDN_IMAGES } from '@/utils/cdn';
+import { getDirectMessageEnabledSync, refreshDirectMessageEnabled } from '@/utils/system-config';
 import './index.less';
 
 const BASE_URL = 'https://www.hypercn.cn';
@@ -69,7 +70,7 @@ const UserProfilePage: React.FC = () => {
   const [hasMore, setHasMore] = useState(false);
   const [navBarHeight, setNavBarHeight] = useState(44);
   const [statusBarHeight, setStatusBarHeight] = useState(20);
-  const [directMessageEnabled, setDirectMessageEnabled] = useState(false);
+  const [directMessageEnabled, setDirectMessageEnabled] = useState(getDirectMessageEnabledSync);
 
   const token = Taro.getStorageSync('access_token');
   const myUserId = Taro.getStorageSync('userInfo')?.user_id;
@@ -79,8 +80,12 @@ const UserProfilePage: React.FC = () => {
       loadUserProfile();
       loadUserNotes();
     }
-    loadDirectMessageEnabled();
   }, [userId]);
+
+  // 每次页面显示都刷新私信开关，保证后端配置变更后重新进入页面即可生效
+  useDidShow(() => {
+    refreshDirectMessageEnabled().then(setDirectMessageEnabled);
+  });
 
   useEffect(() => {
     const sysInfo = Taro.getWindowInfo();
@@ -90,25 +95,6 @@ const UserProfilePage: React.FC = () => {
     const calculatedNavHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height;
     setNavBarHeight(Number.isNaN(calculatedNavHeight) ? 44 : calculatedNavHeight);
   }, []);
-
-  // 拉取平台公开配置：direct_message_enabled 控制私信入口显隐
-  const loadDirectMessageEnabled = async () => {
-    try {
-      const res = await Taro.request({
-        url: `${BASE_URL}/api/v1/system-config`,
-        method: 'GET',
-      });
-      let resBody: any = res.data;
-      if (typeof resBody === 'string') {
-        try { resBody = JSON.parse(resBody); } catch (e) {}
-      }
-      if (resBody?.code === 200 && resBody?.data) {
-        setDirectMessageEnabled(resBody.data.direct_message_enabled === true);
-      }
-    } catch (e) {
-      // 拉取失败保持默认 false（隐藏），后端发送时会兜底校验
-    }
-  };
 
   // 加载用户资料
   const loadUserProfile = async () => {

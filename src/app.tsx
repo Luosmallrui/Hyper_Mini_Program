@@ -4,6 +4,7 @@ import Taro, { useLaunch } from '@tarojs/taro'
 import { appUpdate } from './utils'
 import IMService from './utils/im'
 import { scheduleAutoRefresh } from './utils/request'
+import { refreshDirectMessageEnabled } from './utils/system-config'
 import './app.less'
 
 if (typeof console.time !== 'function') {
@@ -50,6 +51,9 @@ function App({ children }: PropsWithChildren<any>) {
 
     // 游客模式：清理历史版本遗留的强制登录标记
     Taro.removeStorageSync('__force_auth_gate__')
+
+    // 预热平台配置（私信开关等），供各页面同步读缓存
+    void refreshDirectMessageEnabled()
 
     console.log(
       `\n %c 电子科技大学${process.env.NODE_ENV} %c ${process.env.YDY_APP_API} \n`,
