@@ -698,10 +698,19 @@ export const updateOrganizerBasic = async (payload: { name?: string; logo?: stri
   })
 }
 
-/** 主办方资料（名称/logo/省市区），用于编辑回显与认证信息展示。
+/** 更新主办方地图业态图标，走 /organizer/profile */
+export const updateOrganizerMarkerIcon = async (markerIcon: string): Promise<void> => {
+  await apiRequest<{ success?: boolean }>({
+    url: '/api/v1/organizer/profile',
+    method: 'PUT',
+    data: { marker_icon: markerIcon },
+  })
+}
+
+/** 主办方资料（名称/logo/省市区/地图业态图标），用于编辑回显与认证信息展示。
  *  /organizer/info 目前不可用（后端 500），资料一律改从 /organizer/profile 读取。 */
-export const fetchOrganizerProfile = async (): Promise<{ name: string; logo: string; province: string; city: string; district: string; businessHours: string }> => {
-  const data = await apiRequest<{ name?: string; logo?: string; province?: string; city?: string; district?: string; business_hours?: string }>({
+export const fetchOrganizerProfile = async (): Promise<{ name: string; logo: string; province: string; city: string; district: string; businessHours: string; markerIcon: string }> => {
+  const data = await apiRequest<{ name?: string; logo?: string; province?: string; city?: string; district?: string; business_hours?: string; marker_icon?: string }>({
     url: '/api/v1/organizer/profile',
     method: 'GET',
   })
@@ -712,6 +721,7 @@ export const fetchOrganizerProfile = async (): Promise<{ name: string; logo: str
     city: data?.city || '',
     district: data?.district || '',
     businessHours: data?.business_hours || '',
+    markerIcon: data?.marker_icon || '',
   }
 }
 
@@ -881,6 +891,7 @@ export const submitSettlementApply = async (payload: SettlementApplyForm): Promi
       city: payload.city,
       district: payload.district,
       type: payload.type,
+      marker_icon: payload.marker_icon,
     },
   })
   return {

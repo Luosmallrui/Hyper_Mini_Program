@@ -1,4 +1,4 @@
-import { Image, Input, Picker, Text, View } from '@tarojs/components'
+import { Image, Input, Picker, ScrollView, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { CHENGDU_CITY, CHENGDU_DISTRICTS, CHENGDU_PROVINCE, fetchChengduDistricts } from '@/utils/chengdu-region'
@@ -13,6 +13,7 @@ import {
   resetAuthPassword,
   sendAuthCode,
   updateOrganizerBasic,
+  updateOrganizerMarkerIcon,
   updateOrganizerRegion,
   updateWithdrawalInfo,
   uploadOrganizerAsset,
@@ -25,6 +26,7 @@ import iconLogout from '../../../../assets/organizer/icon-logout.png'
 import iconPassword from '../../../../assets/organizer/icon-password.png'
 import iconWallet from '../../../../assets/organizer/icon-wallet.png'
 import { CDN_IMAGES } from '@/utils/cdn'
+import { MARKER_ICONS } from '@/utils/marker-icons'
 const powerFlowLogo = CDN_IMAGES.powerFlowLogo
 import './index.scss'
 
@@ -78,7 +80,7 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
   const [applying, setApplying] = useState(false)
   // 基本信息/账户信息四个设置项的弹窗状态
   const [settingModal, setSettingModal] = useState<'editOrganizer' | 'editRegion' | 'certification' | 'changePassword' | null>(null)
-  const [organizerForm, setOrganizerForm] = useState({ name: '', logo: '' })
+  const [organizerForm, setOrganizerForm] = useState({ name: '', logo: '', marker_icon: '' })
   const [organizerProfileName, setOrganizerProfileName] = useState('')
   const [organizerSaving, setOrganizerSaving] = useState(false)
   const [logoUploading, setLogoUploading] = useState(false)
@@ -170,7 +172,7 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
     if (action === 'withdrawal') {
       setWithdrawalModal('view')
     } else if (action === 'editOrganizer') {
-      setOrganizerForm({ name: account?.name || '', logo: account?.logo || '' })
+      setOrganizerForm({ name: account?.name || '', logo: account?.logo || '', marker_icon: '' })
       setSettingModal('editOrganizer')
       // 回显以 /organizer/profile 为准（/organizer/info 当前 500，account 名称可能是兜底值）
       fetchOrganizerProfile()
@@ -178,6 +180,7 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
           setOrganizerForm({
             name: profile.name || account?.name || '',
             logo: profile.logo || account?.logo || '',
+            marker_icon: profile.markerIcon || '',
           })
         })
         .catch(() => {})
@@ -247,6 +250,9 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
     setOrganizerSaving(true)
     try {
       await updateOrganizerBasic({ name, ...(organizerForm.logo ? { logo: organizerForm.logo } : {}) })
+      if (organizerForm.marker_icon) {
+        await updateOrganizerMarkerIcon(organizerForm.marker_icon)
+      }
       // 品牌卡刷新失败不影响保存结果（/organizer/info 当前 500）
       try {
         const nextAccount = await fetchAccount()
@@ -694,6 +700,21 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
               <Image className="account-logo-preview" src={organizerForm.logo || powerFlowLogo} mode="aspectFill" />
               <Text className="account-logo-picker-text">{logoUploading ? '上传中...' : '点击更换LOGO'}</Text>
             </View>
+            <Text className="account-field-required">地图图标（前台地图显示）</Text>
+            <ScrollView className="marker-icon-scroll" scrollY>
+              <View className="marker-icon-grid">
+                {MARKER_ICONS.map((icon) => (
+                  <View
+                    key={icon.key}
+                    className={`marker-icon-item ${organizerForm.marker_icon === icon.url ? 'active' : ''}`}
+                    onClick={() => setOrganizerForm((prev) => ({ ...prev, marker_icon: icon.url }))}
+                  >
+                    <Image src={icon.url} className="marker-icon-img" mode="aspectFit" />
+                    <Text className={`marker-icon-name ${organizerForm.marker_icon === icon.url ? 'active' : ''}`}>{icon.name}</Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
             <View className={`account-modal-btn ${organizerSaving || logoUploading ? 'disabled' : ''}`} onClick={handleSubmitOrganizer}>
               <Text className="account-modal-btn-text">{organizerSaving ? '保存中...' : '保存'}</Text>
             </View>

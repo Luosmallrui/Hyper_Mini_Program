@@ -9,6 +9,7 @@ import { CHENGDU_CITY, CHENGDU_DISTRICTS, CHENGDU_PROVINCE, fetchChengduDistrict
 import { setTabBarIndex } from '../../store/tabbar';
 import { request } from '../../utils/request';
 import { CDN_IMAGES } from '@/utils/cdn';
+import { MARKER_ICONS } from '@/utils/marker-icons';
 import {
   PENDING_VERIFIER_SCAN_KEY,
   parseVerifierQrPayload
@@ -904,7 +905,12 @@ export default function UserPage() {
   })()
 
   const updateSettlementForm = <K extends keyof SettlementApplyForm>(key: K, value: SettlementApplyForm[K]) => {
-    setSettlementForm(prev => ({ ...prev, [key]: value }));
+    setSettlementForm(prev => ({
+      ...prev,
+      [key]: value,
+      // 切到派对时清空业态图标（只有场地需要地图图标）
+      ...(key === 'type' && value === 'party' ? { marker_icon: '' } : {}),
+    }));
   };
 
   const handleChooseSettlementDistrict = (event: any) => {
@@ -1459,6 +1465,26 @@ export default function UserPage() {
                   <Text className={`settlement-type-text ${settlementForm.type === 'venue' ? 'active' : ''}`}>场地</Text>
                 </View>
               </View>
+
+              {settlementForm.type === 'venue' && (
+                <>
+                  <Text className="settlement-field-label">*业态图标（地图显示）</Text>
+                  <ScrollView className="marker-icon-scroll" scrollY>
+                    <View className="marker-icon-grid">
+                      {MARKER_ICONS.map((icon) => (
+                        <View
+                          key={icon.key}
+                          className={`marker-icon-item ${settlementForm.marker_icon === icon.url ? 'active' : ''}`}
+                          onClick={() => updateSettlementForm('marker_icon', icon.url)}
+                        >
+                          <Image src={icon.url} className="marker-icon-img" mode="aspectFit" />
+                          <Text className={`marker-icon-name ${settlementForm.marker_icon === icon.url ? 'active' : ''}`}>{icon.name}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </>
+              )}
 
               <Text className="settlement-field-label">Logo 图片</Text>
               <View className="settlement-upload-shell" onClick={handleUploadSettlementLogo}>

@@ -993,6 +993,52 @@
   font-weight: 600;
 }
 
+.marker-icon-scroll {
+  margin-top: 12px;
+  height: 320px;
+}
+
+.marker-icon-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.marker-icon-item {
+  width: calc((100% - 48px) / 5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 0;
+  border-radius: 12px;
+  border: 2px solid rgba(151, 151, 151, 0.76);
+  background: rgba(42, 41, 41, 1);
+  box-sizing: border-box;
+}
+
+.marker-icon-item.active {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.marker-icon-img {
+  width: 56px;
+  height: 56px;
+}
+
+.marker-icon-name {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.marker-icon-name.active {
+  color: #fff;
+  font-weight: 600;
+}
+
 .settlement-input-shell,
 .settlement-textarea-shell {
   margin-top: 12px;

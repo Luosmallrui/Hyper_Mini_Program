@@ -175,6 +175,7 @@ export const settlementApplyInitialForm: SettlementApplyForm = {
   city: '',
   district: '',
   type: 'party',
+  marker_icon: '',
 }
 
 export const mockVerifyRecords = [

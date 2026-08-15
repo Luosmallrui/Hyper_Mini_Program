@@ -49,6 +49,8 @@ export interface SettlementApplyForm {
   district: string
   /** 入驻类型：venue 场地 / party 派对（创建活动时按该类型锁定，向导内不可切换） */
   type: 'party' | 'venue'
+  /** 地图业态图标（CDN URL），见 src/utils/marker-icons.ts */
+  marker_icon: string
 }
 
 export type OrganizerActivityTab = 'mine' | 'sales' | 'orders' | 'verifiers'
