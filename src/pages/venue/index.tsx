@@ -78,6 +78,41 @@ export default function VenuePage() {
   useEffect(() => {
     const fetchVenue = async () => {
       if (!venueId) return
+      // 主数据源：新场地详情 /venues/:organizer_id（见 docs/organizer_venue_activity_model_api_20260815.md §5）
+      try {
+        const venueRes = await request({
+          url: `/api/v1/venues/${venueId}`,
+          method: 'GET'
+        })
+        const venueData = venueRes?.data?.data
+        if (venueData) {
+          const gallery = Array.isArray(venueData.gallery) ? venueData.gallery.filter(Boolean) : []
+          const coverImage = venueData.cover_image || ''
+          const followCount = Number(venueData.follow_count)
+          setVenue({
+            id: Number(venueData.id) || 0,
+            user_id: venueData.user_id,
+            name: venueData.name || '',
+            avg_price: Number(venueData.average_spend ?? venueData.avg_price) || 0,
+            location_name: venueData.address || venueData.location_name || '',
+            images: gallery.length > 0 ? gallery : (coverImage ? [coverImage] : []),
+            certificate: venueData.certificate,
+            user_name: venueData.name || '',
+            user_avatar: venueData.logo || venueData.user_avatar || '',
+            is_follow: Boolean(venueData.is_follow),
+            business_hours: venueData.business_hours || '',
+            follow_count: venueData.follow_count,
+            follow_target_type: venueData.follow_target_type,
+            follow_target_id: venueData.follow_target_id,
+          })
+          if (Number.isFinite(followCount)) setFollowerCount(followCount)
+          return
+        }
+        throw new Error('empty venue detail')
+      } catch (venueError) {
+        console.warn('Venue detail (venues) load failed, fallback to merchant:', venueError)
+      }
+      // 兜底：旧 merchant 详情（历史数据）
       try {
         const res = await request({
           url: `/api/v1/merchant/${venueId}`,
@@ -85,29 +120,6 @@ export default function VenuePage() {
         })
         const detail = res?.data?.data || null
         setVenue(detail)
-        // 新体系场地（organizers）走旧 merchant 详情时拿不到 user_id（返回 0），
-        // 关注状态也以新场地接口为准，这里补拉一次。
-        if (detail && !detail.user_id) {
-          try {
-            const venueRes = await request({
-              url: `/api/v1/venues/${venueId}`,
-              method: 'GET'
-            })
-            const venueData = venueRes?.data?.data
-            if (venueData) {
-              setVenue((prev) => (prev ? {
-                ...prev,
-                user_id: venueData.user_id ?? prev.user_id,
-                is_follow: Boolean(venueData.is_follow),
-                follow_count: venueData.follow_count ?? prev.follow_count,
-                follow_target_type: venueData.follow_target_type ?? prev.follow_target_type,
-                follow_target_id: venueData.follow_target_id ?? prev.follow_target_id,
-              } : prev))
-            }
-          } catch (followStateError) {
-            console.error('Venue follow-state load failed:', followStateError)
-          }
-        }
       } catch (error) {
         console.error('Venue detail load failed:', error)
       }

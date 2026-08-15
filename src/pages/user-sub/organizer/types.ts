@@ -41,16 +41,38 @@ export interface VerifyTicketItem {
 
 export type VerifyRecordsState = 'loading' | 'loaded' | 'empty' | 'error'
 
+/** 场地入驻固定资料（type=venue 时必填），见 docs/organizer_venue_activity_model_api_20260815.md §1 */
+export interface VenueProfileForm {
+  /** 场地封面图（CDN URL） */
+  cover_image: string
+  /** 场地图册（CDN URL 列表） */
+  gallery: string[]
+  /** 场地介绍 */
+  description: string
+  /** 营业时间，如 "19:30-次日02:30" */
+  business_hours: string
+  contact_name: string
+  service_phone: string
+  /** 详细地址（地图选点回填） */
+  address: string
+  latitude?: number
+  longitude?: number
+  /** 人均消费，表单按元填写，提交时换算为分 */
+  average_spend: string
+}
+
 export interface SettlementApplyForm {
   name: string
   logo: string
   province: string
   city: string
   district: string
-  /** 入驻类型：venue 场地 / party 派对（创建活动时按该类型锁定，向导内不可切换） */
+  /** 入驻类型：venue 场地 / party 派对（普通活动组织者，提交时按新契约映射为 merchant） */
   type: 'party' | 'venue'
   /** 地图业态图标（CDN URL），见 src/utils/marker-icons.ts */
   marker_icon: string
+  /** 场地固定资料（仅 type=venue 提交） */
+  venue_profile: VenueProfileForm
 }
 
 export type OrganizerActivityTab = 'mine' | 'sales' | 'orders' | 'verifiers'
@@ -194,11 +216,12 @@ export interface CreateActivityDraft {
   /** 省份/城市（向导不展示，编辑回填时保留原值，避免提交空串清空） */
   province?: string
   city?: string
+  /** 活动类型：新活动仅支持 party；venue 仅存在于历史活动编辑回填（只读兼容数据） */
   type: 'party' | 'venue'
   name: string
   shareTitle: string
   dateRange: string
-  /** 场地类型的经营时间，如 "19:30-次日02:30"（派对类型不用） */
+  /** 历史场地活动的经营时间回填（新活动不再使用） */
   businessHours: string
   realNameRequired: boolean
   minorCheckRequired: boolean

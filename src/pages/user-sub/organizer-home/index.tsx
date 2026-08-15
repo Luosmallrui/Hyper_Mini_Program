@@ -23,8 +23,9 @@ interface OrganizerActivityItem {
 }
 
 interface OrganizerVenueItem {
+  /** 场地 id（=主办方 organizer_id），跳场地详情页用 */
   id: number | string
-  /** 场地对应的活动 id（场地是 type=venue 的活动），跳活动页用 */
+  /** 旧模型场地对应的活动 id（仅兼容展示，不再用于跳转） */
   activity_id?: number | string
   /** 场地活动标题，卡片标题优先展示 */
   activity_name?: string
@@ -238,9 +239,8 @@ export default function OrganizerHomePage() {
   }
 
   const handleOpenVenue = (item: OrganizerVenueItem) => {
-    // 场地是 type=venue 的活动，统一跳活动详情页（activity_id 优先，兼容旧数据回退 id）
-    const targetId = item.activity_id ?? item.id
-    Taro.navigateTo({ url: `/pages/activity/index?id=${String(targetId)}` })
+    // 新模型下场地即主办方资料（id=organizer_id），统一跳场地详情页，不再依赖 activity_id
+    Taro.navigateTo({ url: `/pages/venue/index?id=${String(item.id)}` })
   }
 
   const heroImage = organizer?.cover_image || organizer?.logo || ''

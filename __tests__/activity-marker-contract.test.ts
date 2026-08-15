@@ -20,6 +20,19 @@ describe('activity marker backend contract', () => {
     expect(getActivityMarkerPageUrl({ source_id: 123 })).toBe('/pages/activity/index?id=123')
   })
 
+  it('routes venue markers by source_id to the venue page, never to the activity page', () => {
+    // venue marker 的 source_id 是主办方 id；即使带了 activity_id 也不能用（docs/organizer_venue_activity_model_api_20260815.md §5）
+    const venueMarker = { id: 'venue-9', source: 'venue', source_id: 9, activity_id: 456 }
+    expect(normalizeActivityMarkerSourceId(venueMarker)).toBe('9')
+    expect(normalizeActivityMarkerSourceId({ source: 'venue', id: 'venue-12' })).toBe('12')
+    expect(normalizeActivityMarkerSourceId({ detail_type: 'venue', source_id: 7 })).toBe('7')
+    expect(getActivityMarkerPageUrl(venueMarker)).toBe('/pages/venue/index?id=9')
+    expect(getActivityMarkerPageUrl({ source: 'venue', source_id: 9 }, '&lat=30.1')).toBe('/pages/venue/index?id=9&lat=30.1')
+    expect(getActivityMarkerDetailUrl(venueMarker)).toBe('/api/v1/venues/9')
+    // activity marker 不受 venue 路由影响
+    expect(getActivityMarkerPageUrl({ source: 'activity', source_id: 456 })).toBe('/pages/activity/index?id=456')
+  })
+
   it('keeps home map and list marker flows activity-only', () => {
     const home = readSource('src', 'pages', 'index', 'index.tsx')
     const list = readSource('src', 'pages', 'activity-list', 'index.tsx')

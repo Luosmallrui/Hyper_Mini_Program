@@ -1,7 +1,8 @@
-import { Image, Input, Picker, ScrollView, Text, View } from '@tarojs/components'
+import { Image, Input, Picker, ScrollView, Text, Textarea, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { CHENGDU_CITY, CHENGDU_DISTRICTS, CHENGDU_PROVINCE, fetchChengduDistricts } from '@/utils/chengdu-region'
+import { chooseUserLocation } from '@/utils/user-location'
 import {
   applyWithdraw,
   fetchAccount,
@@ -15,8 +16,10 @@ import {
   updateOrganizerBasic,
   updateOrganizerMarkerIcon,
   updateOrganizerRegion,
+  updateOrganizerVenueProfile,
   updateWithdrawalInfo,
   uploadOrganizerAsset,
+  type OrganizerProfileData,
 } from '../adapter'
 import type { OrganizerAccount, OrganizerWithdrawalInfo, OrganizerWithdrawRecord } from '../types'
 import iconCert from '../../../../assets/organizer/icon-cert.png'
@@ -27,8 +30,9 @@ import iconPassword from '../../../../assets/organizer/icon-password.png'
 import iconWallet from '../../../../assets/organizer/icon-wallet.png'
 import { CDN_IMAGES } from '@/utils/cdn'
 import { MARKER_ICONS } from '@/utils/marker-icons'
-const powerFlowLogo = CDN_IMAGES.powerFlowLogo
 import './index.scss'
+
+const powerFlowLogo = CDN_IMAGES.powerFlowLogo
 
 interface OrganizerAccountViewProps {
   onBack?: () => void
@@ -53,6 +57,108 @@ const SETTING_GROUPS = [
     ],
   },
 ]
+
+// 场地主办方（type=venue）：资料修改走二审流程，统一收进「场地资料」入口
+const VENUE_SETTING_GROUPS = [
+  {
+    title: '基本信息',
+    rows: [
+      { label: '场地资料', iconSrc: iconLocation, action: 'venueProfile' },
+    ],
+  },
+  SETTING_GROUPS[1],
+]
+
+/** 场地资料编辑表单（average_spend 按元填写，提交时换算为分） */
+interface VenueProfileEditForm {
+  name: string
+  logo: string
+  province: string
+  city: string
+  district: string
+  marker_icon: string
+  cover_image: string
+  gallery: string[]
+  description: string
+  business_hours: string
+  contact_name: string
+  service_phone: string
+  address: string
+  latitude?: number
+  longitude?: number
+  average_spend: string
+}
+
+const emptyVenueProfileEditForm = (): VenueProfileEditForm => ({
+  name: '',
+  logo: '',
+  province: CHENGDU_PROVINCE,
+  city: CHENGDU_CITY,
+  district: '',
+  marker_icon: '',
+  cover_image: '',
+  gallery: [],
+  description: '',
+  business_hours: '',
+  contact_name: '',
+  service_phone: '',
+  address: '',
+  latitude: undefined,
+  longitude: undefined,
+  average_spend: '',
+})
+
+const fenToYuanInput = (fen?: number) => {
+  const num = Number(fen)
+  return Number.isFinite(num) && num > 0 ? String(num / 100) : ''
+}
+
+/** 场地资料编辑回显：公开资料为基础，存在待审/被驳回的修订快照时优先回填快照值 */
+const buildVenueProfileEditForm = (profile: OrganizerProfileData): VenueProfileEditForm => {
+  const form = emptyVenueProfileEditForm()
+  const vp = profile.venueProfile
+  form.name = profile.name
+  form.logo = profile.logo
+  form.province = profile.province || CHENGDU_PROVINCE
+  form.city = profile.city || CHENGDU_CITY
+  form.district = profile.district
+  form.marker_icon = profile.markerIcon
+  if (vp) {
+    form.cover_image = vp.coverImage
+    form.gallery = [...vp.gallery]
+    form.description = vp.description
+    form.business_hours = vp.businessHours || profile.businessHours
+    form.contact_name = vp.contactName
+    form.service_phone = vp.servicePhone
+    form.address = vp.address
+    form.latitude = vp.latitude
+    form.longitude = vp.longitude
+    form.average_spend = fenToYuanInput(vp.averageSpend)
+  }
+  const revision = profile.pendingProfileRevision
+  if (revision) {
+    if (typeof revision.name === 'string' && revision.name) form.name = revision.name
+    if (typeof revision.logo === 'string' && revision.logo) form.logo = revision.logo
+    if (typeof revision.marker_icon === 'string' && revision.marker_icon) form.marker_icon = revision.marker_icon
+    if (typeof revision.province === 'string' && revision.province) form.province = revision.province
+    if (typeof revision.city === 'string' && revision.city) form.city = revision.city
+    if (typeof revision.district === 'string' && revision.district) form.district = revision.district
+    if (typeof revision.cover_image === 'string') form.cover_image = revision.cover_image
+    if (Array.isArray(revision.gallery)) form.gallery = revision.gallery.filter(Boolean)
+    if (typeof revision.description === 'string') form.description = revision.description
+    if (typeof revision.business_hours === 'string') form.business_hours = revision.business_hours
+    if (typeof revision.contact_name === 'string') form.contact_name = revision.contact_name
+    if (typeof revision.service_phone === 'string') form.service_phone = revision.service_phone
+    if (typeof revision.address === 'string') form.address = revision.address
+    const latitude = Number(revision.latitude)
+    const longitude = Number(revision.longitude)
+    if (Number.isFinite(latitude)) form.latitude = latitude
+    if (Number.isFinite(longitude)) form.longitude = longitude
+    const spend = Number(revision.average_spend)
+    if (Number.isFinite(spend) && spend >= 0) form.average_spend = fenToYuanInput(spend)
+  }
+  return form
+}
 
 const fenToYuanText = (fen?: number) => (Number(fen || 0) / 100).toFixed(2)
 
@@ -79,7 +185,7 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
   const [applyForm, setApplyForm] = useState({ amount: '', remark: '' })
   const [applying, setApplying] = useState(false)
   // 基本信息/账户信息四个设置项的弹窗状态
-  const [settingModal, setSettingModal] = useState<'editOrganizer' | 'editRegion' | 'certification' | 'changePassword' | null>(null)
+  const [settingModal, setSettingModal] = useState<'editOrganizer' | 'editRegion' | 'certification' | 'changePassword' | 'venueProfile' | null>(null)
   const [organizerForm, setOrganizerForm] = useState({ name: '', logo: '', marker_icon: '' })
   const [organizerProfileName, setOrganizerProfileName] = useState('')
   const [organizerSaving, setOrganizerSaving] = useState(false)
@@ -87,6 +193,11 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
   const [regionDistrict, setRegionDistrict] = useState('')
   const [regionDistricts, setRegionDistricts] = useState<string[]>(CHENGDU_DISTRICTS)
   const [regionSaving, setRegionSaving] = useState(false)
+  // 主办方资料（type/场地资料/修订审核状态），venue 主办方的「场地资料」入口与审核提示用
+  const [organizerProfile, setOrganizerProfile] = useState<OrganizerProfileData | null>(null)
+  const [venueForm, setVenueForm] = useState<VenueProfileEditForm>(emptyVenueProfileEditForm())
+  const [venueSaving, setVenueSaving] = useState(false)
+  const [venueImageUploading, setVenueImageUploading] = useState(false)
   const [pwdForm, setPwdForm] = useState({ phone: '', code: '', password: '' })
   const [pwdSaving, setPwdSaving] = useState(false)
   const [sendingCode, setSendingCode] = useState(false)
@@ -110,6 +221,12 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
         if (!mounted) return
         Taro.showToast({ title: '账户信息加载失败', icon: 'none' })
       })
+    fetchOrganizerProfile()
+      .then((profile) => {
+        if (!mounted) return
+        setOrganizerProfile(profile)
+      })
+      .catch(() => {})
     fetchWithdrawRecords()
       .then((res) => {
         if (!mounted) return
@@ -193,6 +310,18 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
       fetchChengduDistricts()
         .then(setRegionDistricts)
         .catch(() => {})
+    } else if (action === 'venueProfile') {
+      setSettingModal('venueProfile')
+      // 回显以 /organizer/profile 为准；存在修订快照时优先回填快照（驳回后可直接修改重提）
+      fetchOrganizerProfile()
+        .then((profile) => {
+          setOrganizerProfile(profile)
+          setVenueForm(buildVenueProfileEditForm(profile))
+        })
+        .catch(() => {})
+      fetchChengduDistricts()
+        .then(setRegionDistricts)
+        .catch(() => {})
     } else if (action === 'certification') {
       setSettingModal('certification')
       fetchOrganizerProfile()
@@ -240,6 +369,24 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
     }
   }
 
+  const handleChooseVenueLogo = async () => {
+    if (venueImageUploading) return
+    try {
+      const res = await Taro.chooseImage({ count: 1, sizeType: ['compressed'], sourceType: ['album', 'camera'] })
+      const filePath = res.tempFilePaths[0]
+      if (!filePath) return
+      setVenueImageUploading(true)
+      const url = await uploadOrganizerAsset(filePath, 'organizer_logo')
+      if (url) updateVenueForm({ logo: url })
+    } catch (error: any) {
+      if (error?.errMsg && !/cancel/.test(error.errMsg)) {
+        Taro.showToast({ title: 'LOGO 上传失败，请重试', icon: 'none' })
+      }
+    } finally {
+      setVenueImageUploading(false)
+    }
+  }
+
   const handleSubmitOrganizer = async () => {
     if (organizerSaving) return
     const name = organizerForm.name.trim()
@@ -282,6 +429,106 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
       Taro.showToast({ title: error?.message || '保存失败，请重试', icon: 'none' })
     } finally {
       setRegionSaving(false)
+    }
+  }
+
+  const updateVenueForm = (patch: Partial<VenueProfileEditForm>) => {
+    setVenueForm((prev) => ({ ...prev, ...patch }))
+  }
+
+  const handleUploadVenueImage = async (target: 'cover' | 'gallery') => {
+    if (venueImageUploading) return
+    try {
+      const res = await Taro.chooseImage({
+        count: target === 'cover' ? 1 : 9,
+        sizeType: ['compressed'],
+        sourceType: ['album', 'camera'],
+      })
+      const filePaths = res.tempFilePaths.filter(Boolean)
+      if (filePaths.length === 0) return
+      setVenueImageUploading(true)
+      Taro.showLoading({ title: '上传中...', mask: true })
+      const urls: string[] = []
+      for (const filePath of filePaths) {
+        urls.push(await uploadOrganizerAsset(filePath, target === 'cover' ? 'venue_cover' : 'venue_gallery'))
+      }
+      if (target === 'cover') {
+        updateVenueForm({ cover_image: urls[0] || '' })
+      } else {
+        updateVenueForm({ gallery: [...venueForm.gallery, ...urls].filter(Boolean) })
+      }
+    } catch (error: any) {
+      if (error?.errMsg && !/cancel/.test(error.errMsg)) {
+        Taro.showToast({ title: '图片上传失败，请重试', icon: 'none' })
+      }
+    } finally {
+      setVenueImageUploading(false)
+      Taro.hideLoading()
+    }
+  }
+
+  const handleChooseVenueAddress = async () => {
+    const location = await chooseUserLocation()
+    if (!location) return
+    updateVenueForm({
+      address: location.address || location.name,
+      latitude: location.latitude,
+      longitude: location.longitude,
+    })
+  }
+
+  const handleSubmitVenueProfile = async () => {
+    if (venueSaving) return
+    const name = venueForm.name.trim()
+    if (!name) {
+      Taro.showToast({ title: '请输入主办方名称', icon: 'none' })
+      return
+    }
+    if (!venueForm.district) {
+      Taro.showToast({ title: '请选择区县', icon: 'none' })
+      return
+    }
+    if (!venueForm.address.trim() || typeof venueForm.latitude !== 'number' || typeof venueForm.longitude !== 'number') {
+      Taro.showToast({ title: '请选择场地地址', icon: 'none' })
+      return
+    }
+    if (!venueForm.business_hours.trim()) {
+      Taro.showToast({ title: '请填写营业时间', icon: 'none' })
+      return
+    }
+    setVenueSaving(true)
+    try {
+      const spendYuan = Number(venueForm.average_spend)
+      await updateOrganizerVenueProfile({
+        name,
+        logo: venueForm.logo,
+        province: venueForm.province || CHENGDU_PROVINCE,
+        city: venueForm.city || CHENGDU_CITY,
+        district: venueForm.district,
+        markerIcon: venueForm.marker_icon,
+        venueProfile: {
+          coverImage: venueForm.cover_image,
+          gallery: venueForm.gallery,
+          description: venueForm.description,
+          businessHours: venueForm.business_hours.trim(),
+          contactName: venueForm.contact_name,
+          servicePhone: venueForm.service_phone,
+          address: venueForm.address.trim(),
+          latitude: venueForm.latitude,
+          longitude: venueForm.longitude,
+          averageSpend: Number.isFinite(spendYuan) && spendYuan > 0 ? Math.round(spendYuan * 100) : 0,
+        },
+      })
+      // 提交后进入二审：刷新修订状态（公开页继续展示旧资料）
+      fetchOrganizerProfile()
+        .then((profile) => setOrganizerProfile(profile))
+        .catch(() => {})
+      setSettingModal(null)
+      Taro.showToast({ title: '已提交审核', icon: 'success' })
+    } catch (error: any) {
+      Taro.showToast({ title: error?.message || '提交失败，请重试', icon: 'none' })
+    } finally {
+      setVenueSaving(false)
     }
   }
 
@@ -368,6 +615,12 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
       Taro.showToast({ title: error?.message || '提交失败，请重试', icon: 'none' })
     }
   }
+
+  // venue 主办方：资料修改走二审（场地资料入口）；merchant 保持原有直接更新入口
+  const isVenueOrganizer = organizerProfile?.type === 'venue'
+  const settingGroups = isVenueOrganizer ? VENUE_SETTING_GROUPS : SETTING_GROUPS
+  const venueRevisionPending = Boolean(organizerProfile?.hasPendingProfileRevision)
+  const venueRevisionReason = organizerProfile?.pendingProfileReason || ''
 
   return (
     <View className="account-page flex-col">
@@ -472,8 +725,22 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
         )}
       </View>
 
+      {/* 场地资料修订审核状态（二审中/驳回原因），点击可进入编辑 */}
+      {isVenueOrganizer && (venueRevisionPending || venueRevisionReason) ? (
+        <View className="account-revision-banner" onClick={() => handleRowAction('venueProfile')}>
+          <View className={`account-audit-card flex-col ${venueRevisionPending ? 'pending' : 'rejected'}`}>
+            <Text className="account-audit-title">{venueRevisionPending ? '场地资料审核中' : '场地资料审核未通过'}</Text>
+            <Text className="account-audit-line">
+              {venueRevisionPending
+                ? '新资料审核通过前，公开页继续展示当前资料。'
+                : (venueRevisionReason || '请修改场地资料后重新提交。')}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
       {/* Setting Groups */}
-      {SETTING_GROUPS.map((group) => {
+      {settingGroups.map((group) => {
         const groupClass = group.title === '基本信息' ? 'is-basic' : 'is-account'
         return (
           <View key={group.title} className={`account-group-block ${groupClass}`}>
@@ -757,6 +1024,186 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
             </Picker>
             <View className={`account-modal-btn ${regionSaving ? 'disabled' : ''}`} onClick={handleSubmitRegion}>
               <Text className="account-modal-btn-text">{regionSaving ? '保存中...' : '保存'}</Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 场地资料 Modal（venue 主办方，提交后进入二审） */}
+      {settingModal === 'venueProfile' && (
+        <View className="account-modal-overlay flex-col" onClick={() => setSettingModal(null)}>
+          <View className="account-modal-card flex-col" onClick={(e) => e.stopPropagation()}>
+            <View className="account-modal-header flex-row justify-between">
+              <View className="account-modal-title-row flex-row justify-between">
+                <View className="account-modal-title-icon">
+                  <View className="account-modal-icon-bar" />
+                </View>
+                <Text className="account-modal-title">场地资料</Text>
+              </View>
+              <Text className="account-modal-close" onClick={() => setSettingModal(null)}>关闭</Text>
+            </View>
+            <View className="account-venue-body">
+              {venueRevisionPending ? (
+                <View className="account-audit-card pending flex-col">
+                  <Text className="account-audit-title">场地资料审核中</Text>
+                  <Text className="account-audit-line">新资料审核通过前，公开页继续展示当前资料。</Text>
+                </View>
+              ) : venueRevisionReason ? (
+                <View className="account-audit-card rejected flex-col">
+                  <Text className="account-audit-title">上次提交未通过</Text>
+                  <Text className="account-audit-line">{venueRevisionReason}</Text>
+                  <Text className="account-audit-tip">修改后可重新提交审核。</Text>
+                </View>
+              ) : null}
+
+              <Text className="account-field-required">*主办方名称</Text>
+              <View className="account-input-shell">
+                <Input
+                  className="account-input"
+                  placeholder="请输入主办方名称"
+                  placeholderClass="account-input-placeholder"
+                  value={venueForm.name}
+                  onInput={(e) => updateVenueForm({ name: e.detail.value })}
+                />
+              </View>
+              <Text className="account-field-required">主办方LOGO</Text>
+              <View className="account-logo-picker flex-row" onClick={handleChooseVenueLogo}>
+                <Image className="account-logo-preview" src={venueForm.logo || powerFlowLogo} mode="aspectFill" />
+                <Text className="account-logo-picker-text">{venueImageUploading ? '上传中...' : '点击更换LOGO'}</Text>
+              </View>
+              <Text className="account-field-required">地图图标（前台地图显示）</Text>
+              <ScrollView className="marker-icon-scroll" scrollY>
+                <View className="marker-icon-grid">
+                  {MARKER_ICONS.map((icon) => (
+                    <View
+                      key={icon.key}
+                      className={`marker-icon-item ${venueForm.marker_icon === icon.url ? 'active' : ''}`}
+                      onClick={() => updateVenueForm({ marker_icon: icon.url })}
+                    >
+                      <Image src={icon.url} className="marker-icon-img" mode="aspectFit" />
+                      <Text className={`marker-icon-name ${venueForm.marker_icon === icon.url ? 'active' : ''}`}>{icon.name}</Text>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+
+              <Text className="account-field-required">*所在地区</Text>
+              <View className="account-input-shell">
+                <Text className="account-region-text">四川省 / 成都市</Text>
+              </View>
+              <Picker
+                mode="selector"
+                range={regionDistricts}
+                onChange={(e) => {
+                  const index = Number(e.detail.value)
+                  if (Number.isInteger(index) && index >= 0 && index < regionDistricts.length) {
+                    updateVenueForm({ district: regionDistricts[index] })
+                  }
+                }}
+              >
+                <View className="account-input-shell">
+                  <Text className={`account-region-text ${venueForm.district ? '' : 'is-placeholder'}`}>
+                    {venueForm.district || '请选择区县'}
+                  </Text>
+                </View>
+              </Picker>
+
+              <Text className="account-field-required">*场地地址（地图选点）</Text>
+              <View className="account-input-shell" onClick={handleChooseVenueAddress}>
+                <Text className={`account-region-text ${venueForm.address ? '' : 'is-placeholder'}`}>
+                  {venueForm.address || '点击选择场地地址'}
+                </Text>
+              </View>
+              {typeof venueForm.latitude === 'number' && typeof venueForm.longitude === 'number' && (
+                <Text className="account-venue-coord">
+                  已选坐标：{venueForm.latitude.toFixed(6)}, {venueForm.longitude.toFixed(6)}
+                </Text>
+              )}
+
+              <Text className="account-field-required">*营业时间</Text>
+              <View className="account-input-shell">
+                <Input
+                  className="account-input"
+                  placeholder="如 19:30-次日02:30"
+                  placeholderClass="account-input-placeholder"
+                  value={venueForm.business_hours}
+                  onInput={(e) => updateVenueForm({ business_hours: e.detail.value })}
+                />
+              </View>
+
+              <Text className="account-field-required">场地封面</Text>
+              <View className="account-venue-upload" onClick={() => handleUploadVenueImage('cover')}>
+                <Text className="account-venue-upload-title">
+                  {venueImageUploading ? '上传中...' : venueForm.cover_image ? '已上传场地封面' : '点击上传场地封面'}
+                </Text>
+              </View>
+
+              <Text className="account-field-required">场地图册</Text>
+              <View className="account-venue-upload" onClick={() => handleUploadVenueImage('gallery')}>
+                <Text className="account-venue-upload-title">
+                  {venueImageUploading ? '上传中...' : `点击上传图册图片（已传 ${venueForm.gallery.length} 张）`}
+                </Text>
+              </View>
+              {venueForm.gallery.length > 0 && (
+                <View className="account-venue-gallery">
+                  {venueForm.gallery.map((url, index) => (
+                    <View key={`${url}-${index}`} className="account-venue-gallery-item">
+                      <Image src={url} className="account-venue-gallery-img" mode="aspectFill" />
+                      <Text
+                        className="account-venue-gallery-remove"
+                        onClick={() => updateVenueForm({ gallery: venueForm.gallery.filter((_, i) => i !== index) })}
+                      >×</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <Text className="account-field-required">场地介绍</Text>
+              <View className="account-input-shell account-venue-textarea-shell">
+                <Textarea
+                  className="account-input account-venue-textarea"
+                  placeholder="请输入场地介绍"
+                  placeholderClass="account-input-placeholder"
+                  value={venueForm.description}
+                  onInput={(e) => updateVenueForm({ description: e.detail.value })}
+                />
+              </View>
+
+              <Text className="account-field-required">联系人</Text>
+              <View className="account-input-shell">
+                <Input
+                  className="account-input"
+                  placeholder="请输入联系人"
+                  placeholderClass="account-input-placeholder"
+                  value={venueForm.contact_name}
+                  onInput={(e) => updateVenueForm({ contact_name: e.detail.value })}
+                />
+              </View>
+              <Text className="account-field-required">客服电话</Text>
+              <View className="account-input-shell">
+                <Input
+                  className="account-input"
+                  type="number"
+                  placeholder="请输入客服电话"
+                  placeholderClass="account-input-placeholder"
+                  value={venueForm.service_phone}
+                  onInput={(e) => updateVenueForm({ service_phone: e.detail.value })}
+                />
+              </View>
+              <Text className="account-field-required">人均消费（元）</Text>
+              <View className="account-input-shell">
+                <Input
+                  className="account-input"
+                  type="digit"
+                  placeholder="请输入人均消费"
+                  placeholderClass="account-input-placeholder"
+                  value={venueForm.average_spend}
+                  onInput={(e) => updateVenueForm({ average_spend: e.detail.value })}
+                />
+              </View>
+            </View>
+            <View className={`account-modal-btn ${venueSaving || venueImageUploading ? 'disabled' : ''}`} onClick={handleSubmitVenueProfile}>
+              <Text className="account-modal-btn-text">{venueSaving ? '提交中...' : '提交审核'}</Text>
             </View>
           </View>
         </View>

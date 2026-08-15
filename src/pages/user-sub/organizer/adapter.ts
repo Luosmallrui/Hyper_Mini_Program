@@ -7,7 +7,6 @@ import {
   organizerPosterSlots,
   organizerTicketSpecs,
   settlementApplyInitialForm,
-  todayDateString,
 } from './mock'
 import type {
   CreateActivityDraft,
@@ -398,6 +397,10 @@ export interface OrganizerAuditStatusData {
   rejectReason: string
   submittedAt: string
   reviewedAt: string
+  /** 场地资料修订二审中 */
+  hasPendingProfileRevision: boolean
+  /** 场地资料修订驳回原因 */
+  pendingProfileReason: string
 }
 
 export interface OrganizerApplyResult {
@@ -415,6 +418,10 @@ type ApiOrganizerAuditStatus = {
   reject_reason?: string
   submitted_at?: string
   reviewed_at?: string
+  /** 场地资料修订二审中（见 docs/organizer_venue_activity_model_api_20260815.md §2） */
+  has_pending_profile_revision?: boolean | number
+  /** 场地资料修订驳回原因 */
+  pending_profile_reason?: string
 }
 
 const normalizeOrganizerAuditStatus = (status?: number | string) => {
@@ -436,6 +443,8 @@ export const fetchOrganizerAuditStatus = async (): Promise<OrganizerAuditStatusD
     rejectReason: data?.reject_reason || '',
     submittedAt: data?.submitted_at || '',
     reviewedAt: data?.reviewed_at || '',
+    hasPendingProfileRevision: Boolean(data?.has_pending_profile_revision),
+    pendingProfileReason: data?.pending_profile_reason || '',
   }
 }
 
@@ -707,30 +716,144 @@ export const updateOrganizerMarkerIcon = async (markerIcon: string): Promise<voi
   })
 }
 
-/** 主办方资料（名称/logo/省市区/地图业态图标），用于编辑回显与认证信息展示。
+/** 场地固定资料（type=venue 主办方），见 docs/organizer_venue_activity_model_api_20260815.md */
+export interface OrganizerVenueProfile {
+  coverImage: string
+  gallery: string[]
+  description: string
+  businessHours: string
+  contactName: string
+  servicePhone: string
+  address: string
+  latitude?: number
+  longitude?: number
+  /** 人均消费，单位分 */
+  averageSpend: number
+}
+
+export interface OrganizerProfileData {
+  name: string
+  logo: string
+  province: string
+  city: string
+  district: string
+  businessHours: string
+  markerIcon: string
+  /** 主办方类型：venue 场地 / merchant 普通活动组织者（兼容旧 party） */
+  type: string
+  venueProfile: OrganizerVenueProfile | null
+  /** 场地资料修订二审中（公开页仍展示旧资料） */
+  hasPendingProfileRevision: boolean
+  /** 场地资料修订驳回原因 */
+  pendingProfileReason: string
+  /** 待审核/被驳回的场地新资料快照 */
+  pendingProfileRevision: Record<string, any> | null
+}
+
+type ApiOrganizerProfile = {
+  name?: string
+  logo?: string
+  province?: string
+  city?: string
+  district?: string
+  type?: string
+  business_hours?: string
+  marker_icon?: string
+  venue_profile?: {
+    cover_image?: string
+    gallery?: string[]
+    description?: string
+    business_hours?: string
+    contact_name?: string
+    service_phone?: string
+    address?: string
+    latitude?: number | string
+    longitude?: number | string
+    average_spend?: number | string
+  }
+  has_pending_profile_revision?: boolean | number
+  pending_profile_reason?: string
+  pending_profile_revision?: Record<string, any> | null
+}
+
+const toOptionalNumber = (value: unknown): number | undefined => {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : undefined
+}
+
+/** 主办方资料（名称/logo/省市区/地图业态图标/场地资料），用于编辑回显与认证信息展示。
  *  /organizer/info 目前不可用（后端 500），资料一律改从 /organizer/profile 读取。 */
-export const fetchOrganizerProfile = async (): Promise<{ name: string; logo: string; province: string; city: string; district: string; businessHours: string; markerIcon: string }> => {
-  const data = await apiRequest<{ name?: string; logo?: string; province?: string; city?: string; district?: string; business_hours?: string; marker_icon?: string }>({
+export const fetchOrganizerProfile = async (): Promise<OrganizerProfileData> => {
+  const data = await apiRequest<ApiOrganizerProfile>({
     url: '/api/v1/organizer/profile',
     method: 'GET',
   })
+  const rawVenue = data?.venue_profile
+  const venueProfile: OrganizerVenueProfile | null = rawVenue
+    ? {
+        coverImage: rawVenue.cover_image || '',
+        gallery: Array.isArray(rawVenue.gallery) ? rawVenue.gallery.filter(Boolean) : [],
+        description: rawVenue.description || '',
+        businessHours: rawVenue.business_hours || '',
+        contactName: rawVenue.contact_name || '',
+        servicePhone: rawVenue.service_phone || '',
+        address: rawVenue.address || '',
+        latitude: toOptionalNumber(rawVenue.latitude),
+        longitude: toOptionalNumber(rawVenue.longitude),
+        averageSpend: Number(rawVenue.average_spend) || 0,
+      }
+    : null
   return {
     name: data?.name || '',
     logo: data?.logo || '',
     province: data?.province || '',
     city: data?.city || '',
     district: data?.district || '',
-    businessHours: data?.business_hours || '',
+    businessHours: data?.business_hours || rawVenue?.business_hours || '',
     markerIcon: data?.marker_icon || '',
+    type: data?.type || '',
+    venueProfile,
+    hasPendingProfileRevision: Boolean(data?.has_pending_profile_revision),
+    pendingProfileReason: data?.pending_profile_reason || '',
+    pendingProfileRevision: data?.pending_profile_revision && typeof data.pending_profile_revision === 'object'
+      ? data.pending_profile_revision
+      : null,
   }
 }
 
-/** 更新主办方经营时间（场地类型创建时同步回主办方资料） */
-export const updateOrganizerBusinessHours = async (businessHours: string): Promise<void> => {
+/** 场地主办方完整资料修改（二审流程：提交后公开页仍展示旧资料，管理端通过后替换）。
+ *  merchant 主办方的名称/Logo/图标/区域仍走原有直接更新入口。 */
+export const updateOrganizerVenueProfile = async (payload: {
+  name: string
+  logo: string
+  province: string
+  city: string
+  district: string
+  markerIcon: string
+  venueProfile: OrganizerVenueProfile
+}): Promise<void> => {
+  const vp = payload.venueProfile
   await apiRequest<{ success?: boolean }>({
     url: '/api/v1/organizer/profile',
     method: 'PUT',
-    data: { business_hours: businessHours },
+    data: {
+      name: payload.name,
+      logo: payload.logo,
+      province: payload.province,
+      city: payload.city,
+      district: payload.district,
+      marker_icon: payload.markerIcon,
+      cover_image: vp.coverImage,
+      gallery: vp.gallery,
+      description: vp.description,
+      business_hours: vp.businessHours,
+      contact_name: vp.contactName,
+      service_phone: vp.servicePhone,
+      address: vp.address,
+      latitude: vp.latitude,
+      longitude: vp.longitude,
+      average_spend: vp.averageSpend,
+    },
   })
 }
 
@@ -874,9 +997,12 @@ export const getWithdrawStatusLabel = (status: number): string => {
 
 export const getSettlementApplyInitialForm = (): SettlementApplyForm => ({
   ...settlementApplyInitialForm,
+  venue_profile: { ...settlementApplyInitialForm.venue_profile, gallery: [] },
 })
 
 export const submitSettlementApply = async (payload: SettlementApplyForm): Promise<OrganizerApplyResult> => {
+  const isVenue = payload.type === 'venue'
+  const venueProfile = payload.venue_profile
   const data = await apiRequest<{
     application_id?: number | string
     status?: number | string
@@ -890,8 +1016,25 @@ export const submitSettlementApply = async (payload: SettlementApplyForm): Promi
       province: payload.province,
       city: payload.city,
       district: payload.district,
-      type: payload.type,
+      // 场地传 venue；普通活动组织者按 20260815 契约传 merchant（后端兼容旧 party）
+      type: isVenue ? 'venue' : 'merchant',
       marker_icon: payload.marker_icon,
+      ...(isVenue
+        ? {
+            venue_profile: {
+              cover_image: venueProfile.cover_image,
+              gallery: venueProfile.gallery,
+              description: venueProfile.description,
+              business_hours: venueProfile.business_hours,
+              contact_name: venueProfile.contact_name,
+              service_phone: venueProfile.service_phone,
+              address: venueProfile.address,
+              latitude: venueProfile.latitude,
+              longitude: venueProfile.longitude,
+              average_spend: yuanToFen(venueProfile.average_spend),
+            },
+          }
+        : {}),
     },
   })
   return {
@@ -1119,10 +1262,13 @@ const syncTicketSpecs = async (
   }
 }
 
-export const submitActivityDraft = async (draft: CreateActivityDraft): Promise<number> => {
+export const submitActivityDraft = async (
+  draft: CreateActivityDraft,
+  options?: { venueAddressLocked?: boolean },
+): Promise<number> => {
   const range = parseDateRangeValue(draft.dateRange)
-  // 场地类型为长期展示，不选活动日期：按“长期有效”提交（今天 ~ 2099-12-31）
-  const isVenue = draft.type === 'venue'
+  // 场地主办方的活动地址由后端强制使用已审核场地资料，前端不再提交 step2 位置字段
+  const venueAddressLocked = Boolean(options?.venueAddressLocked)
   // 编辑已有活动：所有 step 都携带 activity_id；后端在 status=3 被修改时自动转为 status=1（二次审核）
   const editingId = draft.id ? Number(draft.id) : undefined
   const orig = draft.originalDraft
@@ -1135,25 +1281,21 @@ export const submitActivityDraft = async (draft: CreateActivityDraft): Promise<n
     return JSON.stringify(current ?? null) !== JSON.stringify(previous ?? null)
   }
 
-  const startTime = isVenue ? ensureTimeSuffix(todayDateString()) : ensureTimeSuffix(range.start)
-  const endTime = isVenue ? '2099-12-31 23:59:59' : ensureTimeSuffix(range.end)
+  const startTime = ensureTimeSuffix(range.start)
+  const endTime = ensureTimeSuffix(range.end)
 
-  // Step 1：基础资料
+  // Step 1：基础资料（活动发布仅支持 party，见 docs/organizer_venue_activity_model_api_20260815.md §4）
   const step1Fields: Record<string, unknown> = {}
   if (changed(draft.type, orig?.type)) step1Fields.type = draft.type
   if (changed(draft.name, orig?.name)) step1Fields.name = draft.name
   if (changed(draft.shareTitle, orig?.shareTitle)) step1Fields.share_title = draft.shareTitle
-  if (isVenue) {
-    if (changed(draft.businessHours.trim(), orig?.businessHours?.trim())) step1Fields.business_hours = draft.businessHours.trim()
-  } else {
-    const origStart = orig ? ensureTimeSuffix(parseDateRangeValue(orig.dateRange).start) : undefined
-    if (changed(startTime, origStart)) {
-      step1Fields.start_time = startTime
-      step1Fields.end_time = endTime
-    }
-    if (changed(draft.realNameRequired, orig?.realNameRequired)) step1Fields.real_name_mode = draft.realNameRequired ? 1 : 0
-    if (changed(draft.minorCheckRequired, orig?.minorCheckRequired)) step1Fields.minor_check = draft.minorCheckRequired ? 1 : 0
+  const origStart = orig ? ensureTimeSuffix(parseDateRangeValue(orig.dateRange).start) : undefined
+  if (changed(startTime, origStart)) {
+    step1Fields.start_time = startTime
+    step1Fields.end_time = endTime
   }
+  if (changed(draft.realNameRequired, orig?.realNameRequired)) step1Fields.real_name_mode = draft.realNameRequired ? 1 : 0
+  if (changed(draft.minorCheckRequired, orig?.minorCheckRequired)) step1Fields.minor_check = draft.minorCheckRequired ? 1 : 0
   if (changed(draft.tagIds, orig?.tagIds ?? [])) step1Fields.tag_ids = draft.tagIds
   if (changed(draft.summary, orig?.summary)) step1Fields.description = draft.summary
 
@@ -1176,22 +1318,24 @@ export const submitActivityDraft = async (draft: CreateActivityDraft): Promise<n
     activityId = step1.activity_id
   }
 
-  // Step 2：地址
-  const step2Fields: Record<string, unknown> = {}
-  if (changed(draft.province || '', orig?.province || '')) step2Fields.province = draft.province || ''
-  if (changed(draft.city || '', orig?.city || '')) step2Fields.city = draft.city || ''
-  if (changed(draft.district, orig?.district)) step2Fields.district = draft.district
-  const addressValue = draft.address || draft.locationName
-  const origAddressValue = orig ? orig.address || orig.locationName : undefined
-  if (changed(addressValue, origAddressValue)) step2Fields.address = addressValue
-  if (changed(draft.latitude, orig?.latitude)) step2Fields.latitude = draft.latitude
-  if (changed(draft.longitude, orig?.longitude)) step2Fields.longitude = draft.longitude
-  if (!isEdit || Object.keys(step2Fields).length > 0) {
-    await apiRequest<{ activity_id: number }>({
-      url: '/api/v1/activity/create',
-      method: 'POST',
-      data: { activity_id: activityId, step: 2, ...step2Fields },
-    })
+  // Step 2：地址（场地主办方跳过：地址由后端强制使用已审核场地资料）
+  if (!venueAddressLocked) {
+    const step2Fields: Record<string, unknown> = {}
+    if (changed(draft.province || '', orig?.province || '')) step2Fields.province = draft.province || ''
+    if (changed(draft.city || '', orig?.city || '')) step2Fields.city = draft.city || ''
+    if (changed(draft.district, orig?.district)) step2Fields.district = draft.district
+    const addressValue = draft.address || draft.locationName
+    const origAddressValue = orig ? orig.address || orig.locationName : undefined
+    if (changed(addressValue, origAddressValue)) step2Fields.address = addressValue
+    if (changed(draft.latitude, orig?.latitude)) step2Fields.latitude = draft.latitude
+    if (changed(draft.longitude, orig?.longitude)) step2Fields.longitude = draft.longitude
+    if (!isEdit || Object.keys(step2Fields).length > 0) {
+      await apiRequest<{ activity_id: number }>({
+        url: '/api/v1/activity/create',
+        method: 'POST',
+        data: { activity_id: activityId, step: 2, ...step2Fields },
+      })
+    }
   }
 
   // Step 3：海报（逐槽位 diff，仅上传/提交变化的槽位；清空槽位提交空串）
@@ -1226,31 +1370,28 @@ export const submitActivityDraft = async (draft: CreateActivityDraft): Promise<n
     })
   }
 
-  // 场地不支持票券配置：跳过，后端对场地收到非空 ticket_specs 会直接拒绝
   // 票券：新建走 step4 全量创建；编辑走专用接口 diff（step4 是旧兼容入口，缺失票券不会自动删除）
-  if (!isVenue) {
-    if (editingId) {
-      await syncTicketSpecs(activityId, draft.ticketSpecs, orig?.ticketSpecs ?? [])
-    } else {
-      await apiRequest<{ activity_id: number }>({
-        url: '/api/v1/activity/create',
-        method: 'POST',
-        data: {
-          activity_id: activityId,
-          step: 4,
-          ticket_specs: draft.ticketSpecs.map((item) => ({
-            name: item.name,
-            is_enabled: item.enabled ? 1 : 0,
-            sale_start: ensureTimeSuffix(item.startAt),
-            sale_end: ensureTimeSuffix(item.endAt),
-            price: yuanToFen(item.price),
-            stock: normalizeCount(item.stock),
-            purchase_limit: normalizeCount(item.limit),
-            max_attendees: normalizeCount(item.attendees, 1),
-          })),
-        },
-      })
-    }
+  if (editingId) {
+    await syncTicketSpecs(activityId, draft.ticketSpecs, orig?.ticketSpecs ?? [])
+  } else {
+    await apiRequest<{ activity_id: number }>({
+      url: '/api/v1/activity/create',
+      method: 'POST',
+      data: {
+        activity_id: activityId,
+        step: 4,
+        ticket_specs: draft.ticketSpecs.map((item) => ({
+          name: item.name,
+          is_enabled: item.enabled ? 1 : 0,
+          sale_start: ensureTimeSuffix(item.startAt),
+          sale_end: ensureTimeSuffix(item.endAt),
+          price: yuanToFen(item.price),
+          stock: normalizeCount(item.stock),
+          purchase_limit: normalizeCount(item.limit),
+          max_attendees: normalizeCount(item.attendees, 1),
+        })),
+      },
+    })
   }
 
   // Step 5：资质（仅 http 地址会提交，与既有逻辑一致）

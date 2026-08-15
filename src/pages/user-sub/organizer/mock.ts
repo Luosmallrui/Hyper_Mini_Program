@@ -10,6 +10,7 @@ import {
   VerifierItem,
 } from './types'
 import { CDN_IMAGES } from '@/utils/cdn'
+
 const powerFlowLogo = CDN_IMAGES.powerFlowLogo
 const posterPowerFlow = CDN_IMAGES.mockPowerFlowCover
 const posterBadSofa = CDN_IMAGES.mockBadSofaCover
@@ -176,6 +177,18 @@ export const settlementApplyInitialForm: SettlementApplyForm = {
   district: '',
   type: 'party',
   marker_icon: '',
+  venue_profile: {
+    cover_image: '',
+    gallery: [],
+    description: '',
+    business_hours: '',
+    contact_name: '',
+    service_phone: '',
+    address: '',
+    latitude: undefined,
+    longitude: undefined,
+    average_spend: '',
+  },
 }
 
 export const mockVerifyRecords = [

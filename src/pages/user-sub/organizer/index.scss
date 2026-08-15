@@ -188,6 +188,120 @@ page {
   line-height: 32rpx;
 }
 
+.settlement-type-row {
+  margin-top: 16rpx;
+  display: flex;
+  gap: 20rpx;
+}
+
+.settlement-type-option {
+  flex: 1;
+  height: 92rpx;
+  border-radius: 24rpx;
+  border: 2rpx solid rgba(151, 151, 151, 0.76);
+  background: rgba(42, 41, 41, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.settlement-type-option.active {
+  border-color: #fff;
+}
+
+.settlement-type-text {
+  color: rgba(142, 142, 142, 1);
+  font-size: 26rpx;
+  line-height: 38rpx;
+}
+
+.settlement-type-text.active {
+  color: #fff;
+}
+
+.marker-icon-scroll {
+  margin-top: 16rpx;
+  max-height: 420rpx;
+}
+
+.marker-icon-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.marker-icon-item {
+  width: 150rpx;
+  border-radius: 16rpx;
+  border: 2rpx solid rgba(151, 151, 151, 0.4);
+  background: rgba(42, 41, 41, 1);
+  padding: 16rpx 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.marker-icon-item.active {
+  border-color: #fff;
+}
+
+.marker-icon-img {
+  width: 56rpx;
+  height: 56rpx;
+}
+
+.marker-icon-name {
+  margin-top: 8rpx;
+  color: rgba(142, 142, 142, 1);
+  font-size: 20rpx;
+  line-height: 28rpx;
+}
+
+.marker-icon-name.active {
+  color: #fff;
+}
+
+.settlement-textarea {
+  min-height: 126rpx;
+  padding: 24rpx 0;
+}
+
+.settlement-gallery-row {
+  margin-top: 16rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.settlement-gallery-item {
+  position: relative;
+  width: 150rpx;
+  height: 150rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.settlement-gallery-img {
+  width: 100%;
+  height: 100%;
+}
+
+.settlement-gallery-remove {
+  position: absolute;
+  top: 6rpx;
+  right: 6rpx;
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 18rpx;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 26rpx;
+  line-height: 36rpx;
+  text-align: center;
+}
+
 .settlement-footer {
   width: 690rpx;
   margin-top: 34rpx;

@@ -1,11 +1,12 @@
 import { AtIcon } from 'taro-ui';
 import 'taro-ui/dist/style/index.scss';
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, Button, Image, Input, ScrollView, Picker } from '@tarojs/components';
+import { View, Text, Button, Image, Input, ScrollView, Picker, Textarea } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { cacheUserInfo, normalizeUserInfoPayload } from '@/utils/user-info';
 import { requireLogin } from '@/utils/auth';
 import { CHENGDU_CITY, CHENGDU_DISTRICTS, CHENGDU_PROVINCE, fetchChengduDistricts } from '@/utils/chengdu-region';
+import { chooseUserLocation } from '@/utils/user-location';
 import { setTabBarIndex } from '../../store/tabbar';
 import { request } from '../../utils/request';
 import { CDN_IMAGES } from '@/utils/cdn';
@@ -20,7 +21,7 @@ import {
   submitSettlementApply as submitSettlementApplyRequest,
   uploadOrganizerAsset
 } from '../user-sub/organizer/adapter';
-import type { SettlementApplyForm } from '../user-sub/organizer/types';
+import type { SettlementApplyForm, VenueProfileForm } from '../user-sub/organizer/types';
 import './index.scss';
 
 const BASE_URL = 'https://www.hypercn.cn';
@@ -146,6 +147,7 @@ export default function UserPage() {
   const [settlementDistricts, setSettlementDistricts] = useState<string[]>(CHENGDU_DISTRICTS);
   const [settlementSubmitting, setSettlementSubmitting] = useState(false);
   const [settlementLogoUploading, setSettlementLogoUploading] = useState(false);
+  const [venueImageUploading, setVenueImageUploading] = useState(false);
   const [, setOrganizerAuditStatus] = useState<number | null>(null);
   const [mainNavScrolling, setMainNavScrolling] = useState(false);
   const mainNavScrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -929,6 +931,59 @@ export default function UserPage() {
     setTimeout(hideNativeTabBar, 0);
   };
 
+  const updateVenueProfile = (patch: Partial<VenueProfileForm>) => {
+    setSettlementForm(prev => ({
+      ...prev,
+      venue_profile: { ...prev.venue_profile, ...patch }
+    }));
+  };
+
+  const handleUploadVenueImage = async (target: 'cover' | 'gallery') => {
+    if (venueImageUploading) return;
+    try {
+      const res = await Taro.chooseImage({
+        count: target === 'cover' ? 1 : 9,
+        sizeType: ['compressed'],
+        sourceType: ['album', 'camera']
+      });
+      const filePaths = res.tempFilePaths.filter(Boolean);
+      if (filePaths.length === 0) return;
+
+      setVenueImageUploading(true);
+      Taro.showLoading({ title: '上传中...', mask: true });
+      const urls: string[] = [];
+      for (const filePath of filePaths) {
+        urls.push(await uploadOrganizerAsset(filePath, target === 'cover' ? 'venue_cover' : 'venue_gallery'));
+      }
+      if (target === 'cover') {
+        updateVenueProfile({ cover_image: urls[0] || '' });
+      } else {
+        const gallery = [...settlementForm.venue_profile.gallery, ...urls].filter(Boolean);
+        updateVenueProfile({ gallery });
+      }
+      Taro.showToast({ title: '上传成功', icon: 'success' });
+    } catch (error: any) {
+      const message = String(error?.errMsg || '');
+      if (!message.includes('cancel')) {
+        Taro.showToast({ title: error?.message || '上传失败，请重试', icon: 'none' });
+      }
+    } finally {
+      setVenueImageUploading(false);
+      Taro.hideLoading();
+    }
+  };
+
+  const handleChooseVenueAddress = async () => {
+    const location = await chooseUserLocation();
+    setTimeout(hideNativeTabBar, 0);
+    if (!location) return;
+    updateVenueProfile({
+      address: location.address || location.name,
+      latitude: location.latitude,
+      longitude: location.longitude
+    });
+  };
+
   const handleUploadSettlementLogo = async () => {
     if (settlementLogoUploading) return;
     try {
@@ -964,6 +1019,17 @@ export default function UserPage() {
     if (!settlementForm.province || !settlementForm.city || !settlementForm.district) {
       Taro.showToast({ title: '请选择区县', icon: 'none' });
       return;
+    }
+    if (settlementForm.type === 'venue') {
+      const venueProfile = settlementForm.venue_profile;
+      if (!venueProfile.address.trim() || typeof venueProfile.latitude !== 'number' || typeof venueProfile.longitude !== 'number') {
+        Taro.showToast({ title: '请选择场地地址', icon: 'none' });
+        return;
+      }
+      if (!venueProfile.business_hours.trim()) {
+        Taro.showToast({ title: '请填写营业时间', icon: 'none' });
+        return;
+      }
     }
 
     setSettlementSubmitting(true);
@@ -1483,6 +1549,112 @@ export default function UserPage() {
                       ))}
                     </View>
                   </ScrollView>
+
+                  <Text className="settlement-field-label">*场地地址（地图选点）</Text>
+                  <View className="settlement-input-shell" onClick={handleChooseVenueAddress}>
+                    <Input
+                      className="settlement-input"
+                      disabled
+                      placeholder="点击选择场地地址"
+                      placeholderClass="settlement-placeholder"
+                      value={settlementForm.venue_profile.address}
+                    />
+                  </View>
+                  {typeof settlementForm.venue_profile.latitude === 'number' && typeof settlementForm.venue_profile.longitude === 'number' && (
+                    <Text className="settlement-upload-tip">
+                      已选坐标：{settlementForm.venue_profile.latitude.toFixed(6)}, {settlementForm.venue_profile.longitude.toFixed(6)}
+                    </Text>
+                  )}
+
+                  <Text className="settlement-field-label">*营业时间</Text>
+                  <View className="settlement-input-shell">
+                    <Input
+                      className="settlement-input"
+                      placeholder="如 19:30-次日02:30"
+                      placeholderClass="settlement-placeholder"
+                      value={settlementForm.venue_profile.business_hours}
+                      onInput={(event) => updateVenueProfile({ business_hours: event.detail.value })}
+                    />
+                  </View>
+
+                  <Text className="settlement-field-label">场地封面</Text>
+                  <View className="settlement-upload-shell" onClick={() => handleUploadVenueImage('cover')}>
+                    <Text className="settlement-upload-title">
+                      {venueImageUploading ? '上传中...' : settlementForm.venue_profile.cover_image ? '已上传场地封面' : '点击上传场地封面'}
+                    </Text>
+                    <Text className="settlement-upload-tip">
+                      {settlementForm.venue_profile.cover_image || '上传成功后自动解析并回填封面 URL。'}
+                    </Text>
+                  </View>
+
+                  <Text className="settlement-field-label">场地图册</Text>
+                  <View className="settlement-upload-shell" onClick={() => handleUploadVenueImage('gallery')}>
+                    <Text className="settlement-upload-title">
+                      {venueImageUploading ? '上传中...' : '点击上传图册图片（可多选）'}
+                    </Text>
+                    <Text className="settlement-upload-tip">已上传 {settlementForm.venue_profile.gallery.length} 张。</Text>
+                  </View>
+                  {settlementForm.venue_profile.gallery.length > 0 && (
+                    <View className="settlement-gallery-row">
+                      {settlementForm.venue_profile.gallery.map((url, index) => (
+                        <View key={`${url}-${index}`} className="settlement-gallery-item">
+                          <Image src={url} className="settlement-gallery-img" mode="aspectFill" />
+                          <Text
+                            className="settlement-gallery-remove"
+                            onClick={() => updateVenueProfile({
+                              gallery: settlementForm.venue_profile.gallery.filter((_, i) => i !== index)
+                            })}
+                          >×</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  <Text className="settlement-field-label">场地介绍</Text>
+                  <View className="settlement-textarea-shell">
+                    <Textarea
+                      className="settlement-input settlement-textarea"
+                      placeholder="请输入场地介绍"
+                      placeholderClass="settlement-placeholder"
+                      value={settlementForm.venue_profile.description}
+                      onInput={(event) => updateVenueProfile({ description: event.detail.value })}
+                    />
+                  </View>
+
+                  <Text className="settlement-field-label">联系人</Text>
+                  <View className="settlement-input-shell">
+                    <Input
+                      className="settlement-input"
+                      placeholder="请输入联系人"
+                      placeholderClass="settlement-placeholder"
+                      value={settlementForm.venue_profile.contact_name}
+                      onInput={(event) => updateVenueProfile({ contact_name: event.detail.value })}
+                    />
+                  </View>
+
+                  <Text className="settlement-field-label">客服电话</Text>
+                  <View className="settlement-input-shell">
+                    <Input
+                      className="settlement-input"
+                      type="number"
+                      placeholder="请输入客服电话"
+                      placeholderClass="settlement-placeholder"
+                      value={settlementForm.venue_profile.service_phone}
+                      onInput={(event) => updateVenueProfile({ service_phone: event.detail.value })}
+                    />
+                  </View>
+
+                  <Text className="settlement-field-label">人均消费（元）</Text>
+                  <View className="settlement-input-shell">
+                    <Input
+                      className="settlement-input"
+                      type="digit"
+                      placeholder="请输入人均消费"
+                      placeholderClass="settlement-placeholder"
+                      value={settlementForm.venue_profile.average_spend}
+                      onInput={(event) => updateVenueProfile({ average_spend: event.detail.value })}
+                    />
+                  </View>
                 </>
               )}
 

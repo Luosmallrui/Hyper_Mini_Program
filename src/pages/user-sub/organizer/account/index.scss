@@ -922,3 +922,88 @@
   font-family: PingFangSC-Medium;
   font-weight: 500;
 }
+
+// 场地资料修订审核状态横幅（页面级，复用 account-audit-card 样式）
+.account-revision-banner {
+  margin: 31rpx 30rpx 0;
+}
+
+.account-revision-banner .account-audit-card {
+  margin-top: 0;
+}
+
+// 场地资料编辑弹窗
+.account-venue-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.account-venue-coord {
+  margin-top: 12rpx;
+  color: rgba(142, 142, 142, 1);
+  font-size: 22rpx;
+  line-height: 32rpx;
+}
+
+.account-venue-upload {
+  margin-top: 18rpx;
+  min-height: 98rpx;
+  border-radius: 24rpx;
+  border: 2rpx dashed rgba(151, 151, 151, 0.76);
+  background: rgba(42, 41, 41, 1);
+  display: flex;
+  align-items: center;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+}
+
+.account-venue-upload-title {
+  color: rgba(255, 255, 255, 1);
+  font-size: 24rpx;
+  line-height: 34rpx;
+  word-break: break-all;
+}
+
+.account-venue-gallery {
+  margin-top: 16rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.account-venue-gallery-item {
+  position: relative;
+  width: 150rpx;
+  height: 150rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.account-venue-gallery-img {
+  width: 100%;
+  height: 100%;
+}
+
+.account-venue-gallery-remove {
+  position: absolute;
+  top: 6rpx;
+  right: 6rpx;
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 18rpx;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 26rpx;
+  line-height: 36rpx;
+  text-align: center;
+}
+
+.account-venue-textarea-shell {
+  min-height: 160rpx;
+  align-items: flex-start;
+}
+
+.account-venue-textarea {
+  min-height: 160rpx;
+  padding: 24rpx 0;
+}

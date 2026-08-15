@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Editor, Image, Input, Map as TaroMap, Picker, ScrollView, Text, View } from '@tarojs/components'
+import { Button, Editor, Image, Input, Map as TaroMap, Picker, ScrollView, Text, Textarea, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
@@ -27,7 +27,6 @@ import {
   loginOrganizerPassword,
   submitActivityDraft,
   submitSettlementApply as submitSettlementApplyRequest,
-  updateOrganizerBusinessHours,
   uploadOrganizerAsset,
   type ContentTagItem,
 } from './adapter'
@@ -35,8 +34,9 @@ import OrganizerMoreView from './more'
 import mapPinFallbackIcon from '../../../assets/icons/map-pin-fallback.png'
 import iconBack from '../../../assets/organizer/icon-back.png'
 import { CDN_IMAGES } from '@/utils/cdn'
-const auditUrgeQrCode = CDN_IMAGES.auditUrgeQrcode
 import { CHENGDU_CITY, CHENGDU_DISTRICTS, CHENGDU_PROVINCE, fetchChengduDistricts } from '../../../utils/chengdu-region'
+import { MARKER_ICONS } from '@/utils/marker-icons'
+import { chooseUserLocation } from '@/utils/user-location'
 import { reverseGeocode, searchByKeyword, type POIItem } from '../../../utils/qqmap'
 import {
   PENDING_VERIFIER_SCAN_KEY,
@@ -58,11 +58,14 @@ import {
   PageDataState,
   SettlementApplyForm,
   TicketSpec,
+  VenueProfileForm,
   VerifyRecordsState,
   VerifyStatus,
   VerifyTicketItem,
 } from './types'
 import './index.scss'
+
+const auditUrgeQrCode = CDN_IMAGES.auditUrgeQrcode
 
 const ALLOW_ORGANIZER_DEBUG = false
 
@@ -113,12 +116,6 @@ const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1
 const getFirstDayOfWeek = (year: number, month: number) => new Date(year, month, 1).getDay()
 const formatDate = (year: number, month: number, day: number) =>
   `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-/** 场地经营时间：解析 "19:30-次日02:30" 这类字符串为起止时刻 */
-const parseBusinessHours = (value: string) => {
-  const m = String(value || '').match(/(\d{1,2}:\d{2})\s*[-~—]\s*(?:次日)?(\d{1,2}:\d{2})/)
-  return { start: m?.[1] || '19:30', end: m?.[2] || '02:30' }
-}
-const formatBusinessHours = (start: string, end: string) => `${start}-${end <= start ? '次日' : ''}${end}`
 
 const formatCalendarDisplayDate = (date: string | null) => {
   if (!date) return ''
@@ -251,15 +248,20 @@ export default function OrganizerPage() {
   // 当前主办方名称（新增核销员弹窗展示）
   const [organizerName, setOrganizerName] = useState('')
 
-  const [organizerBusinessHours, setOrganizerBusinessHours] = useState('')
-  // 入驻类型（audit-status 返回）：创建活动只能按该类型发布，向导里不可切换
+  // 场地主办方的已审核场地地址（发布向导 Step2 只读展示）
+  const [organizerVenueAddress, setOrganizerVenueAddress] = useState('')
+  // 入驻类型（audit-status 返回）：venue 场地 / 其他为普通活动组织者
   const [organizerType, setOrganizerType] = useState<'party' | 'venue'>('party')
 
   useEffect(() => {
     fetchOrganizerProfile()
       .then((profile) => {
         setOrganizerName(profile.name)
-        setOrganizerBusinessHours(profile.businessHours)
+        setOrganizerVenueAddress(
+          [profile.province, profile.city, profile.district, profile.venueProfile?.address || '']
+            .filter(Boolean)
+            .join(' '),
+        )
       })
       .catch(() => {})
   }, [])
@@ -277,6 +279,7 @@ export default function OrganizerPage() {
   const addressJustPickedRef = useRef(false)
   const [settlementSubmitting, setSettlementSubmitting] = useState(false)
   const [settlementLogoUploading, setSettlementLogoUploading] = useState(false)
+  const [venueImageUploading, setVenueImageUploading] = useState(false)
   const [organizerLoginPhone, setOrganizerLoginPhone] = useState('')
   const [organizerLoginPassword, setOrganizerLoginPassword] = useState('')
   const [organizerLoginSubmitting, setOrganizerLoginSubmitting] = useState(false)
@@ -682,13 +685,8 @@ export default function OrganizerPage() {
     setDashboardView('createWizard')
     setActivityTab('mine')
     setWizardStep(step)
+    // 活动发布仅支持 party（docs/organizer_venue_activity_model_api_20260815.md §4）
     const nextDraft = ALLOW_ORGANIZER_DEBUG ? createDevPrefillDraft() : createInitialDraft()
-    // 活动类型跟随入驻类型，向导内不可切换
-    nextDraft.type = organizerType
-    // 场地用经营时间：默认带出主办方资料里的经营时间
-    if (organizerType === 'venue' && !nextDraft.businessHours && organizerBusinessHours) {
-      nextDraft.businessHours = organizerBusinessHours
-    }
     setDraft(nextDraft)
   }
 
@@ -697,8 +695,6 @@ export default function OrganizerPage() {
     Taro.showLoading({ title: '加载中...', mask: true })
     try {
       const fullDraft = await fetchActivityDetail(item.id)
-      // 详情可能不含 type（旧数据），保持按入驻类型锁定
-      fullDraft.type = organizerType
       // 保存原始详情快照，供提交时做字段级 diff（后端以“字段是否出现”判断修改）
       fullDraft.originalDraft = { ...fullDraft }
       setDashboardView('createWizard')
@@ -1592,19 +1588,11 @@ export default function OrganizerPage() {
   }
 
   const handleSubmitAudit = async () => {
-    // 场地流程第 3 步（上传海报）即最后一步，提交前校验海报
-    if (!validateStep(draft.type === 'venue' ? 3 : 5)) return
+    // 活动发布统一走完整 5 步流程（venue 主办方也不例外，仅 Step2 地址由后端固定）
+    if (!validateStep(5)) return
     Taro.showLoading({ title: '提交中...', mask: true })
     try {
-      const activityId = await submitActivityDraft(draft)
-      // 场地类型：把向导里确认的经营时间同步回主办方资料（venue 详情页展示用）
-      if (draft.type === 'venue' && draft.businessHours.trim()) {
-        try {
-          await updateOrganizerBusinessHours(draft.businessHours.trim())
-        } catch {
-          // 同步失败不阻断发布流程
-        }
-      }
+      const activityId = await submitActivityDraft(draft, { venueAddressLocked: organizerType === 'venue' })
       const nextActivity = { ...createActivityFromDraft(draft), id: String(activityId), auditStatus: 'pending' as const }
       setActivityItems((prev) => [nextActivity, ...prev])
       setAuditPendingSource('activity')
@@ -1731,7 +1719,60 @@ export default function OrganizerPage() {
   )
 
   const updateSettlementForm = <K extends keyof SettlementApplyForm>(key: K, value: SettlementApplyForm[K]) => {
-    setSettlementForm((prev) => ({ ...prev, [key]: value }))
+    setSettlementForm((prev) => ({
+      ...prev,
+      [key]: value,
+      // 切到派对时清空业态图标（只有场地需要地图图标）
+      ...(key === 'type' && value === 'party' ? { marker_icon: '' } : {}),
+    }))
+  }
+
+  const updateVenueProfile = (patch: Partial<VenueProfileForm>) => {
+    setSettlementForm((prev) => ({ ...prev, venue_profile: { ...prev.venue_profile, ...patch } }))
+  }
+
+  const handleUploadVenueImage = async (target: 'cover' | 'gallery') => {
+    if (venueImageUploading) return
+    try {
+      const res = await Taro.chooseImage({
+        count: target === 'cover' ? 1 : 9,
+        sizeType: ['compressed'],
+        sourceType: ['album', 'camera'],
+      })
+      const filePaths = res.tempFilePaths.filter(Boolean)
+      if (filePaths.length === 0) return
+
+      setVenueImageUploading(true)
+      Taro.showLoading({ title: '上传中...', mask: true })
+      const urls: string[] = []
+      for (const filePath of filePaths) {
+        urls.push(await uploadOrganizerAsset(filePath, target === 'cover' ? 'venue_cover' : 'venue_gallery'))
+      }
+      if (target === 'cover') {
+        updateVenueProfile({ cover_image: urls[0] || '' })
+      } else {
+        updateVenueProfile({ gallery: [...settlementForm.venue_profile.gallery, ...urls].filter(Boolean) })
+      }
+      Taro.showToast({ title: '上传成功', icon: 'success' })
+    } catch (error: any) {
+      const message = String(error?.errMsg || '')
+      if (!message.includes('cancel')) {
+        Taro.showToast({ title: error?.message || '上传失败，请重试', icon: 'none' })
+      }
+    } finally {
+      setVenueImageUploading(false)
+      Taro.hideLoading()
+    }
+  }
+
+  const handleChooseVenueAddress = async () => {
+    const location = await chooseUserLocation()
+    if (!location) return
+    updateVenueProfile({
+      address: location.address || location.name,
+      latitude: location.latitude,
+      longitude: location.longitude,
+    })
   }
 
   const handleUploadSettlementLogo = async () => {
@@ -1770,6 +1811,17 @@ export default function OrganizerPage() {
       Taro.showToast({ title: '请选择区县', icon: 'none' })
       return
     }
+    if (settlementForm.type === 'venue') {
+      const venueProfile = settlementForm.venue_profile
+      if (!venueProfile.address.trim() || typeof venueProfile.latitude !== 'number' || typeof venueProfile.longitude !== 'number') {
+        Taro.showToast({ title: '请选择场地地址', icon: 'none' })
+        return
+      }
+      if (!venueProfile.business_hours.trim()) {
+        Taro.showToast({ title: '请填写营业时间', icon: 'none' })
+        return
+      }
+    }
 
     setSettlementSubmitting(true)
     try {
@@ -1806,6 +1858,148 @@ export default function OrganizerPage() {
             onInput={(event) => updateSettlementForm('name', event.detail.value)}
           />
         </View>
+
+        <Text className="settlement-field-label">*入驻类型</Text>
+        <View className="settlement-type-row">
+          <View
+            className={`settlement-type-option ${settlementForm.type === 'party' ? 'active' : ''}`}
+            onClick={() => updateSettlementForm('type', 'party')}
+          >
+            <Text className={`settlement-type-text ${settlementForm.type === 'party' ? 'active' : ''}`}>派对</Text>
+          </View>
+          <View
+            className={`settlement-type-option ${settlementForm.type === 'venue' ? 'active' : ''}`}
+            onClick={() => updateSettlementForm('type', 'venue')}
+          >
+            <Text className={`settlement-type-text ${settlementForm.type === 'venue' ? 'active' : ''}`}>场地</Text>
+          </View>
+        </View>
+
+        {settlementForm.type === 'venue' && (
+          <>
+            <Text className="settlement-field-label">*业态图标（地图显示）</Text>
+            <ScrollView className="marker-icon-scroll" scrollY>
+              <View className="marker-icon-grid">
+                {MARKER_ICONS.map((icon) => (
+                  <View
+                    key={icon.key}
+                    className={`marker-icon-item ${settlementForm.marker_icon === icon.url ? 'active' : ''}`}
+                    onClick={() => updateSettlementForm('marker_icon', icon.url)}
+                  >
+                    <Image src={icon.url} className="marker-icon-img" mode="aspectFit" />
+                    <Text className={`marker-icon-name ${settlementForm.marker_icon === icon.url ? 'active' : ''}`}>{icon.name}</Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+
+            <Text className="settlement-field-label">*场地地址（地图选点）</Text>
+            <View className="settlement-input-shell" onClick={handleChooseVenueAddress}>
+              <Input
+                className="settlement-input"
+                disabled
+                placeholder="点击选择场地地址"
+                placeholderClass="dark-placeholder"
+                value={settlementForm.venue_profile.address}
+              />
+            </View>
+            {typeof settlementForm.venue_profile.latitude === 'number' && typeof settlementForm.venue_profile.longitude === 'number' && (
+              <Text className="settlement-upload-tip">
+                已选坐标：{settlementForm.venue_profile.latitude.toFixed(6)}, {settlementForm.venue_profile.longitude.toFixed(6)}
+              </Text>
+            )}
+
+            <Text className="settlement-field-label">*营业时间</Text>
+            <View className="settlement-input-shell">
+              <Input
+                className="settlement-input"
+                placeholder="如 19:30-次日02:30"
+                placeholderClass="dark-placeholder"
+                value={settlementForm.venue_profile.business_hours}
+                onInput={(event) => updateVenueProfile({ business_hours: event.detail.value })}
+              />
+            </View>
+
+            <Text className="settlement-field-label">场地封面</Text>
+            <View className="settlement-upload-shell" onClick={() => handleUploadVenueImage('cover')}>
+              <Text className="settlement-upload-title">
+                {venueImageUploading ? '上传中...' : settlementForm.venue_profile.cover_image ? '已上传场地封面' : '点击上传场地封面'}
+              </Text>
+              <Text className="settlement-upload-tip">
+                {settlementForm.venue_profile.cover_image || '上传成功后自动解析并回填封面 URL。'}
+              </Text>
+            </View>
+
+            <Text className="settlement-field-label">场地图册</Text>
+            <View className="settlement-upload-shell" onClick={() => handleUploadVenueImage('gallery')}>
+              <Text className="settlement-upload-title">
+                {venueImageUploading ? '上传中...' : '点击上传图册图片（可多选）'}
+              </Text>
+              <Text className="settlement-upload-tip">已上传 {settlementForm.venue_profile.gallery.length} 张。</Text>
+            </View>
+            {settlementForm.venue_profile.gallery.length > 0 && (
+              <View className="settlement-gallery-row">
+                {settlementForm.venue_profile.gallery.map((url, index) => (
+                  <View key={`${url}-${index}`} className="settlement-gallery-item">
+                    <Image src={url} className="settlement-gallery-img" mode="aspectFill" />
+                    <Text
+                      className="settlement-gallery-remove"
+                      onClick={() => updateVenueProfile({
+                        gallery: settlementForm.venue_profile.gallery.filter((_, i) => i !== index),
+                      })}
+                    >×</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <Text className="settlement-field-label">场地介绍</Text>
+            <View className="settlement-textarea-shell">
+              <Textarea
+                className="settlement-input settlement-textarea"
+                placeholder="请输入场地介绍"
+                placeholderClass="dark-placeholder"
+                value={settlementForm.venue_profile.description}
+                onInput={(event) => updateVenueProfile({ description: event.detail.value })}
+              />
+            </View>
+
+            <Text className="settlement-field-label">联系人</Text>
+            <View className="settlement-input-shell">
+              <Input
+                className="settlement-input"
+                placeholder="请输入联系人"
+                placeholderClass="dark-placeholder"
+                value={settlementForm.venue_profile.contact_name}
+                onInput={(event) => updateVenueProfile({ contact_name: event.detail.value })}
+              />
+            </View>
+
+            <Text className="settlement-field-label">客服电话</Text>
+            <View className="settlement-input-shell">
+              <Input
+                className="settlement-input"
+                type="number"
+                placeholder="请输入客服电话"
+                placeholderClass="dark-placeholder"
+                value={settlementForm.venue_profile.service_phone}
+                onInput={(event) => updateVenueProfile({ service_phone: event.detail.value })}
+              />
+            </View>
+
+            <Text className="settlement-field-label">人均消费（元）</Text>
+            <View className="settlement-input-shell">
+              <Input
+                className="settlement-input"
+                type="digit"
+                placeholder="请输入人均消费"
+                placeholderClass="dark-placeholder"
+                value={settlementForm.venue_profile.average_spend}
+                onInput={(event) => updateVenueProfile({ average_spend: event.detail.value })}
+              />
+            </View>
+          </>
+        )}
 
         <Text className="settlement-field-label">Logo 图片</Text>
         <View className="settlement-upload-shell" onClick={handleUploadSettlementLogo}>
@@ -1915,8 +2109,8 @@ export default function OrganizerPage() {
   }
 
   const renderStepHeader = () => {
-    // 场地发布不含票券配置与活动资质步骤（后端对场地会拒绝 ticket_specs）
-    const steps = draft.type === 'venue' ? [1, 2, 3] : [1, 2, 3, 4, 5]
+    // 发布向导统一 5 步（活动发布仅支持 party；场地主办方仅 Step2 地址固定，不裁剪步骤）
+    const steps = [1, 2, 3, 4, 5]
     return (
       <View className="wizard-steps">
         {steps.map((step, index) => {
@@ -1942,16 +2136,6 @@ export default function OrganizerPage() {
 
   const renderStepOne = () => (
     <View className="wizard-section">
-      <View className="field-block">
-        <Text className="field-label">活动类型</Text>
-        <View className="activity-type-options">
-          <View className="activity-type-option active">
-            <Text className="activity-type-option-text active">{draft.type === 'venue' ? '场地' : '派对'}</Text>
-          </View>
-        </View>
-        <Text className="activity-type-fixed-hint">活动类型与入驻类型一致，不可切换</Text>
-      </View>
-
       <View className="field-block">
         <Text className="field-label">活动名称</Text>
         <View className="dark-input-shell">
@@ -1982,50 +2166,13 @@ export default function OrganizerPage() {
         </View>
       </View>
 
-      {draft.type === 'venue' ? (
-        <View className="field-block">
-          <Text className="field-label">经营时间</Text>
-          <View className="biz-hours-row">
-            <Picker
-              mode="time"
-              value={parseBusinessHours(draft.businessHours).start}
-              onChange={(event) => {
-                const start = String(event.detail.value)
-                updateDraft('businessHours', formatBusinessHours(start, parseBusinessHours(draft.businessHours).end))
-              }}
-            >
-              <View className="picker-shell biz-hours-picker">
-                <Text className="picker-text">{parseBusinessHours(draft.businessHours).start}</Text>
-              </View>
-            </Picker>
-            <Text className="biz-hours-sep">至</Text>
-            <Picker
-              mode="time"
-              value={parseBusinessHours(draft.businessHours).end}
-              onChange={(event) => {
-                const end = String(event.detail.value)
-                updateDraft('businessHours', formatBusinessHours(parseBusinessHours(draft.businessHours).start, end))
-              }}
-            >
-              <View className="picker-shell biz-hours-picker">
-                <Text className="picker-text">{parseBusinessHours(draft.businessHours).end}</Text>
-              </View>
-            </Picker>
-            {parseBusinessHours(draft.businessHours).end <= parseBusinessHours(draft.businessHours).start && (
-              <Text className="biz-hours-overnight">次日</Text>
-            )}
-          </View>
-          <Text className="biz-hours-tip">场地为长期展示，无需选择活动日期</Text>
+      <View className="field-block">
+        <Text className="field-label">活动日期</Text>
+        <View className="picker-shell" onClick={() => handleChooseDateRange('dateRange')}>
+          <Text className={draft.dateRange ? 'picker-text' : 'dark-placeholder'}>{draft.dateRange || '请选择'}</Text>
+          <AtIcon value="calendar" size={20} color="#fff" />
         </View>
-      ) : (
-        <View className="field-block">
-          <Text className="field-label">活动日期</Text>
-          <View className="picker-shell" onClick={() => handleChooseDateRange('dateRange')}>
-            <Text className={draft.dateRange ? 'picker-text' : 'dark-placeholder'}>{draft.dateRange || '请选择'}</Text>
-            <AtIcon value="calendar" size={20} color="#fff" />
-          </View>
-        </View>
-      )}
+      </View>
 
       <View className="field-block">
         <Text className="field-label">优惠标签（选填）</Text>
@@ -2121,7 +2268,23 @@ export default function OrganizerPage() {
     </View>
   )
 
-  const renderStepTwo = () => (
+  const renderStepTwo = () => {
+    // 场地主办方：活动地址由后端强制使用已审核场地资料，不渲染区县/地址/地图选点控件
+    if (organizerType === 'venue') {
+      return (
+        <View className="wizard-section">
+          <View className="field-block">
+            <Text className="field-label">场地地址</Text>
+            <View className="picker-shell">
+              <Text className="picker-text">{organizerVenueAddress || '活动地址默认使用已审核的场地地址'}</Text>
+            </View>
+            <Text className="biz-hours-tip">场地地址由平台固定，如需修改请在「账户-场地资料」中提交审核</Text>
+          </View>
+        </View>
+      )
+    }
+
+    return (
     <View className="wizard-section">
       <View className="field-block">
         <Text className="field-label">地区</Text>
@@ -2211,7 +2374,8 @@ export default function OrganizerPage() {
         <View className="location-map-shade" />
       </View>
     </View>
-  )
+    )
+  }
 
   const renderStepThree = () => (
     <View className="wizard-section poster-upload-section">
@@ -2238,7 +2402,8 @@ export default function OrganizerPage() {
                     updateDraft('posterSlots', draft.posterSlots.map((s) =>
                       s.key === slot.key ? { ...s, fileName: '', filePath: '' } : s
                     ))
-                  }}>
+                  }}
+                  >
                     <Text>删除</Text>
                   </View>
                 </View>
@@ -2650,8 +2815,7 @@ export default function OrganizerPage() {
   }
 
   const renderWizardFooter = () => {
-    // 场地流程到第 3 步（上传海报）即可提交审核，无活动资质步骤
-    const isLastStep = draft.type === 'venue' ? wizardStep === 3 : wizardStep === 5
+    const isLastStep = wizardStep === 5
     return (
     <View className={`wizard-footer ${wizardStep === 1 ? 'single' : 'multi'}`}>
       {wizardStep > 1 ? (
