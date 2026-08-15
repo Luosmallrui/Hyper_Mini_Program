@@ -124,7 +124,7 @@ const formatCalendarDisplayDate = (date: string | null) => {
   return `${match[1]}-${Number(match[2])}-${Number(match[3])}`
 }
 const parseDateRangeValue = (value: string) => {
-  const matches = value.match(/\d{4}-\d{1,2}-\d{1,2}/g) || []
+  const matches = value.match(/\d{4}-\d{1,2}-\d{1,2}(?:[T\s]\d{1,2}:\d{1,2}(?::\d{1,2})?)?/g) || []
   return {
     start: matches[0] || '',
     end: matches[1] || matches[0] || '',
@@ -925,9 +925,8 @@ export default function OrganizerPage() {
       const m = String(value || '').match(/(\d{1,2}):(\d{1,2})/)
       return m ? `${m[1].padStart(2, '0')}:${m[2].padStart(2, '0')}` : ''
     }
-    const isScheduleRange = target === 'scheduleRange'
-    setCalendarStartTime(isScheduleRange ? (timeOf(initialRange.start) || '00:00') : '00:00')
-    setCalendarEndTime(isScheduleRange ? (timeOf(initialRange.end) || '23:59') : '23:59')
+    setCalendarStartTime(timeOf(initialRange.start) || '00:00')
+    setCalendarEndTime(timeOf(initialRange.end) || '23:59')
     setCalendarPanelOpen(true)
   }
 
@@ -978,14 +977,16 @@ export default function OrganizerPage() {
       Taro.showToast({ title: '请选择完整时间范围', icon: 'none' })
       return
     }
+    const withTime = (date: string, time: string) => (date ? `${date} ${time}` : '')
     const rangeStr = calendarStart && calendarEnd ? `${calendarStart} · ${calendarEnd}` : ''
     if (calendarTarget === 'filter') {
       setFilterState((prev) => ({ ...prev, startAt: calendarStart || '', endAt: calendarEnd || '' }))
     } else if (calendarTarget === 'dateRange') {
-      updateDraft('dateRange', rangeStr)
+      // 活动日期精确到时分：日期 + 时刻合成（提交时 ensureTimeSuffix 会补齐秒）
+      updateDraft('dateRange', calendarStart && calendarEnd
+        ? `${withTime(calendarStart, calendarStartTime)} · ${withTime(calendarEnd, calendarEndTime)}`
+        : '')
     } else if (calendarTarget === 'scheduleRange' && calendarSpecId) {
-      // 日期 + 时刻合成完整开售/截止时间（提交时 ensureTimeSuffix 会补齐秒）
-      const withTime = (date: string, time: string) => (date ? `${date} ${time}` : '')
       updateTicketSpec(calendarSpecId, {
         startAt: withTime(calendarStart || '', calendarStartTime),
         endAt: withTime(calendarEnd || '', calendarEndTime),
@@ -2152,6 +2153,24 @@ export default function OrganizerPage() {
       </View>
 
       <View className="field-block">
+        <Text className="field-label">业态图标（地图显示）</Text>
+        <ScrollView className="marker-icon-scroll" scrollY>
+          <View className="marker-icon-grid">
+            {MARKER_ICONS.map((icon) => (
+              <View
+                key={icon.key}
+                className={`marker-icon-item ${draft.marker_icon === icon.url ? 'active' : ''}`}
+                onClick={() => updateDraft('marker_icon', icon.url)}
+              >
+                <Image src={icon.url} className="marker-icon-img" mode="aspectFit" />
+                <Text className={`marker-icon-name ${draft.marker_icon === icon.url ? 'active' : ''}`}>{icon.name}</Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+
+      <View className="field-block">
         <Text className="field-label">分享标题</Text>
         <View className="dark-input-shell">
           <Input
@@ -2603,18 +2622,18 @@ export default function OrganizerPage() {
             </View>
           </View>
 
-          {calendarTarget === 'scheduleRange' && (
+          {(calendarTarget === 'scheduleRange' || calendarTarget === 'dateRange') && (
             <View className="calendar-time-row">
               <Picker className="calendar-time-picker" mode="time" value={calendarStartTime} onChange={(e) => setCalendarStartTime(String(e.detail.value))}>
                 <View className="calendar-time-card">
-                  <Text className="calendar-date-label">开售时刻</Text>
+                  <Text className="calendar-date-label">{calendarTarget === 'scheduleRange' ? '开售时刻' : '开始时刻'}</Text>
                   <Text className="calendar-date-value">{calendarStartTime}</Text>
                 </View>
               </Picker>
               <Text className="calendar-range-arrow">⇢</Text>
               <Picker className="calendar-time-picker" mode="time" value={calendarEndTime} onChange={(e) => setCalendarEndTime(String(e.detail.value))}>
                 <View className="calendar-time-card">
-                  <Text className="calendar-date-label">截止时刻</Text>
+                  <Text className="calendar-date-label">{calendarTarget === 'scheduleRange' ? '截止时刻' : '结束时刻'}</Text>
                   <Text className="calendar-date-value">{calendarEndTime}</Text>
                 </View>
               </Picker>

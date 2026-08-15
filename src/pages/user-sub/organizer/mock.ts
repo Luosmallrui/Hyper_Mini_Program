@@ -324,4 +324,5 @@ export const createInitialDraft = (): CreateActivityDraft => ({
   uploads: {},
   channels: ['wechat'],
   tagIds: [],
+  marker_icon: '',
 })

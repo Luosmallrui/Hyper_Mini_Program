@@ -241,6 +241,8 @@ export interface CreateActivityDraft {
   channels: Channel[]
   /** 优惠标签 ID 多选（/content-tags），派对绑定活动、场地绑定主办方 */
   tagIds: number[]
+  /** 地图业态图标（CDN URL），见 src/utils/marker-icons.ts */
+  marker_icon: string
 }
 
 export interface CalendarPanelState {

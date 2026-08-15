@@ -1101,6 +1101,7 @@ interface ActivityDetailRaw {
   pending_revision_reason?: string
   tag_ids?: Array<number | string>
   tags?: Array<{ id?: number | string; name?: string }>
+  marker_icon?: string
   ticket_specs?: Array<{
     id?: number | string
     name?: string
@@ -1186,6 +1187,7 @@ const mapActivityDetailToDraft = (detail: ActivityDetailRaw): CreateActivityDraf
     qualificationFileName: detail.qualification_doc || '',
     ticketSpecs: isVenue ? [] : ticketSpecs,
     tagIds,
+    marker_icon: detail.marker_icon || '',
   }
 }
 
@@ -1297,6 +1299,7 @@ export const submitActivityDraft = async (
   if (changed(draft.realNameRequired, orig?.realNameRequired)) step1Fields.real_name_mode = draft.realNameRequired ? 1 : 0
   if (changed(draft.minorCheckRequired, orig?.minorCheckRequired)) step1Fields.minor_check = draft.minorCheckRequired ? 1 : 0
   if (changed(draft.tagIds, orig?.tagIds ?? [])) step1Fields.tag_ids = draft.tagIds
+  if (changed(draft.marker_icon, orig?.marker_icon ?? '')) step1Fields.marker_icon = draft.marker_icon
   if (changed(draft.summary, orig?.summary)) step1Fields.description = draft.summary
 
   let activityId: number
