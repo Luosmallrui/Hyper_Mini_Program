@@ -55,9 +55,9 @@ export const getActivityMarkerDetailUrl = (marker: ActivityMarkerLike) => {
 }
 
 export const getActivityMarkerPageUrl = (marker: ActivityMarkerLike, extraParams = '') => {
-  // 按 source 路由详情页：venue → 场地详情页，activity → 活动详情页
+  // 按 source 路由：venue → 商家主页（场地资料+活动），activity → 活动详情页
   const sourceId = normalizeActivityMarkerSourceId(marker)
   const suffix = extraParams ? (extraParams.startsWith('&') ? extraParams : `&${extraParams}`) : ''
-  const base = isVenueMarker(marker) ? '/pages/venue/index?id=' : '/pages/activity/index?id='
+  const base = isVenueMarker(marker) ? '/pages/user-sub/organizer-home/index?id=' : '/pages/activity/index?id='
   return `${base}${encodeURIComponent(sourceId)}${suffix}`
 }

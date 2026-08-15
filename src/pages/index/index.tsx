@@ -161,6 +161,7 @@ export default function IndexPage() {
   const hasTokenRef = useRef(hasToken)
   const mapScaleRef = useRef(DEFAULT_MAP_SCALE)
   const cameraAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const autoPlayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const cameraAnimTokenRef = useRef(0)
   const cameraAnimTargetRef = useRef<{ lng: number; lat: number } | null>(null)
   const mapFocusReqTokenRef = useRef(0)
@@ -948,6 +949,7 @@ export default function IndexPage() {
       }
 
       await updateMarkers(mappedList, markerActiveIndex)
+      startAutoPlay()
     } catch (error) {
       console.error('Party list load failed:', error)
     } finally {
@@ -961,6 +963,28 @@ export default function IndexPage() {
         listPendingRef.current = false
       }
     }
+  }
+
+  // 地图 marker 自动轮播：每隔 5 秒切换到下一个场地/活动
+  const stopAutoPlay = () => {
+    if (autoPlayTimerRef.current) {
+      clearInterval(autoPlayTimerRef.current)
+      autoPlayTimerRef.current = null
+    }
+  }
+
+  const startAutoPlay = () => {
+    stopAutoPlay()
+    const list = partyListRef.current
+    if (list.length <= 1) return
+    autoPlayTimerRef.current = setInterval(() => {
+      const nextIndex = (currentRef.current + 1) % list.length
+      if (nextIndex === currentRef.current) return
+      hasManualMapSelectionRef.current = true
+      isFirstScreenInitRef.current = false
+      currentRef.current = nextIndex
+      setCurrent(nextIndex)
+    }, 5000)
   }
 
   const resolveMarkerFallback = (_item: PartyItem) => {
@@ -1242,6 +1266,7 @@ export default function IndexPage() {
 
   const handleSwiperChange = (e: any) => {
     if (e.detail.source === 'touch' || e.detail.source === '') {
+      stopAutoPlay()
       hasManualMapSelectionRef.current = true
       isFirstScreenInitRef.current = false
       const nextIndex = e.detail.current
@@ -1282,6 +1307,7 @@ export default function IndexPage() {
     const targetIndex = markerIndexMapRef.current.get(markerId)
     if (typeof targetIndex !== 'number') return
 
+    stopAutoPlay()
     hasManualMapSelectionRef.current = true
     isFirstScreenInitRef.current = false
     setCurrent(targetIndex)

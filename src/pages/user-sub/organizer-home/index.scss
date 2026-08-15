@@ -90,6 +90,22 @@ page {
       .merchant-fans { font-size: 22rpx; color: #999; }
     }
   }
+  .merchant-actions {
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
+    flex-shrink: 0;
+  }
+  .subscribe-btn {
+    padding: 10rpx 32rpx;
+    border: 1rpx solid #555;
+    border-radius: 30rpx;
+    font-size: 24rpx;
+    color: #ccc;
+    flex-shrink: 0;
+
+    &.subscribed { color: #888; }
+  }
   .follow-btn {
     padding: 10rpx 32rpx;
     border: 1rpx solid #555;

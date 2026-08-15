@@ -33,6 +33,8 @@ interface OrganizerVenueItem {
   cover_image?: string
   description?: string
   address?: string
+  /** 当前用户是否订阅该场地（venue 类型时用于订阅按钮） */
+  is_subscribe?: boolean
 }
 
 // C 端商家公开主页数据，见 docs/public_organizer_home_api_20260811.md
@@ -90,6 +92,7 @@ export default function OrganizerHomePage() {
   const [pageLoading, setPageLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [followPending, setFollowPending] = useState(false)
+  const [subscribePending, setSubscribePending] = useState(false)
 
   const [activities, setActivities] = useState<OrganizerActivityItem[]>([])
   const [activityTotal, setActivityTotal] = useState(0)
@@ -234,6 +237,48 @@ export default function OrganizerHomePage() {
     }
   }
 
+  const handleToggleSubscribe = async () => {
+    if (!requireLogin()) return
+    if (!organizer || subscribePending) return
+    const venueItem = organizer?.type === 'venue' ? venues[0] : null
+    if (!venueItem) return
+
+    const nextSubscribed = !Boolean(venueItem.is_subscribe)
+    setSubscribePending(true)
+    setVenues(prev => prev.map((v, i) => (i === 0 ? { ...v, is_subscribe: nextSubscribed } : v)))
+
+    try {
+      const res = await request({
+        url: `/api/v1/venues/${venueItem.id}/subscribe`,
+        method: nextSubscribed ? 'POST' : 'DELETE',
+      })
+      const code = Number((res as any)?.data?.code)
+      if (code !== 200) throw new Error((res as any)?.data?.msg || '操作失败')
+      Taro.showToast({ title: nextSubscribed ? '订阅成功' : '已取消订阅', icon: 'none' })
+    } catch (e) {
+      setVenues(prev => prev.map((v, i) => (i === 0 ? { ...v, is_subscribe: !nextSubscribed } : v)))
+      Taro.showToast({ title: '操作失败', icon: 'none' })
+    } finally {
+      setSubscribePending(false)
+    }
+  }
+
+  const handleOpenMap = () => {
+    const lat = Number(organizer?.latitude)
+    const lng = Number(organizer?.longitude)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
+      Taro.showToast({ title: '位置信息缺失', icon: 'none' })
+      return
+    }
+    Taro.openLocation({
+      latitude: lat,
+      longitude: lng,
+      name: organizer?.name || '',
+      address: addressText,
+      scale: 16,
+    })
+  }
+
   const handleOpenActivity = (id: number | string) => {
     Taro.navigateTo({ url: `/pages/activity/index?id=${String(id)}` })
   }
@@ -252,9 +297,9 @@ export default function OrganizerHomePage() {
   const fansCount = Number(organizer?.follow_count) || 0
   const isFollowed = Boolean(organizer?.is_follow)
   const hasInfoRow = Boolean(organizer?.business_hours || addressText || organizer?.service_phone) || averageSpend > 0
-  // 商家类型确定：venue 只展示场地区，party/merchant 只展示活动区，不能两个都展示
-  const showActivitySection = organizer?.type !== 'venue'
-  const showVenueSection = organizer?.type === 'venue'
+  // 商家类型确定：所有类型只展示活动区；venue 顶部已展示场地资料，不再重复列场地区
+  const showActivitySection = true
+  const showVenueSection = false
 
   return (
     <View className='organizer-home-page'>
@@ -307,8 +352,15 @@ export default function OrganizerHomePage() {
                     </View>
                   </View>
                 </View>
-                <View className={`follow-btn ${isFollowed ? 'followed' : ''}`} onClick={handleToggleFollow}>
-                  {followPending ? '处理中' : isFollowed ? '已关注' : '关注'}
+                <View className='merchant-actions'>
+                  {organizer?.type === 'venue' && (
+                    <View className={`subscribe-btn ${venues[0]?.is_subscribe ? 'subscribed' : ''}`} onClick={handleToggleSubscribe}>
+                      {subscribePending ? '处理中' : venues[0]?.is_subscribe ? '已订阅' : '订阅'}
+                    </View>
+                  )}
+                  <View className={`follow-btn ${isFollowed ? 'followed' : ''}`} onClick={handleToggleFollow}>
+                    {followPending ? '处理中' : isFollowed ? '已关注' : '关注'}
+                  </View>
                 </View>
               </View>
 
@@ -323,7 +375,7 @@ export default function OrganizerHomePage() {
                     </View>
                   ) : null}
                   {addressText ? (
-                    <View className='info-row'>
+                    <View className='info-row' onClick={handleOpenMap}>
                       <AtIcon value='map-pin' size='15' color='#999' />
                       <Text className='info-label'>商家地址</Text>
                       <Text className='info-value'>{addressText}</Text>

@@ -296,7 +296,7 @@ export default function SearchPage() {
     const type = String(item?.type || '').toLowerCase()
     const isVenue = type.includes('场地') || type.includes('venue') || type.includes('club')
     const path = isVenue
-      ? `/pages/venue/index?id=${encodeURIComponent(id)}&tag=${encodeURIComponent(item.type || '')}`
+      ? `/pages/user-sub/organizer-home/index?id=${encodeURIComponent(id)}`
       : `/pages/activity/index?id=${encodeURIComponent(id)}&tag=${encodeURIComponent(item.type || '')}`
     Taro.navigateTo({ url: path })
   }
@@ -307,7 +307,7 @@ export default function SearchPage() {
     const type = String(sub?.type || '').toLowerCase()
     const isVenue = type.includes('场地') || type.includes('venue') || type.includes('club')
     const path = isVenue
-      ? `/pages/venue/index?id=${encodeURIComponent(id)}&tag=${encodeURIComponent(sub.type || '')}`
+      ? `/pages/user-sub/organizer-home/index?id=${encodeURIComponent(id)}`
       : `/pages/activity/index?id=${encodeURIComponent(id)}&tag=${encodeURIComponent(sub.type || '')}`
     Taro.navigateTo({ url: path })
   }
