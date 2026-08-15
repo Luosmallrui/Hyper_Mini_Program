@@ -97,6 +97,7 @@
   align-items: center;
   justify-content: flex-end;
   padding-right: 8px;
+  gap: 12px;
 }
 
 .nav-right-btn {
@@ -107,6 +108,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.nav-more-icon {
+  color: #ffffff;
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: 2px;
+  transform: translateY(-6px);
 }
 
 .chat-scroll {

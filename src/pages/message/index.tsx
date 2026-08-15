@@ -213,6 +213,46 @@ export default function MessagePage() {
     })
   }
 
+  // 从消息列表移除会话（仅移除列表项，不删除聊天历史）
+  const handleDeleteSession = (item: SessionItem) => {
+    if (!item.peer_id) return
+    Taro.showActionSheet({
+      itemList: ['删除会话'],
+      success: (res) => {
+        if (res.tapIndex !== 0) return
+        Taro.showModal({
+          title: '删除会话',
+          content: `确定从消息列表删除与「${item.peer_name || '该用户'}」的会话吗？聊天记录不会被删除。`,
+          confirmColor: '#FF2E4D',
+          success: async (modal) => {
+            if (!modal.confirm) return
+            try {
+              const r = await request({
+                url: '/api/v1/session',
+                method: 'DELETE',
+                data: { session_type: item.session_type, peer_id: Number(item.peer_id) }
+              })
+              let body: any = r.data
+              if (typeof body === 'string') {
+                try { body = JSON.parse(body) } catch (e) {}
+              }
+              if (body && body.code === 200) {
+                setSessionList(prev => prev.filter(s =>
+                  !(s.peer_id === item.peer_id && s.session_type === item.session_type)
+                ))
+                Taro.showToast({ title: '已删除会话', icon: 'none' })
+              } else {
+                Taro.showToast({ title: body?.msg || '删除失败', icon: 'none' })
+              }
+            } catch (e) {
+              Taro.showToast({ title: '删除失败，请重试', icon: 'none' })
+            }
+          }
+        })
+      }
+    }).catch(() => {})
+  }
+
   const formatTime = (timestamp: number) => {
     if (!timestamp) return ''
     const timeMs = timestamp.toString().length === 10 ? timestamp * 1000 : timestamp
@@ -341,7 +381,7 @@ export default function MessagePage() {
 
         <View className='chat-list'>
           {sessionList.map(item => (
-            <View key={item.peer_id} className='msg-item' onClick={() => handleChat(item)}>
+            <View key={item.peer_id} className='msg-item' onClick={() => handleChat(item)} onLongPress={() => handleDeleteSession(item)}>
               <View className='avatar-box'>
                 {item.peer_avatar ? (
                   <Image src={item.peer_avatar} className='avatar-img' mode='aspectFill' />

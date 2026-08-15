@@ -764,6 +764,84 @@ export default function ChatPage() {
     })
   }
 
+  const parseBody = (res: any) => {
+    let body: any = res?.data
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body) } catch (e) {}
+    }
+    return body
+  }
+
+  // 删除单条消息（仅自己可见）：长按气泡弹出删除
+  const handleDeleteMessage = (msg: MessageItem) => {
+    const msgId = String(msg.id)
+    // 本地临时消息（未发送成功 / WS 无服务端 id）直接移除，无需调接口
+    if (msgId.startsWith('temp_') || msgId.startsWith('ws_')) {
+      setMsgList(prev => prev.filter(m => String(m.id) !== msgId))
+      return
+    }
+    Taro.showActionSheet({
+      itemList: ['删除'],
+      success: async (res) => {
+        if (res.tapIndex !== 0) return
+        try {
+          const r = await request({
+            url: `/api/v1/message/${msgId}`,
+            method: 'DELETE',
+            data: { session_type: sessionType, peer_id: Number(peer_id) }
+          })
+          const body = parseBody(r)
+          if (body?.code === 200) {
+            setMsgList(prev => prev.filter(m => String(m.id) !== msgId))
+            Taro.showToast({ title: '已删除', icon: 'none' })
+          } else {
+            Taro.showToast({ title: body?.msg || '删除失败', icon: 'none' })
+          }
+        } catch (e) {
+          Taro.showToast({ title: '删除失败，请重试', icon: 'none' })
+        }
+      }
+    }).catch(() => {})
+  }
+
+  // 清空与当前会话的聊天记录（仅自己可见，历史不再返回）
+  const handleClearChat = () => {
+    Taro.showActionSheet({
+      itemList: ['清空聊天记录'],
+      success: (res) => {
+        if (res.tapIndex !== 0) return
+        Taro.showModal({
+          title: '清空聊天记录',
+          content: '确定清空与该会话的全部聊天记录吗？此操作仅对自己可见，且不可恢复。',
+          confirmColor: '#FF2E4D',
+          success: async (modal) => {
+            if (!modal.confirm) return
+            try {
+              const r = await request({
+                url: '/api/v1/message/clear',
+                method: 'POST',
+                data: { session_type: sessionType, peer_id: Number(peer_id) }
+              })
+              const body = parseBody(r)
+              if (body?.code === 200) {
+                setMsgList([])
+                setNextCursor(null)
+                setHasMore(false)
+                setUnreadCount(0)
+                setScrollId('')
+                Taro.showToast({ title: '已清空', icon: 'none' })
+              } else {
+                Taro.showToast({ title: body?.msg || '清空失败', icon: 'none' })
+              }
+            } catch (e) {
+              Taro.showToast({ title: '清空失败，请重试', icon: 'none' })
+            }
+          }
+        })
+      }
+    }).catch(() => {})
+  }
+
   // 返回上一页：Android 部分机型 navigateBack 偶发失效，无上一页或失败时兜底回消息 tab
   const handleBack = async () => {
     const pageStack = Taro.getCurrentPages()
@@ -928,13 +1006,16 @@ export default function ChatPage() {
               </View>
             )}
           </View>
-          {isGroupChat && (
-            <View className='nav-right' onClick={handleOpenGroupMembers}>
-              <View className='nav-right-btn'>
+          <View className='nav-right'>
+            {isGroupChat && (
+              <View className='nav-right-btn' onClick={handleOpenGroupMembers}>
                 <AtIcon value='list' size='18' color='#fff' />
               </View>
+            )}
+            <View className='nav-right-btn' onClick={handleClearChat}>
+              <Text className='nav-more-icon'>···</Text>
             </View>
-          )}
+          </View>
         </View>
       </View>
 
@@ -976,7 +1057,7 @@ export default function ChatPage() {
                       )}
                     </View>
                   )}
-                  <View className='bubble-group'>
+                  <View className='bubble-group' onLongPress={() => handleDeleteMessage(msg)}>
                     {showName && <Text className='msg-name'>{msg.nickname}</Text>}
                     {renderMessageContent(msg)}
                   </View>
