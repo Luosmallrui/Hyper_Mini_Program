@@ -24,7 +24,8 @@ import iconLocation from '../../../../assets/organizer/icon-location.png'
 import iconLogout from '../../../../assets/organizer/icon-logout.png'
 import iconPassword from '../../../../assets/organizer/icon-password.png'
 import iconWallet from '../../../../assets/organizer/icon-wallet.png'
-import powerFlowLogo from '../../../../assets/organizer/power-flow-logo.png'
+import { CDN_IMAGES } from '@/utils/cdn'
+const powerFlowLogo = CDN_IMAGES.powerFlowLogo
 import './index.scss'
 
 interface OrganizerAccountViewProps {

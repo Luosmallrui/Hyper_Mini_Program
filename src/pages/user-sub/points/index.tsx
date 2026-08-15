@@ -3,6 +3,7 @@ import { View, Text, Image, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { AtIcon, AtActivityIndicator } from 'taro-ui'
 import { request } from '@/utils/request'
+import { CDN_IMAGES } from '@/utils/cdn'
 import 'taro-ui/dist/style/components/icon.scss'
 import 'taro-ui/dist/style/components/activity-indicator.scss'
 import './index.scss'
@@ -147,7 +148,7 @@ export default function PointsPage() {
       <View className='top-bg'>
         <Image
           className='top-bg-img'
-          src={require('../../../assets/images/backgound.png')}
+          src={CDN_IMAGES.backgound}
           mode='scaleToFill'
         />
       </View>
@@ -182,7 +183,7 @@ export default function PointsPage() {
         <View className='hero-section'>
           <Image
             className='coin-decoration'
-            src={require('../../../assets/images/coin.png')}
+            src={CDN_IMAGES.coin}
             mode='widthFix'
           />
 

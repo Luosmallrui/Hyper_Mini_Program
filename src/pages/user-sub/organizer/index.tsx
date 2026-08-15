@@ -34,7 +34,8 @@ import {
 import OrganizerMoreView from './more'
 import mapPinFallbackIcon from '../../../assets/icons/map-pin-fallback.png'
 import iconBack from '../../../assets/organizer/icon-back.png'
-import auditUrgeQrCode from '../../../assets/organizer/audit-urge-qrcode.png'
+import { CDN_IMAGES } from '@/utils/cdn'
+const auditUrgeQrCode = CDN_IMAGES.auditUrgeQrcode
 import { CHENGDU_CITY, CHENGDU_DISTRICTS, CHENGDU_PROVINCE, fetchChengduDistricts } from '../../../utils/chengdu-region'
 import { reverseGeocode, searchByKeyword, type POIItem } from '../../../utils/qqmap'
 import {

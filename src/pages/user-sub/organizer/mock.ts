@@ -9,9 +9,10 @@ import {
   UploadSlotState,
   VerifierItem,
 } from './types'
-import powerFlowLogo from '../../../assets/organizer/power-flow-logo.png'
-import posterPowerFlow from '../../../assets/organizer/mock-power-flow-cover.png'
-import posterBadSofa from '../../../assets/organizer/mock-bad-sofa-cover.png'
+import { CDN_IMAGES } from '@/utils/cdn'
+const powerFlowLogo = CDN_IMAGES.powerFlowLogo
+const posterPowerFlow = CDN_IMAGES.mockPowerFlowCover
+const posterBadSofa = CDN_IMAGES.mockBadSofaCover
 
 const posterHyper = posterBadSofa
 const avatar = powerFlowLogo

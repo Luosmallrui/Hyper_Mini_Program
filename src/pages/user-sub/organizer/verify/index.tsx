@@ -10,7 +10,8 @@ import {
 } from '../adapter'
 import { VerifyStatus, VerifyTicketItem } from '../types'
 import iconBack from '../../../../assets/organizer/icon-back.png'
-import powerFlowLogo from '../../../../assets/organizer/power-flow-logo.png'
+import { CDN_IMAGES } from '@/utils/cdn'
+const powerFlowLogo = CDN_IMAGES.powerFlowLogo
 import {
   parseVerifierQrPayload,
   type VerifierScanPayload,

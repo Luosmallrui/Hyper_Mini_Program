@@ -3,6 +3,7 @@ import { View, Text, Image, ScrollView } from '@tarojs/components';
 import Taro, { useRouter } from '@tarojs/taro';
 import { AtIcon } from 'taro-ui';
 import { requireLogin } from '../../../utils/auth';
+import { CDN_IMAGES } from '@/utils/cdn';
 import './index.less';
 
 const BASE_URL = 'https://www.hypercn.cn';
@@ -383,7 +384,7 @@ const UserProfilePage: React.FC = () => {
         <View
           className="header-section"
           style={{
-            backgroundImage: `url(${require('../../../assets/images/background.webp')})`,
+            backgroundImage: `url(${CDN_IMAGES.backgroundWebp})`,
           }}
         >
 

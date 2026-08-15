@@ -8,6 +8,7 @@ import { requireLogin } from '@/utils/auth';
 import { CHENGDU_CITY, CHENGDU_DISTRICTS, CHENGDU_PROVINCE, fetchChengduDistricts } from '@/utils/chengdu-region';
 import { setTabBarIndex } from '../../store/tabbar';
 import { request } from '../../utils/request';
+import { CDN_IMAGES } from '@/utils/cdn';
 import {
   PENDING_VERIFIER_SCAN_KEY,
   parseVerifierQrPayload
@@ -1091,7 +1092,7 @@ export default function UserPage() {
       <View className="top-bg">
         <Image
           className="top-bg-img"
-          src={require('../../assets/images/backgound.png')}
+          src={CDN_IMAGES.backgound}
           mode="scaleToFill"
         />
       </View>
