@@ -5,6 +5,7 @@ import { setTabBarIndex } from '@/store/tabbar'
 import { request } from '@/utils/request'
 import { isLoggedIn, requireLogin } from '@/utils/auth'
 import { getCustomTabBarHeight } from '@/utils/layout'
+import { getDirectMessageEnabledSync, getCustomerServiceUserIdSync, refreshDirectMessageEnabled } from '@/utils/system-config'
 import './index.scss'
 import customerServiceIcon from '../../assets/icons/customer-service.svg'
 import hyperAssistantIcon from '../../assets/icons/hyper-assistant.svg'
@@ -39,6 +40,8 @@ export default function MessagePage() {
   const [totalUnread, setTotalUnread] = useState(0)
   const [markingAllRead, setMarkingAllRead] = useState(false)
   const [isLogin, setIsLogin] = useState(false)
+  const [directMessageEnabled, setDirectMessageEnabled] = useState(getDirectMessageEnabledSync)
+  const [customerServiceUserId, setCustomerServiceUserId] = useState(getCustomerServiceUserIdSync)
 
   const [navBarPaddingTop, setNavBarPaddingTop] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
@@ -57,6 +60,10 @@ export default function MessagePage() {
       return
     }
     fetchSessionList()
+    refreshDirectMessageEnabled().then((enabled) => {
+      setDirectMessageEnabled(enabled)
+      setCustomerServiceUserId(getCustomerServiceUserIdSync())
+    })
   })
 
   useEffect(() => {
@@ -286,6 +293,11 @@ export default function MessagePage() {
     },
   ]
 
+  // 私信关闭时，消息列表只保留客服会话（单聊且 peer_id 为客服账号），隐藏普通用户会话与群聊
+  const visibleSessionList = directMessageEnabled
+    ? sessionList
+    : sessionList.filter(s => s.session_type === 1 && Number(s.peer_id) === customerServiceUserId)
+
   return (
     <View className='message-page'>
       <View
@@ -305,13 +317,15 @@ export default function MessagePage() {
         >
           <Text>{markingAllRead ? '处理中' : totalUnread > 0 ? '一键已读' : '已全部读'}</Text>
         </View>
-        <View
-          className='header-create-group'
-          style={{ right: `${menuButtonWidth + 8}px` }}
-          onClick={handleCreateGroup}
-        >
-          <Text>发起群聊</Text>
-        </View>
+        {directMessageEnabled && (
+          <View
+            className='header-create-group'
+            style={{ right: `${menuButtonWidth + 8}px` }}
+            onClick={handleCreateGroup}
+          >
+            <Text>发起群聊</Text>
+          </View>
+        )}
       </View>
 
       <ScrollView
@@ -380,7 +394,7 @@ export default function MessagePage() {
         </View>
 
         <View className='chat-list'>
-          {sessionList.map(item => (
+          {visibleSessionList.map(item => (
             <View key={item.peer_id} className='msg-item' onClick={() => handleChat(item)} onLongPress={() => handleDeleteSession(item)}>
               <View className='avatar-box'>
                 {item.peer_avatar ? (
@@ -409,7 +423,7 @@ export default function MessagePage() {
             </View>
           ))}
 
-          {sessionList.length === 0 && (
+          {visibleSessionList.length === 0 && (
             <View className='empty-state'>
               <Text>暂无聊天消息</Text>
             </View>
