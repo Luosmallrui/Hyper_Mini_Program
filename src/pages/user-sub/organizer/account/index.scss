@@ -20,26 +20,26 @@
   }
 }
 
-// Brand card - rgba(27,27,27,1) bg, border-radius: 12px
+// Brand card - 深色渐变 + 细描边，内部改为 flex 布局（原绝对定位已移除）
 .account-brand-card {
-  background-color: rgba(27, 27, 27, 1.0);
+  background: linear-gradient(135deg, rgba(38, 40, 47, 1) 0%, rgba(19, 20, 23, 1) 100%);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
   border-radius: 24rpx;
   width: calc(100% - 60rpx);
   margin-left: 30rpx;
   margin-right: 30rpx;
-  height: 268rpx;
   margin-top: 29rpx;
-  padding: 0;
+  padding: 36rpx 32rpx 32rpx;
   position: relative;
   box-sizing: border-box;
 }
 
 .account-level-card {
-  margin: 20rpx 32rpx 0;
-  padding: 24rpx;
-  border-radius: 16rpx;
-  background: #151515;
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  margin: 20rpx 30rpx 0;
+  padding: 28rpx 32rpx;
+  border-radius: 24rpx;
+  background: rgba(27, 27, 27, 1);
+  border: 1rpx solid rgba(255, 255, 255, 0.05);
 }
 
 .account-level-row {
@@ -69,22 +69,18 @@
 }
 
 .account-brand-top {
-  position: absolute;
-  left: 32rpx;
-  right: 46rpx;
-  top: 24rpx;
   align-items: center;
-  gap: 32rpx;
+  gap: 28rpx;
 }
 
 .account-brand-logo-wrap {
   border-radius: 24rpx;
   width: 112rpx;
   height: 112rpx;
-  border: 2rpx solid rgba(151, 151, 151, 1);
+  border: 2rpx solid rgba(255, 255, 255, 0.14);
   overflow: hidden;
   flex-shrink: 0;
-  background-color: rgba(216, 216, 216, 1);
+  background-color: rgba(255, 255, 255, 0.06);
 }
 
 .account-brand-logo {
@@ -93,23 +89,29 @@
 }
 
 .account-brand-main {
-  gap: 16rpx;
+  gap: 14rpx;
 }
 
 .account-brand-name {
   color: rgba(255, 255, 255, 1);
-  font-size: 30rpx;
-  letter-spacing: 2rpx;
+  font-size: 34rpx;
+  letter-spacing: 1rpx;
   font-family: PingFangSC-Semibold;
   font-weight: 600;
   text-align: left;
-  white-space: nowrap;
-  line-height: 42rpx;
+  line-height: 44rpx;
 }
 
 .account-brand-verified {
   align-items: center;
-  gap: 16rpx;
+  align-self: flex-start;
+  padding: 4rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(0, 219, 126, 0.12);
+}
+
+.account-brand-verified.is-unverified {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .account-verified-icon {
@@ -130,110 +132,116 @@
 
 .account-verified-text {
   color: rgba(0, 219, 126, 1);
-  font-size: 30rpx;
-  letter-spacing: 2rpx;
-  font-family: PingFangSC-Semibold;
-  font-weight: 600;
+  font-size: 22rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
   text-align: left;
   white-space: nowrap;
-  line-height: 42rpx;
+  line-height: 32rpx;
+}
+
+.account-brand-verified.is-unverified .account-verified-text {
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .account-brand-stats {
-  position: absolute;
-  left: 66rpx;
-  right: 68rpx;
-  bottom: 28rpx;
-  margin-top: 0;
+  margin-top: 36rpx;
+  padding-top: 28rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.06);
+  align-items: center;
   justify-content: space-between;
 }
 
 .account-brand-stat {
   align-items: center;
-  min-width: 150rpx;
+  flex: 1;
+  min-width: 0;
+  gap: 10rpx;
+}
+
+.account-brand-stat-divider {
+  width: 1rpx;
+  height: 48rpx;
+  background: rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
 }
 
 .account-brand-stat-label {
-  color: rgba(116, 116, 116, 1);
-  font-size: 30rpx;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 22rpx;
   font-family: PingFangSC-Regular;
   font-weight: normal;
-  text-align: left;
+  text-align: center;
   white-space: nowrap;
-  line-height: 42rpx;
+  line-height: 32rpx;
 }
 
 .account-brand-stat-value {
   color: rgba(255, 255, 255, 1);
-  font-size: 38rpx;
-  letter-spacing: 3rpx;
+  font-size: 40rpx;
+  letter-spacing: 1rpx;
   font-family: DOUYINSANSBOLD-GB;
   font-weight: normal;
-  text-align: left;
+  text-align: center;
   white-space: nowrap;
-  line-height: 46rpx;
-  margin-top: 18rpx;
+  line-height: 48rpx;
 }
 
 // Section title
 .account-section-title {
   display: block;
-  color: rgba(255, 255, 255, 1);
-  font-size: 30rpx;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 26rpx;
   font-family: PingFangSC-Medium;
   font-weight: 500;
   text-align: left;
   white-space: nowrap;
-  line-height: 42rpx;
-  margin: 31rpx 0 25rpx 30rpx;
+  letter-spacing: 1rpx;
+  line-height: 36rpx;
+  margin: 40rpx 0 20rpx 34rpx;
 }
 
 .account-group-block.is-account .account-section-title {
-  margin-top: 53rpx;
+  margin-top: 48rpx;
   margin-bottom: 20rpx;
 }
 
 // Setting group
 .account-setting-group {
   background-color: rgba(27, 27, 27, 1.0);
+  border: 1rpx solid rgba(255, 255, 255, 0.05);
   border-radius: 24rpx;
   width: calc(100% - 60rpx);
   margin-left: 30rpx;
   margin-right: 30rpx;
-  padding: 0 20rpx;
+  padding: 0 28rpx;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-.account-setting-group.is-basic {
-  height: 214rpx;
-  padding-top: 50rpx;
-}
-
-.account-setting-group.is-account {
-  height: 362rpx;
-  padding-top: 52rpx;
-}
-
 .account-setting-row-wrap.is-following {
-  margin-top: 45rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.06);
 }
 
 .account-setting-row {
   align-items: center;
-  padding: 0;
+  padding: 32rpx 0;
 }
 
 .account-setting-left {
   align-items: center;
-  gap: 36rpx;
+  gap: 24rpx;
 }
 
 .account-row-icon-img {
-  width: 42rpx;
-  height: 42rpx;
+  width: 40rpx;
+  height: 40rpx;
+  padding: 14rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.05);
+  box-sizing: content-box;
   flex-shrink: 0;
 }
 
@@ -648,10 +656,10 @@
 
 // Balance card - 可提现金额与提现入口
 .account-balance-card {
-  margin: 20rpx 32rpx 0;
-  padding: 28rpx 24rpx;
-  border-radius: 16rpx;
-  background: #151515;
+  margin: 20rpx 30rpx 0;
+  padding: 32rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, rgba(31, 33, 38, 1) 0%, rgba(16, 17, 19, 1) 100%);
   border: 1rpx solid rgba(255, 255, 255, 0.08);
   box-sizing: border-box;
 }
@@ -661,26 +669,27 @@
 }
 
 .account-balance-head-main {
-  gap: 10rpx;
+  gap: 12rpx;
 }
 
 .account-balance-label {
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.58);
+  color: rgba(255, 255, 255, 0.5);
   line-height: 34rpx;
 }
 
 .account-balance-value {
-  font-size: 48rpx;
+  font-size: 56rpx;
   color: #fff;
   font-weight: 700;
-  line-height: 60rpx;
+  letter-spacing: 1rpx;
+  line-height: 66rpx;
 }
 
 .account-balance-btn {
-  background-color: rgba(216, 216, 216, 1.0);
-  border-radius: 66rpx;
-  padding: 18rpx 36rpx;
+  background-color: rgba(255, 255, 255, 1);
+  border-radius: 999rpx;
+  padding: 18rpx 40rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -690,12 +699,14 @@
 .account-balance-btn-text {
   color: rgba(0, 0, 0, 1);
   font-size: 26rpx;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
 }
 
 .account-balance-stats {
-  margin-top: 28rpx;
+  margin-top: 32rpx;
+  padding-top: 26rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.06);
   justify-content: space-between;
 }
 
@@ -705,33 +716,34 @@
 
 .account-balance-stat-label {
   font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.52);
+  color: rgba(255, 255, 255, 0.45);
   line-height: 32rpx;
 }
 
 .account-balance-stat-value {
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: #fff;
   font-weight: 600;
-  line-height: 36rpx;
+  line-height: 38rpx;
 }
 
 .account-balance-tip {
   display: block;
-  margin-top: 22rpx;
+  margin-top: 24rpx;
   font-size: 22rpx;
   line-height: 32rpx;
-  color: rgba(255, 255, 255, 0.52);
+  color: rgba(255, 255, 255, 0.4);
 }
 
 // Withdraw records
 .account-record-group {
   background-color: rgba(27, 27, 27, 1.0);
+  border: 1rpx solid rgba(255, 255, 255, 0.05);
   border-radius: 24rpx;
   width: calc(100% - 60rpx);
   margin-left: 30rpx;
   margin-right: 30rpx;
-  padding: 8rpx 24rpx;
+  padding: 8rpx 28rpx;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -779,27 +791,34 @@
 }
 
 .account-record-status {
-  font-size: 24rpx;
-  font-weight: 600;
-  line-height: 34rpx;
+  font-size: 22rpx;
+  font-weight: 500;
+  line-height: 32rpx;
   white-space: nowrap;
   margin-left: 24rpx;
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  flex-shrink: 0;
 }
 
 .account-record-status.s0 {
   color: rgba(255, 184, 77, 1);
+  background: rgba(255, 184, 77, 0.12);
 }
 
 .account-record-status.s1 {
   color: rgba(77, 159, 255, 1);
+  background: rgba(77, 159, 255, 0.12);
 }
 
 .account-record-status.s2 {
   color: rgba(72, 218, 97, 1);
+  background: rgba(72, 218, 97, 0.12);
 }
 
 .account-record-status.s3 {
   color: rgba(255, 49, 80, 1);
+  background: rgba(255, 49, 80, 0.12);
 }
 
 // Withdraw apply modal extra info

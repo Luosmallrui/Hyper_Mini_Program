@@ -1370,23 +1370,21 @@ export default function UserPage() {
 
       {activeTab === 'dynamic' && (
         <View className="notes-section">
-          <View className="activity-header">
+          <View className="notes-tabs">
             <Text
-              className={`activity-title ${dynamicSubTab === 'notes' ? 'active' : ''}`}
+              className={`notes-tab ${dynamicSubTab === 'notes' ? 'active' : ''}`}
               onClick={() => handleDynamicSubTabSwitch('notes')}
             >
               动态
             </Text>
-            <View className="activity-divider" />
             <Text
-              className={`activity-title ${dynamicSubTab === 'likes' ? 'active' : ''}`}
+              className={`notes-tab ${dynamicSubTab === 'likes' ? 'active' : ''}`}
               onClick={() => handleDynamicSubTabSwitch('likes')}
             >
               赞过
             </Text>
-            <View className="activity-divider" />
             <Text
-              className={`activity-title ${dynamicSubTab === 'collects' ? 'active' : ''}`}
+              className={`notes-tab ${dynamicSubTab === 'collects' ? 'active' : ''}`}
               onClick={() => handleDynamicSubTabSwitch('collects')}
             >
               收藏
@@ -1398,9 +1396,12 @@ export default function UserPage() {
               {noteList.length > 0 ? (
                 renderNoteWaterfall(noteList, true)
               ) : (
-                <View className="empty-state">
-                  <Text className="empty-icon">暂无</Text>
-                  <Text className="empty-text">还没有发布动态</Text>
+                <View className="notes-empty">
+                  <View className="notes-empty-icon">
+                    <AtIcon value="image" size="26" color="rgba(255,255,255,0.55)" />
+                  </View>
+                  <Text className="notes-empty-title">还没有发布动态</Text>
+                  <Text className="notes-empty-tip">去广场分享你的第一条动态吧</Text>
                 </View>
               )}
 
@@ -1424,9 +1425,16 @@ export default function UserPage() {
                       <Text className="loading-text">加载中...</Text>
                     </View>
                   ) : (
-                    <View className="empty-state">
-                      <Text className="empty-icon">暂无</Text>
-                      <Text className="empty-text">{isLikes ? '还没有赞过的内容' : '还没有收藏的内容'}</Text>
+                    <View className="notes-empty">
+                      <View className="notes-empty-icon">
+                        <AtIcon
+                          value={isLikes ? 'heart' : 'star'}
+                          size="26"
+                          color="rgba(255,255,255,0.55)"
+                        />
+                      </View>
+                      <Text className="notes-empty-title">{isLikes ? '还没有赞过的内容' : '还没有收藏的内容'}</Text>
+                      <Text className="notes-empty-tip">{isLikes ? '喜欢的内容点个赞，随时回来看' : '收藏感兴趣的内容，方便随时查看'}</Text>
                     </View>
                   )}
 

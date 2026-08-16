@@ -1,5 +1,7 @@
 import { Image, Input, Picker, ScrollView, Text, Textarea, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import { AtIcon } from 'taro-ui'
+import 'taro-ui/dist/style/components/icon.scss'
 import { useEffect, useState } from 'react'
 import { CHENGDU_CITY, CHENGDU_DISTRICTS, CHENGDU_PROVINCE, fetchChengduDistricts } from '@/utils/chengdu-region'
 import { chooseUserLocation } from '@/utils/user-location'
@@ -636,23 +638,25 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
           </View>
           <View className="account-brand-main flex-col">
             <Text className="account-brand-name">{account?.name || 'POWER FLOW'}</Text>
-            <View className="account-brand-verified flex-row">
+            <View className={`account-brand-verified flex-row ${account?.verified === false ? 'is-unverified' : ''}`}>
               <Text className="account-verified-text">{account?.verified === false ? '未认证' : '已认证'}</Text>
             </View>
           </View>
         </View>
         <View className="account-brand-stats flex-row">
           <View className="account-brand-stat flex-col">
-            <Text className="account-brand-stat-label">入驻天数</Text>
             <Text className="account-brand-stat-value">{account?.daysSinceJoined ?? 210}</Text>
+            <Text className="account-brand-stat-label">入驻天数</Text>
           </View>
+          <View className="account-brand-stat-divider" />
           <View className="account-brand-stat flex-col">
-            <Text className="account-brand-stat-label">当前等级</Text>
             <Text className="account-brand-stat-value">{account?.level || 'LV1'}</Text>
+            <Text className="account-brand-stat-label">当前等级</Text>
           </View>
+          <View className="account-brand-stat-divider" />
           <View className="account-brand-stat flex-col">
-            <Text className="account-brand-stat-label">服务费比例</Text>
             <Text className="account-brand-stat-value">{account?.serviceFeeRate || '5%'}</Text>
+            <Text className="account-brand-stat-label">服务费比例</Text>
           </View>
         </View>
       </View>
@@ -753,6 +757,7 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
                       <Image className="account-row-icon-img" src={row.iconSrc} mode="aspectFit" />
                       <Text className="account-setting-label">{row.label}</Text>
                     </View>
+                    <AtIcon value="chevron-right" size="16" color="rgba(255,255,255,0.3)" />
                   </View>
                 </View>
               ))}

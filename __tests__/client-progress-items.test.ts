@@ -110,7 +110,7 @@ describe('client progress completion contracts', () => {
     const userCenter = readSource('src', 'pages', 'user', 'index.tsx')
     const postDetail = readSource('src', 'pages', 'square-sub', 'post-detail', 'index.tsx')
 
-    expect(userCenter).toContain('<Text className="empty-icon">暂无</Text>')
+    expect(userCenter).toContain('notes-empty-icon')
     expect(userCenter).toContain('还没有发布动态')
     expect(`${userCenter}\n${postDetail}`).not.toMatch(/馃|摑|鎵|搴|鍒|寮圭獥/)
   })
