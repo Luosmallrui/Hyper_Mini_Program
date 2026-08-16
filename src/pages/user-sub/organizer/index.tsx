@@ -1252,7 +1252,7 @@ export default function OrganizerPage() {
     openCalendar(target, specId)
   }
 
-  // Upload with crop modal
+  // Upload poster（自由尺寸，仅限制文件大小 2M）
   const handleOpenCropModal = async (slotKey: string) => {
     try {
       const res = await Taro.chooseImage({
@@ -1262,20 +1262,21 @@ export default function OrganizerPage() {
       })
       const tempFilePath = res.tempFilePaths[0]
       if (!tempFilePath) return
-      // 活动详情长图在客户端按全宽长图滚动展示，不做固定比例裁剪，保留原图
-      if (slotKey === 'detailLong') {
-        updateDraft(
-          'posterSlots',
-          draft.posterSlots.map((slot) =>
-            slot.key === slotKey ? { ...slot, fileName: `detailLong-${Date.now()}.png`, filePath: tempFilePath } : slot,
-          ),
-        )
-        return
-      }
-      const info = await Taro.getImageInfo({ src: tempFilePath })
-      setCropModal({ open: true, slotKey, uploading: false, sourceImage: tempFilePath, imageWidth: info.width, imageHeight: info.height })
-      setCropImagePos({ x: 0, y: 0 })
-      setCropImageScale(1)
+      // 文件大小校验：海报限制 2M 以下
+      try {
+        const fileInfo: any = await Taro.getFileInfo({ filePath: tempFilePath })
+        if (fileInfo && Number(fileInfo.size) > 2 * 1024 * 1024) {
+          Taro.showToast({ title: '图片不能超过 2M', icon: 'none' })
+          return
+        }
+      } catch (_) {}
+      // 所有海报槽位自由尺寸：直接保留原图，不做固定比例裁剪
+      updateDraft(
+        'posterSlots',
+        draft.posterSlots.map((slot) =>
+          slot.key === slotKey ? { ...slot, fileName: `${slotKey}-${Date.now()}.png`, filePath: tempFilePath } : slot,
+        ),
+      )
     } catch (_) {
       // user cancelled
     }
