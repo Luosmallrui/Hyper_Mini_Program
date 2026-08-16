@@ -750,9 +750,7 @@ export default function OrganizerPage() {
   }
 
   const handleBottomTabChange = (nextView: OrganizerDashboardTab) => {
-    if (dashboardView !== nextView && isDashboardTab(dashboardView)) {
-      setViewHistory((prev) => [...prev, dashboardView])
-    }
+    // 底部 Tab 切换是平级跳转，不入返回历史（否则返回键要逐次穿过所有访问过的 Tab）
     if (dashboardView === 'more' && nextView !== 'more') {
       setMoreCloseCreateSignal((prev) => prev + 1)
       setMoreCreateOpen(false)
@@ -868,6 +866,11 @@ export default function OrganizerPage() {
     if (previousView && previousView !== dashboardView) {
       setViewHistory((prev) => prev.slice(0, -1))
       setDashboardView(previousView)
+      return
+    }
+    // 主 Tab 层级返回：非首页 Tab 先回「首页」，首页再退出页面
+    if (isDashboardTab(dashboardView) && dashboardView !== 'home') {
+      setDashboardView('home')
       return
     }
     Taro.navigateBack({ delta: 1 })
