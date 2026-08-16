@@ -5,7 +5,8 @@ import { AtIcon, AtFloatLayout } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import 'taro-ui/dist/style/components/float-layout.scss'
 import { request } from '@/utils/request'
-import { requireLogin } from '@/utils/auth'
+import ProfileBindModal from '@/components/ProfileBindModal'
+import { useProfileBindGate } from '@/hooks/useProfileBindGate'
 import { readContentFollowTarget } from '@/utils/content-follow'
 import { getVisitorId } from '@/utils/visitor-id'
 import { CDN_IMAGES } from '@/utils/cdn'
@@ -142,6 +143,7 @@ interface SessionItem {
 export default function ActivityPage() {
   const router = useRouter()
   const activityId = router.params?.id || ''
+  const { requireProfile, bindVisible, closeBindModal } = useProfileBindGate()
   const [activity, setActivity] = useState<MerchantDetail | null>(null)
 
   const [statusBarHeight, setStatusBarHeight] = useState(20)
@@ -392,7 +394,7 @@ export default function ActivityPage() {
 
   const handlePay = async () => {
     if (isPaying) return
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     if (viewerList.length === 0) {
       Taro.showToast({ title: '请先添加并选择观演人', icon: 'none' })
       return
@@ -538,7 +540,7 @@ export default function ActivityPage() {
   }
 
   const handleToggleFollow = async () => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     if (!activity || followPending) return
     if (activity.is_hidden) {
       Taro.showToast({ title: '活动已下架，暂不可关注', icon: 'none' })
@@ -576,7 +578,7 @@ export default function ActivityPage() {
   }
 
   const handleToggleSubscribe = async () => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     if (!activity || subscribePending) return
     if (activity.is_hidden) {
       Taro.showToast({ title: '活动已下架，暂不可订阅', icon: 'none' })
@@ -630,7 +632,7 @@ export default function ActivityPage() {
   const relatedActivities = (activity?.goods || []).slice(0, 3)
 
   const handleManageViewers = () => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     const firstSelectedViewerId = selectedViewerIds[0] || ''
     Taro.navigateTo({
       url: `/pages/activity-attendee/index?mode=create&selectedViewerId=${firstSelectedViewerId}`,
@@ -676,7 +678,7 @@ export default function ActivityPage() {
   }
 
   const handleOpenShare = () => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     if (!activityId) {
       Taro.showToast({ title: '活动信息无效', icon: 'none' })
       return
@@ -782,6 +784,7 @@ export default function ActivityPage() {
 
   return (
     <View className='activity-page'>
+      <ProfileBindModal visible={bindVisible} onClose={closeBindModal} />
       <View
         className='activity-hero'
         style={{

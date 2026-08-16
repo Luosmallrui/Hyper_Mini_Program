@@ -82,7 +82,7 @@ describe('guest mode source contracts', () => {
     expect(request).toContain("msg: '请先登录'")
   })
 
-  it('interactive actions are gated by requireLogin', () => {
+  it('interactive actions are gated by requireLogin or requireProfile', () => {
     const targets = [
       ['src', 'pages', 'index', 'index.tsx'],
       ['src', 'pages', 'activity-list', 'index.tsx'],
@@ -96,7 +96,8 @@ describe('guest mode source contracts', () => {
       ['src', 'custom-tab-bar', 'index.tsx'],
     ]
     targets.forEach((segments) => {
-      expect(readSource(...segments)).toContain('requireLogin')
+      // requireProfile 内部仍会走 requireLogin，游客行为不变
+      expect(readSource(...segments)).toMatch(/requireLogin|requireProfile/)
     })
   })
 

@@ -13,8 +13,9 @@ import {
 } from '@/utils/activity-marker'
 import { cacheUserInfo } from '@/utils/user-info'
 import { chooseUserLocation, getStoredChosenLocation } from '@/utils/user-location'
-import { requireLogin } from '@/utils/auth'
 import CommonHeader from '@/components/CommonHeader'
+import ProfileBindModal from '@/components/ProfileBindModal'
+import { useProfileBindGate } from '@/hooks/useProfileBindGate'
 import { useNavBarMetrics } from '@/hooks/useNavBarMetrics'
 import { setTabBarIndex } from '../../store/tabbar'
 import mapPinIcon from '../../assets/icons/map-pin.svg'
@@ -118,6 +119,7 @@ interface CategoryItem {
 }
 
 export default function IndexPage() {
+  const { requireProfile, bindVisible, closeBindModal } = useProfileBindGate()
   const [current, setCurrent] = useState(0)
   const [markers, setMarkers] = useState<any[]>([])
   const [userLocationMarker, setUserLocationMarker] = useState<any | null>(null)
@@ -1327,7 +1329,7 @@ export default function IndexPage() {
   }
 
   const toggleFollow = (id: string | number) => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     const target = partyListRef.current.find((item) => item.id === id)
     if (!target) return
     const followTarget = target.followTargetType && target.followTargetId
@@ -1649,6 +1651,7 @@ export default function IndexPage() {
 
   return (
     <View className='index-page-map'>
+      <ProfileBindModal visible={bindVisible} onClose={closeBindModal} />
       <TaroMap
         id='myMap'
         className='map-bg'

@@ -6,6 +6,8 @@ import 'taro-ui/dist/style/components/icon.scss'
 import { request } from '../../../utils/request'
 import { reverseGeocode, searchByKeyword, type POIItem } from '../../../utils/qqmap'
 import { chooseUserLocation, getStoredChosenLocation } from '../../../utils/user-location'
+import ProfileBindModal from '@/components/ProfileBindModal'
+import { useProfileBindGate } from '@/hooks/useProfileBindGate'
 import { normalizeSubscribedActivities, type SubscribedActivityItem } from './subscribed-activities'
 import './index.scss'
 
@@ -63,6 +65,7 @@ const TAG_PENDING_TIMEOUT = 5000
 type StepKey = 'photo' | 'text'
 
 export default function PostCreatePage() {
+  const { requireProfile, bindVisible, closeBindModal } = useProfileBindGate()
   const [step, setStep] = useState<StepKey>('photo')
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -552,6 +555,7 @@ export default function PostCreatePage() {
   }
 
   const handlePublish = async () => {
+    if (!requireProfile()) return
     if (!title.trim()) {
       Taro.showToast({ title: '请输入标题', icon: 'none' }); return
     }
@@ -626,6 +630,7 @@ export default function PostCreatePage() {
       onTouchEnd={endDrag}
       onTouchCancel={endDrag}
     >
+      <ProfileBindModal visible={bindVisible} onClose={closeBindModal} />
       <View
         className='custom-nav'
         style={{ paddingTop: `${statusBarHeight}px`, height: `${navBarHeight}px` }}

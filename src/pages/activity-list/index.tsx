@@ -11,8 +11,9 @@ import {
   normalizeActivityMarkerSourceId,
 } from '@/utils/activity-marker'
 import { chooseUserLocation, getStoredChosenLocation } from '@/utils/user-location'
-import { requireLogin } from '@/utils/auth'
 import CommonHeader from '@/components/CommonHeader'
+import ProfileBindModal from '@/components/ProfileBindModal'
+import { useProfileBindGate } from '@/hooks/useProfileBindGate'
 import { useNavBarMetrics } from '@/hooks/useNavBarMetrics'
 import certificationIcon from '../../assets/images/certification.png'
 import './index.less'
@@ -111,6 +112,7 @@ const getSelectedTagLabel = (selectedIds: number[], tags: MerchantTag[]) => {
 }
 
 export default function ActivityListPage() {
+  const { requireProfile, bindVisible, closeBindModal } = useProfileBindGate()
   const [list, setList] = useState<PartyItem[]>([])
   const isFetchingRef = useRef(false)
   const followPendingRef = useRef<Set<string | number>>(new Set())
@@ -495,7 +497,7 @@ export default function ActivityListPage() {
   }, [userCoord])
 
   const toggleFollow = (id: string | number) => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     const target = list.find((item) => item.id === id)
     if (!target) return
     const followTarget = target.followTargetType && target.followTargetId
@@ -587,6 +589,7 @@ export default function ActivityListPage() {
 
   return (
     <View className='activity-list-page'>
+      <ProfileBindModal visible={bindVisible} onClose={closeBindModal} />
       <CommonHeader
         className='activity-list-header'
         positionMode='fixed'

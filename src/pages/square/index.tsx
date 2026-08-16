@@ -10,7 +10,8 @@ import lightningFilledIcon from '@/assets/icons/lightning.svg'
 import lightningOutlineIcon from '@/assets/icons/lightning-outline.svg'
 import { setTabBarIndex } from '../../store/tabbar'
 import { request } from '../../utils/request'
-import { requireLogin } from '../../utils/auth'
+import ProfileBindModal from '@/components/ProfileBindModal'
+import { useProfileBindGate } from '@/hooks/useProfileBindGate'
 import './index.scss'
 
 const BASE_URL = 'https://www.hypercn.cn'
@@ -304,6 +305,7 @@ const nextWindowStartOnSwipe = (prevStart: number, prevActive: number, nextActiv
 }
 
 export default function SquarePage() {
+  const { requireProfile, bindVisible, closeBindModal } = useProfileBindGate()
   const [channelChipMarqueeMeta, setChannelChipMarqueeMeta] = useState<Record<number, {
     shouldScroll: boolean
     shiftPx: number
@@ -786,7 +788,7 @@ export default function SquarePage() {
   }
 
   const subscribeChannel = async (channel: ChannelApiItem) => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     if (isDefaultChannelId(channel.id)) {
       return
     }
@@ -815,7 +817,7 @@ export default function SquarePage() {
   }
 
   const unsubscribeChannel = async (channel: ChannelApiItem) => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     if (isDefaultChannelId(channel.id)) {
       return
     }
@@ -969,7 +971,7 @@ export default function SquarePage() {
   }
 
   const toggleNoteLike = async (noteId: string, currentLikedByMe: boolean) => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     if (pendingLikeIdsRef.current.has(noteId)) return
     pendingLikeIdsRef.current.add(noteId)
 
@@ -1180,6 +1182,7 @@ export default function SquarePage() {
 
   return (
     <View className='square-page'>
+      <ProfileBindModal visible={bindVisible} onClose={closeBindModal} />
       <View className='fixed-header-wrapper'>
         <CommonHeader
           className='square-common-header'

@@ -2,7 +2,8 @@ import { Component } from 'react'
 import { View, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { tabBarStore } from '../store/tabbar'
-import { requireLogin } from '../utils/auth'
+import { hasBoundPhone, requireLogin } from '../utils/auth'
+import ProfileBindModal from '../components/ProfileBindModal'
 import './index.scss'
 
 interface TabItem {
@@ -16,6 +17,7 @@ interface TabItem {
 interface State {
   selected: number
   list: TabItem[]
+  profileBindVisible: boolean
 }
 
 export default class CustomTabBar extends Component<{}, State> {
@@ -28,6 +30,7 @@ export default class CustomTabBar extends Component<{}, State> {
     super(props)
     this.state = {
       selected: tabBarStore.getSelected(),
+      profileBindVisible: false,
       list: [
         {
           pagePath: '/pages/index/index',
@@ -75,6 +78,11 @@ export default class CustomTabBar extends Component<{}, State> {
   handleSpecialClick = async (item: TabItem) => {
     // 发帖需要登录：先引导登录，避免游客选完图才被拦截
     if (!requireLogin()) return
+    // 已登录但未绑定手机号：弹绑定引导弹窗
+    if (!hasBoundPhone()) {
+      this.setState({ profileBindVisible: true })
+      return
+    }
     try {
       const res = await Taro.chooseMedia({
         count: 9,
@@ -125,6 +133,10 @@ export default class CustomTabBar extends Component<{}, State> {
 
     return (
       <View className='custom-tab-bar'>
+        <ProfileBindModal
+          visible={this.state.profileBindVisible}
+          onClose={() => this.setState({ profileBindVisible: false })}
+        />
         <View className='tab-bar-container'>
           <View
             className='tab-active-pill'

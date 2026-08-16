@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Image, ScrollView } from '@tarojs/components';
 import Taro, { useRouter, useDidShow } from '@tarojs/taro';
 import { AtIcon } from 'taro-ui';
-import { requireLogin } from '../../../utils/auth';
+import ProfileBindModal from '@/components/ProfileBindModal';
+import { useProfileBindGate } from '@/hooks/useProfileBindGate';
 import { CDN_IMAGES } from '@/utils/cdn';
 import { getDirectMessageEnabledSync, refreshDirectMessageEnabled } from '@/utils/system-config';
 import './index.less';
@@ -51,6 +52,7 @@ interface Note {
 }
 
 const UserProfilePage: React.FC = () => {
+  const { requireProfile, bindVisible, closeBindModal } = useProfileBindGate();
   const router = useRouter();
   const { userId } = router.params;
 
@@ -222,7 +224,7 @@ const UserProfilePage: React.FC = () => {
 
   // 关注/取消关注
   const handleFollowToggle = async () => {
-    if (!requireLogin()) return;
+    if (!requireProfile()) return;
     try {
       const action = isFollowing ? 'unfollow' : 'follow';
 
@@ -316,7 +318,7 @@ const UserProfilePage: React.FC = () => {
   };
 
   const handleMessageClick = () => {
-    if (!requireLogin()) return;
+    if (!requireProfile()) return;
     if (!userId) {
       Taro.showToast({ title: '用户信息缺失', icon: 'none' });
       return;
@@ -359,6 +361,7 @@ const UserProfilePage: React.FC = () => {
 
   return (
     <View className="user-profile-page">
+      <ProfileBindModal visible={bindVisible} onClose={closeBindModal} />
       {/* 顶部导航栏 */}
       <View
         className="navbar"

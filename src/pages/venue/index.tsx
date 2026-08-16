@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import { request } from '@/utils/request'
-import { requireLogin } from '@/utils/auth'
+import ProfileBindModal from '@/components/ProfileBindModal'
+import { useProfileBindGate } from '@/hooks/useProfileBindGate'
 import { readContentFollowTarget } from '@/utils/content-follow'
 import {
   getRelatedNoteCover,
@@ -53,6 +54,7 @@ const likeIcon = 'https://lanhu-oss-proxy.lanhuapp.com/SketchPng56c4ed6e45b36ac8
 export default function VenuePage() {
   const router = useRouter()
   const venueId = router.params?.id || ''
+  const { requireProfile, bindVisible, closeBindModal } = useProfileBindGate()
   const [venue, setVenue] = useState<MerchantDetail | null>(null)
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
@@ -233,7 +235,7 @@ export default function VenuePage() {
   }
 
   const handleToggleFollow = async () => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     if (!venue || followPending) return
 
     const nextFollow = !Boolean(venue.is_follow)
@@ -306,6 +308,7 @@ export default function VenuePage() {
 
   return (
     <View className='venue-page'>
+      <ProfileBindModal visible={bindVisible} onClose={closeBindModal} />
       {/* 顶部导航（固定、透明） */}
       <View
         className='custom-nav'

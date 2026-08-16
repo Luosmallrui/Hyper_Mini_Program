@@ -8,7 +8,8 @@ import 'taro-ui/dist/style/components/float-layout.scss'
 import lightningFilledIcon from '@/assets/icons/lightning.svg'
 import lightningOutlineIcon from '@/assets/icons/lightning-outline.svg'
 import { request } from '../../../utils/request'
-import { requireLogin } from '../../../utils/auth'
+import ProfileBindModal from '@/components/ProfileBindModal'
+import { useProfileBindGate } from '@/hooks/useProfileBindGate'
 import './index.scss'
 
 const BASE_URL = 'https://www.hypercn.cn'
@@ -114,6 +115,7 @@ const formatActivityTimeRange = (startTime: unknown, endTime: unknown) => {
 export default function PostDetailPage() {
   const router = useRouter()
   const { id } = router.params
+  const { requireProfile, bindVisible, closeBindModal } = useProfileBindGate()
 
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
@@ -394,7 +396,7 @@ export default function PostDetailPage() {
   }
 
   const handleSend = async () => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     const contentToSend = inputText.trim()
     if (!contentToSend) { Taro.showToast({ title: '说点什么吧', icon: 'none' }); return }
     if (!note) return
@@ -434,7 +436,7 @@ export default function PostDetailPage() {
     isLiked: boolean,
     parentCommentId?: string
   ) => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     const url = isLiked ? '/api/v1/comments/unlike' : '/api/v1/comments/like'
 
     if (type === 'comment') {
@@ -470,7 +472,7 @@ export default function PostDetailPage() {
   }
 
   const handleToggleLike = async () => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     if (!note) return
     const oldIsLiked = note.is_liked
     const oldLikeCount = note.like_count
@@ -492,7 +494,7 @@ export default function PostDetailPage() {
 
   // 双击点赞（仅未点赞时触发，避免误取消）
   const handleDoubleTapLike = async () => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     if (!note || note.is_liked) return
     const oldLikeCount = note.like_count
     setNote(prev => prev ? ({ ...prev, is_liked: true, like_count: oldLikeCount + 1 }) : null)
@@ -526,7 +528,7 @@ export default function PostDetailPage() {
   }
 
   const handleToggleCollect = async () => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     if (!note || collectPending) return
     const oldIsCollected = note.is_collected
     const oldCollCount = note.coll_count
@@ -583,7 +585,7 @@ export default function PostDetailPage() {
   }
 
   const handleToggleFollow = async (e) => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     e?.stopPropagation?.()
     if (!note) return
 
@@ -634,7 +636,7 @@ export default function PostDetailPage() {
 
   // 打开分享弹窗
   const handleOpenShare = () => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     setShowShareModal(true)
     setShareMsg('')
     setSelectedShareSession(null)
@@ -694,7 +696,7 @@ export default function PostDetailPage() {
   }
 
   const handleDeleteNote = (e?: any) => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     e?.stopPropagation?.()
     if (!note) return
     Taro.showModal({
@@ -726,7 +728,7 @@ export default function PostDetailPage() {
     parentCommentId?: string,
     e?: any
   ) => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     e?.stopPropagation?.()
     if (!commentId) return
     Taro.showModal({
@@ -790,6 +792,7 @@ export default function PostDetailPage() {
 
   return (
     <View className='post-detail-page'>
+      <ProfileBindModal visible={bindVisible} onClose={closeBindModal} />
       <View className='custom-nav' style={{ paddingTop: `${statusBarHeight}px`, height: `${navBarHeight}px`, paddingRight: `${navBarPaddingRight}px` }}>
         <View className='left-area'>
           <View className='back-btn' onClick={handleBack}>

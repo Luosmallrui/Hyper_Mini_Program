@@ -36,3 +36,9 @@ export function requireLogin(): boolean {
   Taro.navigateTo({ url: AUTH_PAGE_URL })
   return false
 }
+
+/** 是否已绑定手机号（读本地 userInfo 缓存，无缓存视为未绑定） */
+export const hasBoundPhone = (): boolean => {
+  const info = Taro.getStorageSync('userInfo')
+  return Boolean(info && info.phone_number)
+}

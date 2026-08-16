@@ -5,7 +5,8 @@ import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import { useNavBarMetrics } from '@/hooks/useNavBarMetrics'
 import { request } from '@/utils/request'
-import { requireLogin } from '@/utils/auth'
+import ProfileBindModal from '@/components/ProfileBindModal'
+import { useProfileBindGate } from '@/hooks/useProfileBindGate'
 import { buildFollowPayload } from '@/utils/content-follow'
 import { formatYuanFromCents } from '../../activity/points'
 import './index.scss'
@@ -86,6 +87,7 @@ const formatNumber = (num: number): string => {
 export default function OrganizerHomePage() {
   const router = useRouter()
   const organizerId = router.params?.id || ''
+  const { requireProfile, bindVisible, closeBindModal } = useProfileBindGate()
   const { statusBarHeight, navBarHeight } = useNavBarMetrics()
 
   const [organizer, setOrganizer] = useState<OrganizerHomeData | null>(null)
@@ -186,7 +188,7 @@ export default function OrganizerHomePage() {
   }
 
   const handleToggleFollow = async () => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     if (!organizer || followPending) return
 
     const prevFollow = Boolean(organizer.is_follow)
@@ -238,7 +240,7 @@ export default function OrganizerHomePage() {
   }
 
   const handleToggleSubscribe = async () => {
-    if (!requireLogin()) return
+    if (!requireProfile()) return
     if (!organizer || subscribePending) return
     const venueItem = organizer?.type === 'venue' ? venues[0] : null
     if (!venueItem) return
@@ -309,6 +311,7 @@ export default function OrganizerHomePage() {
 
   return (
     <View className='organizer-home-page'>
+      <ProfileBindModal visible={bindVisible} onClose={closeBindModal} />
       {/* 顶部导航（固定、透明渐变） */}
       <View className='custom-nav' style={{ height: `${statusBarHeight + navBarHeight}px` }}>
         <View className='status-bar' style={{ height: `${statusBarHeight}px` }} />
