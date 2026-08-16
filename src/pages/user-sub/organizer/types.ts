@@ -12,6 +12,7 @@ export type OrganizerDashboardView =
   | 'auditRejected'
   | 'accountStopped'
   | 'nonMerchant'
+  | 'followers'
 
 export type OrganizerDashboardTab = Exclude<OrganizerDashboardView, 'createWizard' | 'verify' | 'verifyRecords' | 'settlementApply' | 'settlementPending' | 'auditPending' | 'auditRejected' | 'accountStopped' | 'nonMerchant'>
 
@@ -123,6 +124,18 @@ export interface OrganizerStats {
   todayOrders: number
   todaySales: number
   totalSubscribers: number
+}
+
+/** 商家后台粉丝列表项 */
+export interface OrganizerFollowerItem {
+  userId: number
+  nickname: string
+  avatar: string
+  signature: string
+  mobile: string
+  userStatus: number
+  targetTypes: string[]
+  followedAt: string
 }
 
 export interface OrganizerOrderItem {

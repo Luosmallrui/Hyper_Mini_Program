@@ -18,6 +18,8 @@ interface OrganizerHomeViewProps {
   onOpenAddVerifier?: () => void
   onOpenTicketConfig: () => void
   onOpenVerify?: () => void
+  followerCount: number
+  onOpenFollowers: () => void
 }
 
 const QUICK_ACTIONS = [
@@ -31,7 +33,7 @@ const formatOrderStatValue = (val: number) => (val === 0 ? '0.00' : String(Math.
 const formatStatValue = (val: number) => String(Math.round(val))
 
 export default function OrganizerHomeView(props: OrganizerHomeViewProps) {
-  const { activityItems, stats, pageState, onRetry, onChangeTab, onOpenCreateWizard, onOpenSales, onOpenVerifiers, onOpenTicketConfig } = props
+  const { activityItems, stats, pageState, onRetry, onChangeTab, onOpenCreateWizard, onOpenSales, onOpenVerifiers, onOpenTicketConfig, followerCount, onOpenFollowers } = props
   const publishedActivities = activityItems.filter((item) => item.status === 'published').slice(0, 2)
 
   const getQuickActionHandler = (action: typeof QUICK_ACTIONS[number]['action']) => {
@@ -114,6 +116,21 @@ export default function OrganizerHomeView(props: OrganizerHomeViewProps) {
               <Text className="home-stat-label">活动订阅量</Text>
             </View>
           </View>
+        </View>
+      </View>
+
+      {/* 粉丝 */}
+      <View className="organizer-section">
+        <View className="organizer-card-header">
+          <Text className="organizer-card-title">粉丝</Text>
+          <Text className="organizer-card-link" onClick={onOpenFollowers}>查看粉丝列表</Text>
+        </View>
+        <View className="home-fans-card" onClick={onOpenFollowers}>
+          <View className="home-fans-info">
+            <Text className="home-fans-label">粉丝总数</Text>
+            <Text className="home-fans-value">{formatStatValue(followerCount)}</Text>
+          </View>
+          <AtIcon value="chevron-right" size={18} color="#666" />
         </View>
       </View>
 

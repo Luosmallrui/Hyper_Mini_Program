@@ -2686,6 +2686,38 @@ page {
   word-break: keep-all;
 }
 
+// ── Home: Fans entry ──
+.home-fans-card {
+  width: 100%;
+  min-height: 128rpx;
+  border-radius: 24rpx;
+  background: $organizer-input;
+  padding: 28rpx 32rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.home-fans-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.home-fans-label {
+  font-size: 26rpx;
+  line-height: 36rpx;
+  color: $organizer-text-muted;
+}
+
+.home-fans-value {
+  font-size: 44rpx;
+  line-height: 56rpx;
+  font-weight: 700;
+  color: $organizer-text;
+}
+
 // ── Home: Empty featured card ──
 .home-featured-empty {
   width: 100%;
@@ -3673,8 +3705,8 @@ page {
 }
 
 .account-setting-group.is-basic {
-  height: 214rpx;
   padding-top: 50rpx;
+  padding-bottom: 30rpx;
 }
 
 .account-setting-group.is-account {
@@ -4839,4 +4871,139 @@ page {
   font-size: 28px;
   font-weight: 600;
   color: #000;
+}
+
+// ── Followers ──
+.followers-page {
+  flex: 1;
+  min-height: 0;
+  padding: 24rpx 30rpx 0;
+  box-sizing: border-box;
+}
+
+.followers-search-row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-bottom: 28rpx;
+}
+
+.followers-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 70rpx;
+  border-radius: 12rpx;
+  background: #1F1F1F;
+  padding: 0 20rpx;
+  box-sizing: border-box;
+  color: $organizer-text;
+  font-size: 28rpx;
+}
+
+.followers-search-placeholder {
+  color: $organizer-text-muted;
+}
+
+.followers-search-btn {
+  flex-shrink: 0;
+  height: 70rpx;
+  padding: 0 28rpx;
+  border-radius: 12rpx;
+  background: $organizer-white-button;
+  color: #000;
+  font-size: 26rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.followers-empty {
+  padding: 120rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.followers-empty-text {
+  font-size: 28rpx;
+  color: $organizer-text-muted;
+}
+
+.follower-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.follower-item {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  border-radius: 24rpx;
+  background: $organizer-card;
+  padding: 28rpx;
+  box-sizing: border-box;
+}
+
+.follower-avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #2A2A2A;
+}
+
+.follower-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $organizer-text-secondary;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.follower-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.follower-name {
+  font-size: 30rpx;
+  line-height: 40rpx;
+  font-weight: 600;
+  color: $organizer-text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.follower-signature {
+  font-size: 24rpx;
+  line-height: 32rpx;
+  color: $organizer-text-secondary;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.follower-meta {
+  font-size: 24rpx;
+  line-height: 32rpx;
+  color: $organizer-text-muted;
+}
+
+.followers-load-more {
+  margin: 28rpx 0;
+  height: 80rpx;
+  border-radius: 16rpx;
+  background: $organizer-card;
+  color: $organizer-text-secondary;
+  font-size: 26rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

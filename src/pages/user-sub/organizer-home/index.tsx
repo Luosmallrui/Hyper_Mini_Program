@@ -279,6 +279,12 @@ export default function OrganizerHomePage() {
     })
   }
 
+  const handlePreviewCover = () => {
+    if (heroImage) {
+      Taro.previewImage({ current: heroImage, urls: [heroImage] })
+    }
+  }
+
   const handleOpenActivity = (id: number | string) => {
     Taro.navigateTo({ url: `/pages/activity/index?id=${String(id)}` })
   }
@@ -326,7 +332,7 @@ export default function OrganizerHomePage() {
       ) : (
         <>
           {/* 头图：cover_image，无则 logo，再无则深色占位 */}
-          <View className='hero-section'>
+          <View className='hero-section' onClick={handlePreviewCover}>
             {heroImage ? (
               <Image className='hero-bg-img' src={heroImage} mode='aspectFill' />
             ) : (
@@ -406,14 +412,20 @@ export default function OrganizerHomePage() {
                 </View>
               ) : null}
 
-              {/* 相册 */}
+              {/* 场地图册 */}
               {galleryImages.length > 0 ? (
                 <View className='section'>
-                  <Text className='section-title'>相册</Text>
+                  <Text className='section-title'>场地图册</Text>
                   <ScrollView className='gallery-scroll' scrollX enhanced showScrollbar={false}>
                     <View className='gallery-row'>
                       {galleryImages.map((img, idx) => (
-                        <Image key={`${img}-${idx}`} className='gallery-img' src={img} mode='aspectFill' />
+                        <Image
+                          key={`${img}-${idx}`}
+                          className='gallery-img'
+                          src={img}
+                          mode='aspectFill'
+                          onClick={() => Taro.previewImage({ current: img, urls: galleryImages })}
+                        />
                       ))}
                     </View>
                   </ScrollView>

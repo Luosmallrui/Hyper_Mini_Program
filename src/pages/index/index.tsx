@@ -49,7 +49,7 @@ const METERS_PER_DEGREE_LAT = 111320
 const MARKER_LABEL_ANCHOR_Y_ACTIVE = 7
 const MARKER_LABEL_ANCHOR_Y_INACTIVE = 21
 const ACTIVE_BACKGROUND_RATIO = 735 / 817
-const ACTIVE_FOREGROUND_ICON_HEIGHT = 33
+const ACTIVE_FOREGROUND_ICON_HEIGHT = 40
 const ACTIVE_FOREGROUND_ICON_ANCHOR_Y = 1.55
 const USER_LOCATION_MARKER_DISPLAY_SIZE = Math.max(16, Math.round(USER_AVATAR_MARKER_SIZE * 0.94))
 const MORE_TAGS: Array<{ id: number; name: string; sort: number }> = []
@@ -1005,13 +1005,6 @@ export default function IndexPage() {
     return raw
   }
 
-  const formatMarkerTitle = (title: string) => {
-    const safe = (title || '').trim()
-    if (!safe) return ''
-    if (safe.length <= 18) return safe
-    return `${safe.slice(0, 18)}...`
-  }
-
   const updateMarkers = async (list: PartyItem[], activeIndex: number) => {
     const buildToken = ++markerBuildTokenRef.current
     const renderVersion = ++markerRenderVersionRef.current
@@ -1028,7 +1021,7 @@ export default function IndexPage() {
       const isActive = index === activeIndex
       const fallbackPath = resolveMarkerFallback(item)
       const rawIconPath = resolveDisplayMarkerIconPath(item) || fallbackPath
-      const markerTitle = formatMarkerTitle(item.title)
+      const markerTitle = ''
       const latitude = Number(item.lat)
       const longitude = Number(item.lng)
       const safeLatitude = Number.isFinite(latitude) ? latitude : initialCenter.lat
@@ -1071,14 +1064,14 @@ export default function IndexPage() {
         const markersForItem: any[] = [bgMarker, fgMarker]
         if (markerTitle) {
           const titleAsset = await buildStrokedTitleMarker(markerTitle, {
-            fontSize: 11,
-            lineHeight: 15,
+            fontSize: 14,
+            lineHeight: 19,
             fontWeight: 500,
             fontFamily: 'PingFangSC, PingFang SC',
             fontStyle: 'normal',
             strokeWidth: 1,
-            strokeColor: '#DBDBDB',
-            fillColor: '#000000',
+            strokeColor: '#000000',
+            fillColor: '#FFFFFF',
             textAlign: 'left',
             topOffset: MARKER_LABEL_ANCHOR_Y_ACTIVE,
             paddingX: 1,
@@ -1100,7 +1093,7 @@ export default function IndexPage() {
             fgMarker.label = {
               content: ` ${markerTitle} `, // 增加前后空格增加呼吸感
               color: '#000000',
-              fontSize: 12,
+              fontSize: 14,
               anchorX: 0,
               anchorY: MARKER_LABEL_ANCHOR_Y_ACTIVE,
               borderWidth: 1,
@@ -1116,31 +1109,46 @@ export default function IndexPage() {
         return markersForItem
       }
 
-      const markerId = renderVersion * 10000 + markerBaseId * 10 + 1
-      const titleMarkerId = renderVersion * 10000 + markerBaseId * 10 + 2
-      const width = Math.max(18, Math.round(MARKER_INACTIVE_HEIGHT * ratioHint))
-      markerIndexMap.set(markerId, index)
-      const markerItem: any = {
-        id: markerId,
+      const bgMarkerId = renderVersion * 10000 + markerBaseId * 10 + 1
+      const fgMarkerId = renderVersion * 10000 + markerBaseId * 10 + 2
+      const titleMarkerId = renderVersion * 10000 + markerBaseId * 10 + 3
+      const bgHeight = MARKER_INACTIVE_HEIGHT
+      const bgWidth = Math.max(18, Math.round(bgHeight * ACTIVE_BACKGROUND_RATIO))
+      const fgHeight = Math.max(10, Math.round(ACTIVE_FOREGROUND_ICON_HEIGHT * (MARKER_INACTIVE_HEIGHT / MARKER_ACTIVE_HEIGHT)))
+      const fgWidth = Math.max(10, Math.round(fgHeight * ratioHint))
+      markerIndexMap.set(bgMarkerId, index)
+      markerIndexMap.set(fgMarkerId, index)
+      const bgMarker: any = {
+        id: bgMarkerId,
+        latitude: safeLatitude,
+        longitude: safeLongitude,
+        iconPath: mapMakerBackground,
+        width: bgWidth,
+        height: bgHeight,
+        zIndex: 200,
+        anchor: { x: 0.5, y: 1 },
+      }
+      const fgMarker: any = {
+        id: fgMarkerId,
         latitude: safeLatitude,
         longitude: safeLongitude,
         iconPath: rawIconPath,
-        width,
-        height: MARKER_INACTIVE_HEIGHT,
-        zIndex: 200,
-        anchor: { x: 0.5, y: 0.5 },
+        width: fgWidth,
+        height: fgHeight,
+        zIndex: 201,
+        anchor: { x: 0.5, y: ACTIVE_FOREGROUND_ICON_ANCHOR_Y },
       }
-      const markersForItem: any[] = [markerItem]
+      const markersForItem: any[] = [bgMarker, fgMarker]
       if (markerTitle) {
         const titleAsset = await buildStrokedTitleMarker(markerTitle, {
-          fontSize: 11,
-          lineHeight: 15,
+          fontSize: 14,
+          lineHeight: 19,
           fontWeight: 500,
           fontFamily: 'PingFangSC, PingFang SC',
           fontStyle: 'normal',
           strokeWidth: 1,
-          strokeColor: '#DBDBDB',
-          fillColor: '#000000',
+          strokeColor: '#000000',
+          fillColor: '#FFFFFF',
           textAlign: 'left',
           topOffset: MARKER_LABEL_ANCHOR_Y_INACTIVE,
           paddingX: 1,
@@ -1155,14 +1163,14 @@ export default function IndexPage() {
             iconPath: titleAsset.iconPath,
             width: titleAsset.width,
             height: titleAsset.height,
-            zIndex: 201,
+            zIndex: 202,
             anchor: { x: 0.5, y: 0 },
           })
         } else {
-          markerItem.label = {
+          fgMarker.label = {
             content: ` ${markerTitle} `,
             color: '#000000',
-            fontSize: 12,
+            fontSize: 14,
             anchorX: 0,
             anchorY: MARKER_LABEL_ANCHOR_Y_INACTIVE,
             borderWidth: 1,

@@ -471,7 +471,7 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
     const location = await chooseUserLocation()
     if (!location) return
     updateVenueForm({
-      address: location.address || location.name,
+      address: location.name || location.address,
       latitude: location.latitude,
       longitude: location.longitude,
     })
@@ -1133,9 +1133,18 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
 
               <Text className="account-field-required">场地封面</Text>
               <View className="account-venue-upload" onClick={() => handleUploadVenueImage('cover')}>
-                <Text className="account-venue-upload-title">
-                  {venueImageUploading ? '上传中...' : venueForm.cover_image ? '已上传场地封面' : '点击上传场地封面'}
-                </Text>
+                {venueForm.cover_image ? (
+                  <Image
+                    src={venueForm.cover_image}
+                    className="account-venue-cover-img"
+                    mode="aspectFill"
+                    onClick={(e) => { e.stopPropagation(); Taro.previewImage({ current: venueForm.cover_image, urls: [venueForm.cover_image] }) }}
+                  />
+                ) : (
+                  <Text className="account-venue-upload-title">
+                    {venueImageUploading ? '上传中...' : '点击上传场地封面'}
+                  </Text>
+                )}
               </View>
 
               <Text className="account-field-required">场地图册</Text>
@@ -1148,7 +1157,12 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
                 <View className="account-venue-gallery">
                   {venueForm.gallery.map((url, index) => (
                     <View key={`${url}-${index}`} className="account-venue-gallery-item">
-                      <Image src={url} className="account-venue-gallery-img" mode="aspectFill" />
+                      <Image
+                        src={url}
+                        className="account-venue-gallery-img"
+                        mode="aspectFill"
+                        onClick={() => Taro.previewImage({ current: url, urls: venueForm.gallery })}
+                      />
                       <Text
                         className="account-venue-gallery-remove"
                         onClick={() => updateVenueForm({ gallery: venueForm.gallery.filter((_, i) => i !== index) })}

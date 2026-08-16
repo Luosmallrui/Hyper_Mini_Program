@@ -16,6 +16,7 @@ import type {
   OrganizerActivityStatus,
   OrganizerAuditStatus,
   OrganizerBankAccountAudit,
+  OrganizerFollowerItem,
   OrganizerOrderItem,
   OrganizerSalesSummary,
   OrganizerStats,
@@ -964,12 +965,51 @@ export const fetchWithdrawRecords = async (
     flow_list?: ApiWithdrawFlowItem[]
     total_items?: number
   }>({
-    url: `/api/v1/organizer/bank/withdraw/flow/list?page=${page}&page_size=${pageSize}`,
+    url: `/api/v1/organizer/bank/withdraw/flow/list?page=${page}&pageSize=${pageSize}`,
     method: 'GET',
   })
   return {
     list: (Array.isArray(data?.flow_list) ? data.flow_list : []).map(mapWithdrawRecord),
     total: Number(data?.total_items || 0),
+  }
+}
+
+interface ApiFollowerItem {
+  user_id?: number | string
+  nickname?: string
+  avatar?: string
+  signature?: string
+  mobile?: string
+  user_status?: number
+  target_types?: string[]
+  followed_at?: string
+}
+
+/** 商家后台粉丝列表（合并 user/organizer/venue 关注，按 user_id 去重） */
+export const fetchFollowers = async (
+  page = 1,
+  pageSize = 20,
+  keyword = '',
+): Promise<{ list: OrganizerFollowerItem[]; total: number }> => {
+  const data = await apiRequest<{
+    list?: ApiFollowerItem[]
+    total?: number
+  }>({
+    url: `/api/v1/organizer/followers?page=${page}&pageSize=${pageSize}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}`,
+    method: 'GET',
+  })
+  return {
+    list: (Array.isArray(data?.list) ? data.list : []).map((item) => ({
+      userId: Number(item?.user_id ?? 0),
+      nickname: item?.nickname || '',
+      avatar: item?.avatar || '',
+      signature: item?.signature || '',
+      mobile: item?.mobile || '',
+      userStatus: Number(item?.user_status ?? 0),
+      targetTypes: Array.isArray(item?.target_types) ? item.target_types : [],
+      followedAt: item?.followed_at || '',
+    })),
+    total: Number(data?.total || 0),
   }
 }
 

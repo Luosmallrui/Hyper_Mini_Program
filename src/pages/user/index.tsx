@@ -978,7 +978,7 @@ export default function UserPage() {
     setTimeout(hideNativeTabBar, 0);
     if (!location) return;
     updateVenueProfile({
-      address: location.address || location.name,
+      address: location.name || location.address,
       latitude: location.latitude,
       longitude: location.longitude
     });

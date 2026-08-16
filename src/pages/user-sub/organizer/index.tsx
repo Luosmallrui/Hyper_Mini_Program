@@ -18,6 +18,7 @@ import {
   fetchActivityDetail,
   fetchContentTags,
   fetchDashboard,
+  fetchFollowers,
   fetchOrders,
   fetchOrganizerAuditStatus,
   fetchOrganizerProfile,
@@ -52,6 +53,7 @@ import {
   OrganizerActivityLifeStatus,
   OrganizerDashboardTab,
   OrganizerDashboardView,
+  OrganizerFollowerItem,
   OrganizerOrderItem,
   OrganizerSalesSummary,
   OrganizerStats,
@@ -294,6 +296,14 @@ export default function OrganizerPage() {
   // Page data state machine
   const [pageState, setPageState] = useState<PageDataState>('idle')
   const [homeStats, setHomeStats] = useState<OrganizerStats>({ todayOrders: 0, todaySales: 0, totalSubscribers: 0 })
+  // 粉丝列表
+  const [followerCount, setFollowerCount] = useState(0)
+  const [followerList, setFollowerList] = useState<OrganizerFollowerItem[]>([])
+  const [followerTotal, setFollowerTotal] = useState(0)
+  const [followerPage, setFollowerPage] = useState(1)
+  const [followerLoading, setFollowerLoading] = useState(false)
+  const [followerError, setFollowerError] = useState('')
+  const [followerKeyword, setFollowerKeyword] = useState('')
   const [activityTab, setActivityTab] = useState<OrganizerActivityTab>('mine')
   const [activityKeyword, setActivityKeyword] = useState('')
   const [activityRefreshing, setActivityRefreshing] = useState(false)
@@ -539,6 +549,7 @@ export default function OrganizerPage() {
       setActivityItems(data.activities)
       setHomeStats(data.stats)
       setPageState(data.activities.length > 0 ? 'loaded' : 'empty')
+      void fetchFollowers(1, 1, '').then((res) => setFollowerCount(res.total)).catch(() => {})
     } catch {
       setPageState('error')
       Taro.showToast({ title: '加载失败，请重试', icon: 'none' })
@@ -760,6 +771,29 @@ export default function OrganizerPage() {
 
   const openHomeAddVerifier = () => {
     setHomeAddVerifierOpen(true)
+  }
+
+  const openFollowers = () => {
+    rememberCurrentView()
+    setDashboardView('followers')
+    void loadFollowers(1, '')
+  }
+
+  const loadFollowers = async (page: number, keyword: string) => {
+    if (followerLoading) return
+    setFollowerLoading(true)
+    setFollowerError('')
+    try {
+      const res = await fetchFollowers(page, 20, keyword)
+      setFollowerList((prev) => (page === 1 ? res.list : [...prev, ...res.list]))
+      setFollowerTotal(res.total)
+      setFollowerPage(page)
+      setFollowerKeyword(keyword)
+    } catch (error) {
+      setFollowerError('加载失败，请重试')
+    } finally {
+      setFollowerLoading(false)
+    }
   }
 
   const resetHomeVerifierForm = () => {
@@ -2057,6 +2091,52 @@ export default function OrganizerPage() {
     </ScrollView>
   )
 
+  const renderFollowersView = () => (
+    <View className="organizer-scroll followers-page">
+      <View className="followers-search-row">
+        <Input
+          className="followers-search-input"
+          placeholder="搜索粉丝昵称"
+          placeholderClass="followers-search-placeholder"
+          value={followerKeyword}
+          onInput={(e) => setFollowerKeyword(e.detail.value)}
+          onConfirm={() => loadFollowers(1, followerKeyword)}
+        />
+        <Text className="followers-search-btn" onClick={() => loadFollowers(1, followerKeyword)}>搜索</Text>
+      </View>
+      {followerList.length === 0 && !followerLoading ? (
+        <View className="followers-empty">
+          <Text className="followers-empty-text">{followerError || '暂无粉丝'}</Text>
+        </View>
+      ) : (
+        <View className="follower-list">
+          {followerList.map((item) => (
+            <View key={item.userId} className="follower-item">
+              {item.avatar ? (
+                <Image className="follower-avatar" src={item.avatar} mode="aspectFill" />
+              ) : (
+                <View className="follower-avatar follower-avatar-placeholder">
+                  <Text>{(item.nickname || 'U')[0]}</Text>
+                </View>
+              )}
+              <View className="follower-info">
+                <Text className="follower-name">{item.nickname}</Text>
+                {item.signature ? <Text className="follower-signature">{item.signature}</Text> : null}
+                <Text className="follower-meta">{item.mobile || '未绑定手机'}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+      {followerList.length < followerTotal && (
+        <View className="followers-load-more" onClick={() => loadFollowers(followerPage + 1, followerKeyword)}>
+          {followerLoading ? '加载中...' : '加载更多'}
+        </View>
+      )}
+      <View className="organizer-safe-bottom" />
+    </View>
+  )
+
   const renderSettlementPendingView = () => (
     <View className="settlement-pending-page">
       <View className="settlement-pending-card">
@@ -2898,6 +2978,8 @@ export default function OrganizerPage() {
             onOpenAddVerifier={openHomeAddVerifier}
             onOpenTicketConfig={() => openCreateWizard(4)}
             onOpenVerify={() => openVerifyView()}
+            followerCount={followerCount}
+            onOpenFollowers={openFollowers}
           />
         )}
         {dashboardView === 'activities' && (
@@ -2971,10 +3053,11 @@ export default function OrganizerPage() {
         {dashboardView === 'accountStopped' && renderAccountStoppedView()}
         {dashboardView === 'auditPending' && renderAuditStatusView('pending')}
         {dashboardView === 'auditRejected' && renderAuditStatusView('rejected')}
+        {dashboardView === 'followers' && renderFollowersView()}
         {dashboardView === 'createWizard' && renderCreateWizard()}
       </View>
 
-      {dashboardView !== 'nonMerchant' && dashboardView !== 'accountStopped' && dashboardView !== 'verify' && dashboardView !== 'verifyRecords' && dashboardView !== 'settlementApply' && dashboardView !== 'settlementPending' && dashboardView !== 'auditPending' && dashboardView !== 'auditRejected' ? (
+      {dashboardView !== 'nonMerchant' && dashboardView !== 'accountStopped' && dashboardView !== 'verify' && dashboardView !== 'verifyRecords' && dashboardView !== 'settlementApply' && dashboardView !== 'settlementPending' && dashboardView !== 'auditPending' && dashboardView !== 'auditRejected' && dashboardView !== 'followers' ? (
         <View className="dashboard-bottom-nav">
           {BOTTOM_TABS.map((item) => {
             const active = currentBottomTab === item.key
