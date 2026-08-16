@@ -164,6 +164,8 @@ export default function IndexPage() {
   const mapScaleRef = useRef(DEFAULT_MAP_SCALE)
   const cameraAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const autoPlayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // 自动轮播方向：1 从左往右，-1 从右往左，到头折返循环
+  const autoPlayDirectionRef = useRef(1)
   const cameraAnimTokenRef = useRef(0)
   const cameraAnimTargetRef = useRef<{ lng: number; lat: number } | null>(null)
   const mapFocusReqTokenRef = useRef(0)
@@ -914,7 +916,7 @@ export default function IndexPage() {
           icon: item.icon,
           time: isVenue && item.business_hours
             ? item.business_hours
-            : (item.start_time || item.created_at || ''),
+            : (item.start_time || item.created_at || '').slice(0, 10),
           price: typeof item.avg_price === 'number' && item.avg_price > 0 ? (item.avg_price / 100).toFixed(0) : '--',
           attendees: item.current_count || 0,
           dynamicCount: item.post_count || 0,
@@ -967,7 +969,7 @@ export default function IndexPage() {
     }
   }
 
-  // 地图 marker 自动轮播：每隔 5 秒切换到下一个场地/活动
+  // 地图 marker 自动轮播：每隔 5 秒切换，从左往右到头后折返从右往左，循环往复
   const stopAutoPlay = () => {
     if (autoPlayTimerRef.current) {
       clearInterval(autoPlayTimerRef.current)
@@ -980,7 +982,16 @@ export default function IndexPage() {
     const list = partyListRef.current
     if (list.length <= 1) return
     autoPlayTimerRef.current = setInterval(() => {
-      const nextIndex = (currentRef.current + 1) % list.length
+      const count = partyListRef.current.length
+      if (count <= 1) return
+      let nextIndex = currentRef.current + autoPlayDirectionRef.current
+      if (nextIndex >= count - 1) {
+        nextIndex = count - 1
+        autoPlayDirectionRef.current = -1
+      } else if (nextIndex <= 0) {
+        nextIndex = 0
+        autoPlayDirectionRef.current = 1
+      }
       if (nextIndex === currentRef.current) return
       hasManualMapSelectionRef.current = true
       isFirstScreenInitRef.current = false
@@ -1275,10 +1286,13 @@ export default function IndexPage() {
   }
 
   const handleSwiperChange = (e: any) => {
-    if (e.detail.source === 'touch' || e.detail.source === '') {
+    // 仅用户手动滑动才停止自动轮播；程序触发的切换（source === ''）不停定时器
+    if (e.detail.source === 'touch') {
       stopAutoPlay()
       hasManualMapSelectionRef.current = true
       isFirstScreenInitRef.current = false
+    }
+    if (e.detail.source === 'touch' || e.detail.source === '') {
       const nextIndex = e.detail.current
       setCurrent(nextIndex)
       currentRef.current = nextIndex
