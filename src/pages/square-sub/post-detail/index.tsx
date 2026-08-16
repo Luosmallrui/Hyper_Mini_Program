@@ -134,6 +134,8 @@ export default function PostDetailPage() {
   const [likeBurst, setLikeBurst] = useState(0)
   const lastTapTimeRef = useRef(0)
   const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // 内容区双击点赞的上次点击时间（与媒体区独立，互不干扰）
+  const lastContentTapTimeRef = useRef(0)
 
   const [inputText, setInputText] = useState('')
   const [inputFocus, setInputFocus] = useState(false)
@@ -527,6 +529,17 @@ export default function PostDetailPage() {
     }, 300)
   }
 
+  // 内容区双击点赞：单击不做任何事（不影响评论/标签等原有交互）
+  const handleContentTap = () => {
+    const now = Date.now()
+    if (now - lastContentTapTimeRef.current < 300) {
+      lastContentTapTimeRef.current = 0
+      void handleDoubleTapLike()
+      return
+    }
+    lastContentTapTimeRef.current = now
+  }
+
   const handleToggleCollect = async () => {
     if (!requireProfile()) return
     if (!note || collectPending) return
@@ -817,7 +830,7 @@ export default function PostDetailPage() {
         </View>
       </View>
 
-      <ScrollView scrollY className='detail-scroll'>
+      <ScrollView scrollY className='detail-scroll' onClick={handleContentTap}>
         <Swiper
           className='media-swiper'
           style={{ height: '500px' }}
