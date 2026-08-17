@@ -9,6 +9,7 @@ import ProfileBindModal from '@/components/ProfileBindModal'
 import { useProfileBindGate } from '@/hooks/useProfileBindGate'
 import { readContentFollowTarget } from '@/utils/content-follow'
 import { getVisitorId } from '@/utils/visitor-id'
+import { getDirectMessageEnabledSync, refreshDirectMessageEnabled } from '@/utils/system-config'
 import { CDN_IMAGES } from '@/utils/cdn'
 const backgroundWebp = CDN_IMAGES.backgroundWebp
 import certificationIcon from '../../assets/images/certification.png'
@@ -159,6 +160,8 @@ export default function ActivityPage() {
   const [selectedViewerIds, setSelectedViewerIds] = useState<number[]>([])
   const [viewerLoading, setViewerLoading] = useState(false)
   const [viewerError, setViewerError] = useState('')
+  // 私信/群聊开关：关闭时隐藏「分享到会话」入口，避免审核看到 IM 痕迹
+  const [directMessageEnabled, setDirectMessageEnabled] = useState(getDirectMessageEnabledSync())
   const [showShareModal, setShowShareModal] = useState(false)
   const [sessionList, setSessionList] = useState<SessionItem[]>([])
   const [loadingSession, setLoadingSession] = useState(false)
@@ -192,6 +195,7 @@ export default function ActivityPage() {
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
     const rightPadding = sysInfo.screenWidth - menuInfo.left
     setMenuButtonWidth(rightPadding)
+    refreshDirectMessageEnabled().then(setDirectMessageEnabled)
   }, [])
 
   useEffect(() => {
@@ -830,9 +834,11 @@ export default function ActivityPage() {
             <View className='subscribe-pill' onClick={handleToggleSubscribe}>
               <Text className='subscribe-text'>{activity?.is_subscribe ? '取消订阅' : (isVenue ? '订阅场地' : '订阅活动')}</Text>
             </View>
-            <View className='share-pill' onClick={handleOpenShare}>
-              <Text className='share-text'>{isVenue ? '分享场地' : '分享活动'}</Text>
-            </View>
+            {directMessageEnabled && (
+              <View className='share-pill' onClick={handleOpenShare}>
+                <Text className='share-text'>{isVenue ? '分享场地' : '分享活动'}</Text>
+              </View>
+            )}
           </View>
 
           <View className='host-card' onClick={handleOpenOrganizer}>

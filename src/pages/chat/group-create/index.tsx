@@ -3,6 +3,8 @@ import Taro from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { AtIcon } from 'taro-ui'
 import { request } from '@/utils/request'
+import { isLoggedIn, requireLogin } from '@/utils/auth'
+import { refreshDirectMessageEnabled } from '@/utils/system-config'
 import 'taro-ui/dist/style/components/icon.scss'
 import './index.scss'
 
@@ -26,6 +28,18 @@ export default function GroupCreatePage() {
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
     const rightPadding = sysInfo.screenWidth - menuInfo.left
     setMenuButtonWidth(rightPadding)
+
+    // 建群页兜底校验：需登录且群聊功能未被系统配置关闭
+    if (!isLoggedIn()) {
+      requireLogin()
+      return
+    }
+    refreshDirectMessageEnabled().then((enabled) => {
+      if (!enabled) {
+        Taro.showToast({ title: '群聊功能暂未开放', icon: 'none' })
+        setTimeout(() => Taro.navigateBack({ delta: 1 }), 800)
+      }
+    })
   }, [])
 
   const canSubmit = name.trim().length > 0 && !submitting

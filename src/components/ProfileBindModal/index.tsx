@@ -17,7 +17,7 @@ interface ProfileBindModalProps {
 /**
  * 绑定手机号引导弹窗：
  * 已登录但未绑定手机号的用户进行互动操作时弹出，
- * 主按钮走 getPhoneNumber 一键绑定，头像/昵称为选填补充项。
+ * 主按钮走 getPhoneNumber 一键绑定，头像/昵称为必填项。
  */
 const ProfileBindModal: React.FC<ProfileBindModalProps> = ({ visible, onClose }) => {
   const [avatar, setAvatar] = useState('')
@@ -90,6 +90,16 @@ const ProfileBindModal: React.FC<ProfileBindModalProps> = ({ visible, onClose })
     }
     if (submitting) return
 
+    // 头像和昵称为必填项，未完善时中断绑定流程
+    if (!avatar) {
+      Taro.showToast({ title: '请先设置头像', icon: 'none' })
+      return
+    }
+    if (!nickname.trim()) {
+      Taro.showToast({ title: '请填写昵称', icon: 'none' })
+      return
+    }
+
     setSubmitting(true)
     Taro.showLoading({ title: '绑定中...', mask: true })
 
@@ -104,7 +114,7 @@ const ProfileBindModal: React.FC<ProfileBindModalProps> = ({ visible, onClose })
         throw new Error(bindBody?.msg || '绑定失败')
       }
 
-      // 头像/昵称为选填项，仅在用户改动过时提交
+      // 头像/昵称有改动时才提交资料更新
       const avatarChanged = avatar !== initialRef.current.avatar
       const nicknameChanged = nickname !== initialRef.current.nickname
       if (avatarChanged || nicknameChanged) {
@@ -113,7 +123,7 @@ const ProfileBindModal: React.FC<ProfileBindModalProps> = ({ visible, onClose })
           url: '/api/v1/user/info',
           method: 'POST',
           data: {
-            nickname: nickname || initialRef.current.nickname,
+            nickname: nickname.trim() || initialRef.current.nickname,
             avatar: finalAvatar,
             signature,
           },
@@ -166,14 +176,14 @@ const ProfileBindModal: React.FC<ProfileBindModalProps> = ({ visible, onClose })
             <AtIcon value='edit' size='10' color='#000' />
           </View>
         </Button>
-        <Text className='profile-bind-avatar-hint'>点击设置头像（选填）</Text>
+        <Text className='profile-bind-avatar-hint'>点击设置头像</Text>
 
         <View className='profile-bind-field'>
           <Text className='profile-bind-label'>昵称</Text>
           <Input
             type='nickname'
             className='profile-bind-input'
-            placeholder='选填，展示你的昵称'
+            placeholder='请填写昵称'
             placeholderClass='profile-bind-placeholder'
             value={nickname}
             onInput={(e) => setNickname(e.detail.value)}

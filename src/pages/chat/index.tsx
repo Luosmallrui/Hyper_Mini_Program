@@ -1004,7 +1004,7 @@ export default function ChatPage() {
     }
   }
 
-  const safeTitle = safeDecode(title || '\u804a\u5929')
+  const safeTitle = safeDecode(title || '客服')
 
   return (
     <View className='chat-page'>

@@ -10,6 +10,7 @@ import lightningOutlineIcon from '@/assets/icons/lightning-outline.svg'
 import { request } from '../../../utils/request'
 import ProfileBindModal from '@/components/ProfileBindModal'
 import { useProfileBindGate } from '@/hooks/useProfileBindGate'
+import { getDirectMessageEnabledSync, refreshDirectMessageEnabled } from '@/utils/system-config'
 import './index.scss'
 
 const BASE_URL = 'https://www.hypercn.cn'
@@ -121,7 +122,7 @@ export default function PostDetailPage() {
   const [navBarHeight, setNavBarHeight] = useState(44)
   const [navBarPaddingRight, setNavBarPaddingRight] = useState(0)
 
-  const [, setCurrentMedia] = useState(0)
+  const [currentMedia, setCurrentMedia] = useState(0)
   const [note, setNote] = useState<NoteDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -140,7 +141,11 @@ export default function PostDetailPage() {
   const [inputText, setInputText] = useState('')
   const [inputFocus, setInputFocus] = useState(false)
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null)
+  // 点击底栏评论图标时，平滑滚动到评论区
+  const [commentScrollTarget, setCommentScrollTarget] = useState('')
 
+  // 私信/群聊开关：关闭时隐藏「分享到会话」入口，避免审核看到 IM 痕迹
+  const [directMessageEnabled, setDirectMessageEnabled] = useState(getDirectMessageEnabledSync())
   const [showShareModal, setShowShareModal] = useState(false)
   const [sessionList, setSessionList] = useState<SessionItem[]>([])
   const [loadingSession, setLoadingSession] = useState(false)
@@ -155,6 +160,7 @@ export default function PostDetailPage() {
     const nbHeight = (menuInfo.top - sbHeight) * 2 + menuInfo.height
     setNavBarHeight(nbHeight > 0 ? nbHeight : 44)
     setNavBarPaddingRight((sysInfo.screenWidth - menuInfo.left) + 8)
+    refreshDirectMessageEnabled().then(setDirectMessageEnabled)
 
     if (id) {
       fetchNoteDetail(id)
@@ -540,6 +546,12 @@ export default function PostDetailPage() {
     lastContentTapTimeRef.current = now
   }
 
+  // 底栏评论图标：平滑滚动到评论区（重复点击需先清空再设置才能再次触发）
+  const handleScrollToComments = () => {
+    setCommentScrollTarget('')
+    setTimeout(() => setCommentScrollTarget('comment-area'), 50)
+  }
+
   const handleToggleCollect = async () => {
     if (!requireProfile()) return
     if (!note || collectPending) return
@@ -579,6 +591,14 @@ export default function PostDetailPage() {
     e?.stopPropagation?.()
     if (!note?.user_id) return
     Taro.navigateTo({ url: `/pages/user-sub/profile/index?userId=${note.user_id}` })
+  }
+
+  // 评论区头像点击：跳转到对应用户主页
+  const handleOpenCommentUser = (user: UserInfo, e?: any) => {
+    e?.stopPropagation?.()
+    const uid = user?.user_id || user?.user_hash_id
+    if (!uid) return
+    Taro.navigateTo({ url: `/pages/user-sub/profile/index?userId=${uid}` })
   }
 
   const handleOpenActivity = () => {
@@ -824,13 +844,16 @@ export default function PostDetailPage() {
               {note.is_followed ? '已关注' : '关注'}
             </View>
           )}
-          <View onClick={handleOpenShare}>
-            <AtIcon value='share' size='20' color='#fff' style={{marginLeft: '15px'}} />
-          </View>
+          {directMessageEnabled && (
+            <View className='nav-icon-btn' onClick={handleOpenShare}>
+              <AtIcon value='share' size='18' color='#fff' />
+            </View>
+          )}
         </View>
       </View>
 
-      <ScrollView scrollY className='detail-scroll' onClick={handleContentTap}>
+      <ScrollView scrollY scrollWithAnimation scrollIntoView={commentScrollTarget} className='detail-scroll' onClick={handleContentTap}>
+        <View className='media-wrap'>
         <Swiper
           className='media-swiper'
           style={{ height: '500px' }}
@@ -845,6 +868,10 @@ export default function PostDetailPage() {
             </SwiperItem>
           ))}
         </Swiper>
+        {note.media_data.length > 1 && (
+          <View className='media-counter'>{currentMedia + 1}/{note.media_data.length}</View>
+        )}
+        </View>
 
         {likeBurst > 0 && (
           <View key={likeBurst} className='double-tap-heart'>❤️</View>
@@ -890,12 +917,12 @@ export default function PostDetailPage() {
         <View className='divider' />
 
         {/* 评论区 */}
-        <View className='comment-section'>
+        <View id='comment-area' className='comment-section'>
           <Text className='comment-count'>共{note.comment_count}条评论</Text>
 
           {commentList.map(comment => (
             <View key={comment.id} className='comment-item'>
-              <Image src={comment.user.avatar} className='c-avatar' mode='aspectFill' />
+              <Image src={comment.user.avatar} className='c-avatar' mode='aspectFill' onClick={(e) => handleOpenCommentUser(comment.user, e)} />
               <View className='c-content'>
 
                 <View className='c-header-row'>
@@ -929,7 +956,7 @@ export default function PostDetailPage() {
                 <View className='sub-reply-container'>
                   {comment.latest_replies && comment.latest_replies.map(reply => (
                     <View key={reply.id} className='sub-reply-item' onClick={(e) => { e.stopPropagation(); onClickReply('reply', reply, comment.id) }}>
-                      <Image src={reply.user.avatar} className='sub-avatar' mode='aspectFill' />
+                      <Image src={reply.user.avatar} className='sub-avatar' mode='aspectFill' onClick={(e) => handleOpenCommentUser(reply.user, e)} />
                       <View className='sub-right'>
 
                         <View className='sub-header-row'>
@@ -994,6 +1021,13 @@ export default function PostDetailPage() {
             </View>
           ))}
 
+          {!isCommentLoading && commentList.length === 0 && (
+            <View className='comment-empty'>
+              <Text className='comment-empty-title'>还没有评论</Text>
+              <Text className='comment-empty-sub'>快来写下第一条评论吧</Text>
+            </View>
+          )}
+
           {!isCommentLoading && hasMoreComments && (
             <View className='expand-more-btn' onClick={() => fetchComments(note.id)}>
               <Text className='line-bar'></Text>
@@ -1026,6 +1060,10 @@ export default function PostDetailPage() {
           <View className='icon-item' onClick={handleToggleCollect}>
             <AtIcon value={note.is_collected ? 'star-2' : 'star'} size='24' color={note.is_collected ? '#FFCC00' : '#fff'} className={note.is_collected ? 'liked-anim' : ''}/>
             <Text className='num'>{note.coll_count}</Text>
+          </View>
+          <View className='icon-item' onClick={handleScrollToComments}>
+            <AtIcon value='message' size='22' color='#fff' />
+            <Text className='num'>{note.comment_count}</Text>
           </View>
         </View>
       </View>

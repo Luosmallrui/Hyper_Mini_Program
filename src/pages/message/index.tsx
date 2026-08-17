@@ -426,7 +426,7 @@ export default function MessagePage() {
 
           {visibleSessionList.length === 0 && (
             <View className='empty-state'>
-              <Text>暂无聊天消息</Text>
+              <Text>暂无消息</Text>
             </View>
           )}
         </View>

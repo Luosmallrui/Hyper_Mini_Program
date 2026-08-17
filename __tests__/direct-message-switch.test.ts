@@ -53,6 +53,26 @@ describe('direct message switch contracts (guests included)', () => {
     expect(message).toContain('s.session_type === 1 && Number(s.peer_id) === customerServiceUserId')
   })
 
+  it('group-create page guards both login and the switch', () => {
+    const create = readSource('src', 'pages', 'chat', 'group-create', 'index.tsx')
+    expect(create).toContain('isLoggedIn')
+    expect(create).toContain('requireLogin')
+    expect(create).toContain('refreshDirectMessageEnabled')
+    expect(create).toContain('群聊功能暂未开放')
+  })
+
+  it('share-to-session entries are hidden when the switch is off (post detail)', () => {
+    const postDetail = readSource('src', 'pages', 'square-sub', 'post-detail', 'index.tsx')
+    expect(postDetail).toContain('refreshDirectMessageEnabled().then(setDirectMessageEnabled)')
+    expect(postDetail).toContain('directMessageEnabled && (')
+  })
+
+  it('share-to-session entries are hidden when the switch is off (activity detail)', () => {
+    const activity = readSource('src', 'pages', 'activity', 'index.tsx')
+    expect(activity).toContain('refreshDirectMessageEnabled().then(setDirectMessageEnabled)')
+    expect(activity).toContain('directMessageEnabled && (')
+  })
+
   it('system-config cache defaults to hidden when nothing stored', () => {
     const config = readSource('src', 'utils', 'system-config.ts')
     expect(config).toContain("getStorageSync(STORAGE_KEY_DM) === true")
