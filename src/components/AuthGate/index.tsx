@@ -240,7 +240,7 @@ export default function AuthGate(props: AuthGateProps) {
     try {
       const loginRes = await Taro.login()
       if (!loginRes?.code) {
-        throw new Error('获取微信登录凭证失败')
+        throw new Error('获取登录凭证失败')
       }
 
       const res = await request({

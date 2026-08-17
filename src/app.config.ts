@@ -67,7 +67,7 @@ export default defineAppConfig({
     // iOS 切换 tab 时 WebView 内容层在首帧渲染前默认露白，需显式指定内容背景色
     backgroundColorContent: '#000000',
     navigationBarBackgroundColor: '#fff',
-    navigationBarTitleText: 'WeChat',
+    navigationBarTitleText: 'HYPER',
     navigationBarTextStyle: 'black',
   },
   tabBar: {

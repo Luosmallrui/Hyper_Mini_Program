@@ -149,24 +149,31 @@ const ProfileBindModal: React.FC<ProfileBindModalProps> = ({ visible, onClose })
         }}
       >
         <View className='profile-bind-close' onClick={onClose}>
-          <AtIcon value='close' size='20' color='#666' />
+          <AtIcon value='close' size='18' color='rgba(255,255,255,0.45)' />
         </View>
         <Text className='profile-bind-title'>绑定手机号</Text>
-        <Text className='profile-bind-subtitle'>继续操作前需要先绑定手机号，可同时完善头像和昵称</Text>
+        <Text className='profile-bind-subtitle'>完成绑定后即可继续操作</Text>
 
         <Button className='profile-bind-avatar-btn' openType='chooseAvatar' onChooseAvatar={onChooseAvatar}>
-          <Image className='profile-bind-avatar' src={avatar} mode='aspectFill' />
+          {avatar ? (
+            <Image className='profile-bind-avatar' src={avatar} mode='aspectFill' />
+          ) : (
+            <View className='profile-bind-avatar-placeholder'>
+              <AtIcon value='camera' size='22' color='rgba(255,255,255,0.4)' />
+            </View>
+          )}
           <View className='profile-bind-avatar-badge'>
-            <AtIcon value='camera' size='12' color='#fff' />
+            <AtIcon value='edit' size='10' color='#000' />
           </View>
         </Button>
+        <Text className='profile-bind-avatar-hint'>点击设置头像（选填）</Text>
 
         <View className='profile-bind-field'>
           <Text className='profile-bind-label'>昵称</Text>
           <Input
             type='nickname'
             className='profile-bind-input'
-            placeholder='请输入昵称（选填）'
+            placeholder='选填，展示你的昵称'
             placeholderClass='profile-bind-placeholder'
             value={nickname}
             onInput={(e) => setNickname(e.detail.value)}
@@ -174,7 +181,7 @@ const ProfileBindModal: React.FC<ProfileBindModalProps> = ({ visible, onClose })
         </View>
 
         <Button className='profile-bind-submit' openType='getPhoneNumber' onGetPhoneNumber={onGetPhoneNumber}>
-          微信手机号一键绑定
+          手机号快捷绑定
         </Button>
         <Text className='profile-bind-skip' onClick={onClose}>
           暂不绑定
