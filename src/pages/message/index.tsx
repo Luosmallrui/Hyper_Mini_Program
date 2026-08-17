@@ -52,6 +52,11 @@ export default function MessagePage() {
 
   Taro.useDidShow(() => {
     setTabBarIndex(3)
+    // 私信/建群开关游客也要刷新：过期缓存会让游客一直看到入口
+    refreshDirectMessageEnabled().then((enabled) => {
+      setDirectMessageEnabled(enabled)
+      setCustomerServiceUserId(getCustomerServiceUserIdSync())
+    })
     // 游客模式：未登录展示登录引导，不请求会话接口
     const loggedIn = isLoggedIn()
     setIsLogin(loggedIn)
@@ -60,10 +65,6 @@ export default function MessagePage() {
       return
     }
     fetchSessionList()
-    refreshDirectMessageEnabled().then((enabled) => {
-      setDirectMessageEnabled(enabled)
-      setCustomerServiceUserId(getCustomerServiceUserIdSync())
-    })
   })
 
   useEffect(() => {
@@ -317,7 +318,7 @@ export default function MessagePage() {
         >
           <Text>{markingAllRead ? '处理中' : totalUnread > 0 ? '一键已读' : '已全部读'}</Text>
         </View>
-        {directMessageEnabled && (
+        {isLogin && directMessageEnabled && (
           <View
             className='header-create-group'
             style={{ right: `${menuButtonWidth + 8}px` }}

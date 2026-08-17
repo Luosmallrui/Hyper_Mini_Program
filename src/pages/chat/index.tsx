@@ -5,6 +5,8 @@ import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import 'taro-ui/dist/style/components/activity-indicator.scss'
 import { request } from '../../utils/request'
+import { isLoggedIn, requireLogin } from '../../utils/auth'
+import { getCustomerServiceUserIdSync, refreshDirectMessageEnabled } from '@/utils/system-config'
 import './index.scss'
 
 interface NoteCardExt {
@@ -95,6 +97,24 @@ export default function ChatPage() {
   useEffect(() => { msgListRef.current = msgList }, [msgList])
   useEffect(() => { nextCursorRef.current = nextCursor }, [nextCursor])
   useEffect(() => { hasMoreRef.current = hasMore }, [hasMore])
+
+  // 聊天页兜底守卫：需登录；私信开关关闭时仅放行客服单聊，其余会话一律劝退
+  // （审核工具可直达页面路径，不能只依赖入口隐藏）
+  useEffect(() => {
+    if (!isLoggedIn()) {
+      requireLogin()
+      return
+    }
+    refreshDirectMessageEnabled().then((enabled) => {
+      const csUserId = getCustomerServiceUserIdSync()
+      const isCustomerServiceChat = sessionType === 1 && csUserId > 0 && Number(peer_id) === csUserId
+      if (!enabled && !isCustomerServiceChat) {
+        Taro.showToast({ title: '私信功能暂未开放', icon: 'none' })
+        setTimeout(() => Taro.navigateBack({ delta: 1 }), 800)
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const mergeMessages = (oldItems: MessageItem[], newItems: MessageItem[]) => {
     const resultList = [...oldItems]
