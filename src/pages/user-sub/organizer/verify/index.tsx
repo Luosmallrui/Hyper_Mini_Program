@@ -32,11 +32,11 @@ interface OrganizerVerifyViewProps {
 
 const fallbackCover = powerFlowLogo
 
-const renderTicketCard = (ticket: VerifyTicketItem, onOpenActivity?: (ticket: VerifyTicketItem) => void) => (
+const renderTicketCard = (ticket: VerifyTicketItem, onOpenOrder?: (ticket: VerifyTicketItem) => void) => (
   <View
     key={ticket.id}
     className="verify-ticket-card"
-    onClick={() => { if (ticket.activityId) onOpenActivity?.(ticket) }}
+    onClick={() => { if (ticket.orderNo || ticket.activityId) onOpenOrder?.(ticket) }}
   >
     <Image className="verify-ticket-cover" src={ticket.cover || fallbackCover} mode="aspectFill" />
     <View className="verify-ticket-info">
@@ -47,6 +47,7 @@ const renderTicketCard = (ticket: VerifyTicketItem, onOpenActivity?: (ticket: Ve
       <Text className="verify-ticket-type">{ticket.ticketType} {ticket.quantity}张</Text>
       <Text className="verify-ticket-person">实名信息：{ticket.realName} {ticket.idCard}</Text>
       {!!ticket.buyerPhone && <Text className="verify-ticket-person">手机号：{ticket.buyerPhone}</Text>}
+      {!!ticket.verifiedAt && <Text className="verify-ticket-person">核销时间：{ticket.verifiedAt}</Text>}
     </View>
   </View>
 )
@@ -110,10 +111,15 @@ export default function OrganizerVerifyView(props: OrganizerVerifyViewProps) {
   const visibleTickets = verifiedTickets.slice(0, 4)
   const verifiedCount = verifiedTickets.length
 
-  // 点击已核销卡片跳转对应活动详情（已下架活动由详情页展示下架态）
-  const handleOpenTicketActivity = (ticket: VerifyTicketItem) => {
-    if (!ticket.activityId) return
-    Taro.navigateTo({ url: `/pages/activity/index?id=${ticket.activityId}` })
+  // 点击已核销卡片：优先跳订单详情（后端已固定返回 order_no），缺失时回退活动详情
+  const handleOpenTicketOrder = (ticket: VerifyTicketItem) => {
+    if (ticket.orderNo) {
+      Taro.navigateTo({ url: `/pages/order-sub/order-detail/index?orderNo=${encodeURIComponent(ticket.orderNo)}&role=verifier` })
+      return
+    }
+    if (ticket.activityId) {
+      Taro.navigateTo({ url: `/pages/activity/index?id=${ticket.activityId}` })
+    }
   }
 
   const processScanPayload = async (payload: VerifierScanPayload) => {
@@ -324,7 +330,7 @@ export default function OrganizerVerifyView(props: OrganizerVerifyViewProps) {
         {verifiedLoading ? (
           <Text style={{ display: 'block', color: '#747474', padding: '32rpx 40rpx' }}>加载中...</Text>
         ) : visibleTickets.length > 0 ? (
-          visibleTickets.map((ticket) => renderTicketCard(ticket, handleOpenTicketActivity))
+          visibleTickets.map((ticket) => renderTicketCard(ticket, handleOpenTicketOrder))
         ) : (
           <Text style={{ display: 'block', color: '#747474', padding: '32rpx 40rpx' }}>暂无核销记录</Text>
         )}

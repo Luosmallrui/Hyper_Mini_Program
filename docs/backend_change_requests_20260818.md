@@ -37,6 +37,63 @@
 
 参考：同接口 `activity` 对象目前已返回 `id` / `name` / `start_time` / `end_time` / `poster_list`，均可正常展示。
 
+## 4. 场地主办方发布活动：允许自定义活动地址（必须，新需求）
+
+`POST /api/v1/activity/create`（step 2）
+
+**现状**：按 `docs/organizer_venue_activity_model_api_20260815.md` 的约定，场地主办方（`type=venue`）发布的活动固定使用已审核场地资料的地址与坐标，后端忽略/覆盖 step2 提交的位置字段。
+
+**需求**：场地主办方发布活动时，允许通过地图选点更换活动地址：
+
+- step2 请求体携带 `address` / `latitude` / `longitude`（可能还有 `district`）时，按提交值保存活动地址；
+- step2 未携带位置字段时，维持现状（沿用已审核场地资料地址）；
+- 前端已按此口径实现：未选点不提交 step2，选点后提交 step2。
+
+**后端回复（2026-08-18，已改好）**：
+
+- 场地主办方发布 party 活动时：不提交位置字段则继续继承已审核场地地址与坐标；提交任一位置字段则使用活动自身地址，不再被场地主资料覆盖。
+- 自定义位置必须同时提交非空 `address`、`latitude`、`longitude`，并继续校验中国境内坐标。
+- `province`、`city`、`district` 如前端提交，按活动自己的值保存。
+- 不修改场地主办方固定地址；场地迁址仍需走资料二次审核。
+
+前端确认：选点时三个字段（`address`/`latitude`/`longitude`）一定同时提交，与后端校验口径一致，无需改动。
+
+## 5. 商家实时订单 / 核销员列表：补展示字段（建议）
+
+管理后台「实时订单」「核销管理」改版需要以下字段，前端已做兼容映射（缺字段时不显示，不影响现有版本）：
+
+`GET /api/v1/organizer/orders` 列表项：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `buyer_phone_masked` | string | 购票人脱敏手机号，订单详情弹层展示 |
+| `poster_list` | string | 活动海报（单 URL 或 JSON 数组串均可），订单卡片/弹层封面 |
+| `verified_at` | string | 核销时间（已核销订单），ISO 时间 |
+
+`GET /api/v1/verifier/verified-list` 列表项（核销记录卡片已渲染该字段，当前接口未返回）：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `verified_at` | string | 核销时间，ISO 时间。核销记录页「核销时间」一行需要它 |
+
+另外确认一个权限问题：核销员/主办方点击核销记录卡片会跳转 `GET /api/v1/order/{orderNo}`（用户订单详情接口），但该订单属于购票人账号。请确认主办方/核销员凭自己的 token 可以读取归属自己活动的订单详情；如不支持，请放开或提供商家侧订单详情接口。
+
+**后端回复（2026-08-18，已改好）**：
+
+- `GET /api/v1/organizer/orders` 已新增 `buyer_phone_masked`、`poster_list`（空时回退其它海报字段）、`verified_at`（未核销为 null）。
+- `GET /api/v1/organizer/verifiers` 已新增 `created_at`、`verified_count`（按核销记录累计统计）。
+- 订单详情权限：用户侧 `GET /api/v1/order/:order_no` 仍仅购票人本人；新增角色接口——
+  - 主办方：`GET /api/v1/organizer/orders/:order_no`
+  - 已激活核销员：`GET /api/v1/verifier/orders/:order_no`（须携带核销员自己的 Authorization，仅可查看所属主办方活动的订单）
+- 前端已按角色链接入：核销/管理后台进入订单详情时携带 `role=verifier`，依次尝试核销员接口（`X-Verifier-Id`）→ 主办方接口 → 用户接口。
+
+`GET /api/v1/organizer/verifiers` 列表项：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `created_at` | string | 核销员添加时间，ISO 时间 |
+| `verified_count` | number | 该核销员累计核销数 |
+
 ## 无需后端修改（前端已自行解决，仅同步）
 
 - 管理后台首页「今日订单 / 今日销售」：已改为前端调用 `GET /api/v1/organizer/orders/summary?start_date=今天&end_date=今天` 获取，与销售数据页同口径。

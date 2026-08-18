@@ -92,6 +92,14 @@
   gap: 14rpx;
 }
 
+/* 名称与认证徽章同一行展示，避免徽章换行错位 */
+.account-brand-name-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  flex-wrap: wrap;
+}
+
 .account-brand-name {
   color: rgba(255, 255, 255, 1);
   font-size: 34rpx;
@@ -235,14 +243,20 @@
   gap: 24rpx;
 }
 
-.account-row-icon-img {
-  width: 40rpx;
-  height: 40rpx;
-  padding: 14rpx;
+/* 图标芯片：固定方盒，内部图标统一 32rpx 高（素材宽高比不一，按高度对齐视觉） */
+.account-row-icon-chip {
+  width: 68rpx;
+  height: 68rpx;
   border-radius: 16rpx;
   background: rgba(255, 255, 255, 0.05);
-  box-sizing: content-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+}
+
+.account-row-icon-img {
+  height: 32rpx;
 }
 
 .account-row-icon {

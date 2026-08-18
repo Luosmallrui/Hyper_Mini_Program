@@ -640,9 +640,11 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
             )}
           </View>
           <View className="account-brand-main flex-col">
-            <Text className="account-brand-name">{account?.name || ''}</Text>
-            <View className={`account-brand-verified flex-row ${account?.verified === false ? 'is-unverified' : ''}`}>
-              <Text className="account-verified-text">{account ? (account.verified === false ? '未认证' : '已认证') : '--'}</Text>
+            <View className="account-brand-name-row">
+              <Text className="account-brand-name">{account?.name || ''}</Text>
+              <View className={`account-brand-verified flex-row ${account?.verified === false ? 'is-unverified' : ''}`}>
+                <Text className="account-verified-text">{account ? (account.verified === false ? '未认证' : '已认证') : '--'}</Text>
+              </View>
             </View>
           </View>
         </View>
@@ -757,7 +759,9 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
                 <View key={row.label} className={index > 0 ? 'account-setting-row-wrap is-following' : 'account-setting-row-wrap'}>
                   <View className="account-setting-row flex-row justify-between" onClick={() => handleRowAction(row.action)}>
                     <View className="account-setting-left flex-row">
-                      <Image className="account-row-icon-img" src={row.iconSrc} mode="aspectFit" />
+                      <View className="account-row-icon-chip">
+                        <Image className="account-row-icon-img" src={row.iconSrc} mode="heightFix" />
+                      </View>
                       <Text className="account-setting-label">{row.label}</Text>
                     </View>
                     <AtIcon value="chevron-right" size="16" color="rgba(255,255,255,0.3)" />

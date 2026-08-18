@@ -1135,6 +1135,15 @@ export default function UserPage() {
       }
     : null;
 
+  // 核销员直达扫码核销视图的外层入口（不用再进管理后台找）
+  const verifyScanEntry = isActiveVerifier
+    ? {
+        iconClass: 'verify-scan',
+        label: '订单核销',
+        route: '/pages/user-sub/organizer/index?view=verify&source=userNav'
+      }
+    : null;
+
   const mainNavItems = [
     {
       icon: require('../../assets/images/Order.png'),
@@ -1150,6 +1159,7 @@ export default function UserPage() {
     },
     settlementEntry,
     organizerEntry,
+    verifyScanEntry,
     verifierEntry
   ].filter(Boolean) as Array<{
     icon?: string;

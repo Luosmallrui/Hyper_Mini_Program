@@ -5007,3 +5007,328 @@ page {
   align-items: center;
   justify-content: center;
 }
+
+// ── 实时订单卡片 v2（可点击，信息分层） ──
+.order-card-v2 {
+  background: #202020;
+  border-radius: 18rpx;
+  padding: 28rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+.order-card-v2-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.order-title-v2 {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #fff;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-amount-v2 {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.order-card-v2-mid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.order-ticket-v2 {
+  font-size: 26rpx;
+  color: $organizer-text-secondary;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-status-badge {
+  font-size: 22rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 999px;
+  flex-shrink: 0;
+
+  &.paid {
+    color: #16e08d;
+    background: rgba(22, 224, 141, 0.12);
+  }
+
+  &.used {
+    color: #9c9c9c;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  &.refunding {
+    color: #faad14;
+    background: rgba(250, 173, 20, 0.12);
+  }
+
+  &.pending,
+  &.cancelled {
+    color: #9c9c9c;
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.order-card-v2-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.order-meta-text {
+  font-size: 24rpx;
+  color: $organizer-text-muted;
+}
+
+.order-card-v2-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-top: 4rpx;
+}
+
+.order-withdraw-chip {
+  font-size: 22rpx;
+  color: #16e08d;
+  background: rgba(22, 224, 141, 0.12);
+  padding: 4rpx 16rpx;
+  border-radius: 8rpx;
+  flex-shrink: 0;
+}
+
+.order-no-v2 {
+  font-size: 22rpx;
+  color: #666;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ── 订单详情底部弹层 ──
+.order-detail-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.order-detail-card {
+  background: #1c1c1e;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 32rpx;
+  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.order-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.order-detail-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.order-detail-close {
+  font-size: 44rpx;
+  color: $organizer-text-muted;
+  line-height: 1;
+  padding: 0 8rpx;
+}
+
+.order-detail-poster {
+  width: 100%;
+  height: 240rpx;
+  border-radius: 16rpx;
+  margin-bottom: 16rpx;
+  background: #111;
+}
+
+.order-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+  padding: 16rpx 0;
+}
+
+.order-detail-label {
+  font-size: 26rpx;
+  color: #888;
+  flex-shrink: 0;
+}
+
+.order-detail-value-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  max-width: 70%;
+}
+
+.order-detail-value {
+  font-size: 26rpx;
+  color: #eee;
+  text-align: right;
+  word-break: break-all;
+}
+
+.order-detail-copy {
+  font-size: 24rpx;
+  color: #6e97ff;
+  flex-shrink: 0;
+}
+
+.order-detail-activity-btn {
+  margin-top: 24rpx;
+  height: 88rpx;
+  border-radius: 44rpx;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.order-detail-activity-btn-text {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #000;
+}
+
+// ── 核销员卡片 v2 ──
+.verifier-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-bottom: 24rpx;
+}
+
+.verifier-head-main {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  min-width: 0;
+  flex: 1;
+}
+
+.verifier-created {
+  font-size: 22rpx;
+  color: #666;
+}
+
+.verifier-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 8rpx 18rpx;
+  border-radius: 999px;
+  flex-shrink: 0;
+
+  &.active {
+    background: rgba(22, 224, 141, 0.12);
+
+    .verifier-status-dot {
+      background: #16e08d;
+    }
+
+    .verifier-status-badge-text {
+      color: #16e08d;
+    }
+  }
+
+  &.pending {
+    background: rgba(255, 101, 101, 0.12);
+
+    .verifier-status-dot {
+      background: #ff6565;
+    }
+
+    .verifier-status-badge-text {
+      color: #ff6565;
+    }
+  }
+}
+
+.verifier-status-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+}
+
+.verifier-status-badge-text {
+  font-size: 24rpx;
+}
+
+.verifier-chip-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.verifier-chip {
+  padding: 8rpx 16rpx;
+  border-radius: 8rpx;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.verifier-chip-text {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.verifier-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 40rpx;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 24rpx;
+}
+
+.verifier-action-btn {
+  font-size: 26rpx;
+  color: #ccc;
+  padding: 8rpx 0;
+
+  &.danger {
+    color: #ff6565;
+  }
+}

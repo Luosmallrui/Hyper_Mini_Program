@@ -252,6 +252,8 @@ export default function OrganizerPage() {
 
   // 场地主办方的已审核场地地址（发布向导 Step2 只读展示）
   const [organizerVenueAddress, setOrganizerVenueAddress] = useState('')
+  // 场地主办方发布活动：用户是否通过地图选点自定义了活动地址（未选点时沿用已审核场地地址，不提交 step2）
+  const [venueAddressPicked, setVenueAddressPicked] = useState(false)
   // 入驻类型（audit-status 返回）：venue 场地 / 其他为普通活动组织者
   const [organizerType, setOrganizerType] = useState<'party' | 'venue'>('party')
 
@@ -699,6 +701,7 @@ export default function OrganizerPage() {
     // 活动发布仅支持 party（docs/organizer_venue_activity_model_api_20260815.md §4）
     const nextDraft = ALLOW_ORGANIZER_DEBUG ? createDevPrefillDraft() : createInitialDraft()
     setDraft(nextDraft)
+    setVenueAddressPicked(false)
   }
 
   const openEditableActivityWizard = async (item: OrganizerActivityItem) => {
@@ -712,6 +715,7 @@ export default function OrganizerPage() {
       setActivityTab('mine')
       setWizardStep(1)
       setDraft(fullDraft)
+      setVenueAddressPicked(false)
       // 历史概要注入富文本编辑器（编辑器未就绪则挂起，等 onReady 后再 setContents）
       if (fullDraft.summary) {
         const editor = editorContextRef.current
@@ -1628,11 +1632,14 @@ export default function OrganizerPage() {
   }
 
   const handleSubmitAudit = async () => {
-    // 活动发布统一走完整 5 步流程（venue 主办方也不例外，仅 Step2 地址由后端固定）
+    // 活动发布统一走完整 5 步流程（venue 主办方也不例外；Step2 地址默认沿用场地资料，选点更换后随 step2 提交）
     if (!validateStep(5)) return
     Taro.showLoading({ title: '提交中...', mask: true })
     try {
-      const activityId = await submitActivityDraft(draft, { venueAddressLocked: organizerType === 'venue' })
+      const activityId = await submitActivityDraft(draft, {
+        venueAddressLocked: organizerType === 'venue',
+        venueCustomAddress: organizerType === 'venue' && venueAddressPicked,
+      })
       const nextActivity = { ...createActivityFromDraft(draft), id: String(activityId), auditStatus: 'pending' as const }
       setActivityItems((prev) => [nextActivity, ...prev])
       setAuditPendingSource('activity')
@@ -1640,6 +1647,7 @@ export default function OrganizerPage() {
       setActivityTab('mine')
       setWizardStep(1)
       setDraft(createInitialDraft())
+      setVenueAddressPicked(false)
       // 提交成功后弹"扫码催审"弹窗（派对/场地都弹）
       setUrgeAuditModalOpen(true)
     } catch (error: any) {
@@ -1813,6 +1821,17 @@ export default function OrganizerPage() {
       latitude: location.latitude,
       longitude: location.longitude,
     })
+  }
+
+  // 场地主办方发布活动：活动地址支持地图选点更换（不选点则沿用已审核场地地址）
+  const handleChooseActivityAddress = async () => {
+    const location = await chooseUserLocation()
+    if (!location) return
+    updateDraft('address', location.address || location.name)
+    updateDraft('locationName', location.name || location.address)
+    updateDraft('latitude', location.latitude)
+    updateDraft('longitude', location.longitude)
+    setVenueAddressPicked(true)
   }
 
   const handleUploadSettlementLogo = async () => {
@@ -2170,7 +2189,18 @@ export default function OrganizerPage() {
           </View>
         )}
         {verifyRecordsState === 'loaded' && verifyRecords.map((record) => (
-          <View key={record.id} className="verify-record-card">
+          <View
+            key={record.id}
+            className="verify-record-card"
+            onClick={() => {
+              // 优先跳订单详情（后端已固定返回 order_no）；缺失时回退活动详情
+              if (record.orderNo) {
+                Taro.navigateTo({ url: `/pages/order-sub/order-detail/index?orderNo=${encodeURIComponent(record.orderNo)}&role=verifier` })
+              } else if (record.activityId) {
+                Taro.navigateTo({ url: `/pages/activity/index?id=${record.activityId}` })
+              }
+            }}
+          >
             <Image className="verify-record-cover" src={record.cover} mode="aspectFill" />
             <View className="verify-record-main">
               <View className="verify-record-title-row">
@@ -2373,16 +2403,21 @@ export default function OrganizerPage() {
   )
 
   const renderStepTwo = () => {
-    // 场地主办方：活动地址由后端强制使用已审核场地资料，不渲染区县/地址/地图选点控件
+    // 场地主办方：活动地址默认沿用已审核场地地址，支持地图选点更换（选点后随 step2 提交）
     if (organizerType === 'venue') {
       return (
         <View className="wizard-section">
           <View className="field-block">
-            <Text className="field-label">场地地址</Text>
-            <View className="picker-shell">
-              <Text className="picker-text">{organizerVenueAddress || '活动地址默认使用已审核的场地地址'}</Text>
+            <Text className="field-label">活动地址</Text>
+            <View className="picker-shell" onClick={handleChooseActivityAddress}>
+              <Text className="picker-text">
+                {venueAddressPicked && draft.address
+                  ? draft.address
+                  : (organizerVenueAddress || '默认使用已审核的场地地址')}
+              </Text>
+              <AtIcon value="chevron-right" size={16} color="#c9c9c9" />
             </View>
-            <Text className="biz-hours-tip">场地地址由平台固定，如需修改请在「账户-场地资料」中提交审核</Text>
+            <Text className="biz-hours-tip">默认使用已审核的场地地址，点击可地图选点更换活动地址</Text>
           </View>
         </View>
       )

@@ -150,6 +150,14 @@ export interface OrganizerOrderItem {
   ticketType: string
   /** 成交金额，单位元 */
   amount: number
+  /** 购票数量（后端未返回时不展示） */
+  quantity?: number
+  /** 购票人脱敏手机号（后端未返回时不展示） */
+  buyerPhone?: string
+  /** 活动封面（后端未返回时不展示） */
+  poster?: string
+  /** 核销时间（仅已核销订单，后端未返回时不展示） */
+  verifiedAt?: string
   status: 'paid' | 'refunding' | 'used' | 'pending' | 'cancelled'
   createdAt: string
   /** 提现状态：available 可提现 / pending_withdraw 提现审核中 / withdrawn 已提现 / unavailable 不可提现 */
@@ -168,6 +176,10 @@ export interface VerifierItem {
   channel: Channel
   inviteStatus: 'pending' | 'active'
   qrCodeUrl?: string
+  /** 添加时间（后端未返回时不展示） */
+  createdAt?: string
+  /** 累计核销数（后端未返回时不展示） */
+  verifiedCount?: number
 }
 
 export interface OrganizerActivitySalesRank {

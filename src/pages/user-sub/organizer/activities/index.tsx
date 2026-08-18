@@ -224,37 +224,118 @@ const WITHDRAW_STATUS_LABELS: Record<string, string> = {
   unavailable: '不可提现',
 }
 
-const renderOrdersView = (orders: OrganizerOrderItem[]) => (
+const ORDER_STATUS_LABELS: Record<OrganizerOrderItem['status'], string> = {
+  paid: '已支付',
+  used: '已核销',
+  refunding: '退款中',
+  pending: '待支付',
+  cancelled: '已取消',
+}
+
+const renderOrdersView = (orders: OrganizerOrderItem[], onOpenOrder: (item: OrganizerOrderItem) => void) => (
   <View className="data-panel">
     {orders.map((item) => (
-      <View key={item.id} className="order-card">
-        <View className="order-card-main">
-          <Text className="order-title">{item.activityTitle}</Text>
-          <Text className="order-sub">
-            {item.buyerName} · {item.ticketType}
-            {item.salesChannel ? ` · ${SALES_CHANNEL_LABELS[item.salesChannel] || item.salesChannel}` : ''}
-          </Text>
-          <Text className="order-sub">{item.createdAt}</Text>
+      <View key={item.id} className="order-card-v2" onClick={() => onOpenOrder(item)}>
+        <View className="order-card-v2-top">
+          <Text className="order-title-v2">{item.activityTitle || '活动订单'}</Text>
+          <Text className="order-amount-v2">¥{item.amount}</Text>
+        </View>
+        <View className="order-card-v2-mid">
+          <Text className="order-ticket-v2">{item.ticketType}{item.quantity ? ` ×${item.quantity}` : ''}</Text>
+          <Text className={`order-status-badge ${item.status}`}>{ORDER_STATUS_LABELS[item.status]}</Text>
+        </View>
+        <View className="order-card-v2-meta">
+          <Text className="order-meta-text">{item.buyerName}</Text>
+          {!!item.salesChannel && (
+            <Text className="order-meta-text"> · {SALES_CHANNEL_LABELS[item.salesChannel] || item.salesChannel}</Text>
+          )}
+          {!!item.createdAt && <Text className="order-meta-text"> · {item.createdAt}</Text>}
+        </View>
+        <View className="order-card-v2-bottom">
           {item.withdrawStatus ? (
-            <Text className="order-sub order-withdraw">
+            <Text className="order-withdraw-chip">
               {WITHDRAW_STATUS_LABELS[item.withdrawStatus] || item.withdrawStatus}
               {typeof item.withdrawAmount === 'number' && item.withdrawAmount > 0
                 ? ` ¥${formatYuanAmount(item.withdrawAmount / 100)}`
                 : ''}
             </Text>
-          ) : null}
-        </View>
-        <View className="order-card-side">
-          <Text className="order-amount">¥{item.amount}</Text>
-          <Text className={`order-status ${item.status}`}>
-            {item.status === 'paid' ? '已支付' : item.status === 'used' ? '已核销' : '退款中'}
-          </Text>
+          ) : <View />}
+          <Text className="order-no-v2">订单号 {item.id}</Text>
         </View>
       </View>
     ))}
   </View>
 )
 
+const renderOrderDetailRow = (label: string, value: string, extra?: any) => (
+  <View className="order-detail-row">
+    <Text className="order-detail-label">{label}</Text>
+    <View className="order-detail-value-wrap">
+      <Text className="order-detail-value">{value}</Text>
+      {extra}
+    </View>
+  </View>
+)
+
+/** 订单详情底部弹层：完整字段 + 复制订单号 + 跳活动详情 */
+const renderOrderDetailModal = (
+  order: OrganizerOrderItem,
+  onClose: () => void,
+  onOpenActivity: (order: OrganizerOrderItem) => void,
+) => (
+  <View className="order-detail-overlay" onClick={onClose}>
+    <View
+      className="order-detail-card"
+      onClick={(event) => {
+        event.stopPropagation()
+      }}
+    >
+      <View className="order-detail-header">
+        <Text className="order-detail-title">订单详情</Text>
+        <Text className="order-detail-close" onClick={onClose}>×</Text>
+      </View>
+
+      {order.poster ? (
+        <Image className="order-detail-poster" src={order.poster} mode="aspectFill" />
+      ) : null}
+
+      {renderOrderDetailRow('活动名称', order.activityTitle || '活动订单')}
+      {renderOrderDetailRow('票券', `${order.ticketType}${order.quantity ? ` ×${order.quantity}` : ''}`)}
+      {renderOrderDetailRow('实付金额', `¥${order.amount}`)}
+      {renderOrderDetailRow('订单状态', ORDER_STATUS_LABELS[order.status])}
+      {renderOrderDetailRow('买家', order.buyerName)}
+      {!!order.buyerPhone && renderOrderDetailRow('手机号', order.buyerPhone)}
+      {!!order.salesChannel && renderOrderDetailRow('销售渠道', SALES_CHANNEL_LABELS[order.salesChannel] || order.salesChannel)}
+      {!!order.createdAt && renderOrderDetailRow('支付时间', order.createdAt)}
+      {!!order.verifiedAt && renderOrderDetailRow('核销时间', order.verifiedAt)}
+      {!!order.withdrawStatus && renderOrderDetailRow(
+        '提现状态',
+        `${WITHDRAW_STATUS_LABELS[order.withdrawStatus] || order.withdrawStatus}${typeof order.withdrawAmount === 'number' && order.withdrawAmount > 0 ? ` ¥${formatYuanAmount(order.withdrawAmount / 100)}` : ''}`,
+      )}
+      {renderOrderDetailRow(
+        '订单号',
+        order.id,
+        <Text
+          className="order-detail-copy"
+          onClick={() => {
+            Taro.setClipboardData({
+              data: order.id,
+              success: () => Taro.showToast({ title: '已复制', icon: 'success' }),
+            })
+          }}
+        >
+          复制
+        </Text>,
+      )}
+
+      {!!order.activityId && (
+        <View className="order-detail-activity-btn" onClick={() => onOpenActivity(order)}>
+          <Text className="order-detail-activity-btn-text">查看活动详情</Text>
+        </View>
+      )}
+    </View>
+  </View>
+)
 const renderActivationDownloadIcon = () => (
   <View className="activation-download-icon">
     <View className="activation-download-stem" />
@@ -328,21 +409,40 @@ const renderVerifierView = (
   }
   return (
     <View className="data-panel">
-      {verifiers.map((item) => (
-        <View key={item.id} className="verifier-card-new">
-          <View className="verifier-card-header">
-            <View>
-              <Text className="verifier-name">{item.name}</Text>
-              <View style={{ marginTop: 6 }}>
-                <Text className="verifier-phone">{item.phone}</Text>
+      {verifiers.map((item) => {
+        // 名字与手机号相同（注册时未填名字）时不重复展示
+        const displayName = item.name && item.name !== item.phone ? item.name : '核销员'
+        return (
+          <View key={item.id} className="verifier-card-new">
+            <View className="verifier-card-head">
+              <View className="verifier-head-main">
+                <Text className="verifier-name">{displayName}</Text>
+                <Text className="verifier-phone">{item.phone || '-'}</Text>
+                {!!item.createdAt && <Text className="verifier-created">添加于 {item.createdAt}</Text>}
+              </View>
+              <View className={`verifier-status-badge ${item.inviteStatus}`}>
+                <View className="verifier-status-dot" />
+                <Text className="verifier-status-badge-text">{item.inviteStatus === 'active' ? '已激活' : '未激活'}</Text>
               </View>
             </View>
-            <View className="verifier-action-row">
-              <Text className={`verifier-status-text ${item.inviteStatus === 'active' ? 'active' : 'pending'}`}>
-                {item.inviteStatus === 'active' ? '已激活' : '未激活'}
-              </Text>
+
+            <View className="verifier-chip-row">
+              <View className="verifier-chip">
+                <Text className="verifier-chip-text">权限范围 · {item.permissionScope}</Text>
+              </View>
+              <View className={`channel-capsule ${item.channel}`}>
+                <Text>{CHANNEL_LABEL_MAP[item.channel]}</Text>
+              </View>
+              {typeof item.verifiedCount === 'number' && (
+                <View className="verifier-chip">
+                  <Text className="verifier-chip-text">累计核销 {item.verifiedCount}</Text>
+                </View>
+              )}
+            </View>
+
+            <View className="verifier-card-actions">
               <Text
-                className="verifier-flow-text"
+                className="verifier-action-btn"
                 onClick={(event) => {
                   event.stopPropagation()
                   onToggleStatus(item)
@@ -351,7 +451,7 @@ const renderVerifierView = (
                 {item.inviteStatus === 'active' ? '停用' : '启用'}
               </Text>
               <Text
-                className="verifier-flow-text"
+                className="verifier-action-btn"
                 onClick={(event) => {
                   event.stopPropagation()
                   onOpenActivationFlow(item)
@@ -360,7 +460,7 @@ const renderVerifierView = (
                 激活流程
               </Text>
               <Text
-                className="verifier-delete-text"
+                className="verifier-action-btn danger"
                 onClick={(event) => {
                   event.stopPropagation()
                   onDelete(item)
@@ -370,20 +470,8 @@ const renderVerifierView = (
               </Text>
             </View>
           </View>
-          <View className="verifier-detail-row">
-            <View className="verifier-detail-col">
-              <Text className="verifier-detail-label">权限范围</Text>
-              <Text className="verifier-detail-value">{item.permissionScope}</Text>
-            </View>
-            <View className="verifier-detail-col">
-              <Text className="verifier-detail-label">所属渠道</Text>
-              <View className={`channel-capsule ${item.channel}`}>
-                <Text>{CHANNEL_LABEL_MAP[item.channel]}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      ))}
+        )
+      })}
     </View>
   )
 }
@@ -423,6 +511,7 @@ export default function OrganizerActivitiesView(props: OrganizerActivitiesViewPr
     initialActivationFlowOpen,
   } = props
   const [activationVerifier, setActivationVerifier] = useState<VerifierItem | null>(null)
+  const [detailOrder, setDetailOrder] = useState<OrganizerOrderItem | null>(null)
   const [verifiers, setVerifiers] = useState<VerifierItem[]>([])
   const [verifiersLoading, setVerifiersLoading] = useState(false)
   const [activationQr, setActivationQr] = useState<{ wechatQrUrl: string; douyinQrUrl: string } | null>(null)
@@ -441,8 +530,14 @@ export default function OrganizerActivitiesView(props: OrganizerActivitiesViewPr
     }
   }
 
-  const handleOpenActivationFlow = (item: VerifierItem) => {
-    setActivationVerifier(item)
+  // 订单详情弹层：跳转活动详情页（已下架活动由详情页展示下架态）
+  const handleOpenOrderActivity = (order: OrganizerOrderItem) => {
+    if (!order.activityId) return
+    setDetailOrder(null)
+    Taro.navigateTo({ url: `/pages/activity/index?id=${order.activityId}` })
+  }
+
+  const handleOpenActivationFlow = (item: VerifierItem) => {    setActivationVerifier(item)
     setActivationQr(null)
     setActivationQrLoading(true)
     fetchVerifierActivationQr(item.id)
@@ -692,7 +787,7 @@ export default function OrganizerActivitiesView(props: OrganizerActivitiesViewPr
                 <View className="empty-activities">
                   <Text className="empty-title">加载中...</Text>
                 </View>
-              ) : visibleOrders.length === 0 ? renderOrdersEmpty() : renderOrdersView(visibleOrders)
+              ) : visibleOrders.length === 0 ? renderOrdersEmpty() : renderOrdersView(visibleOrders, setDetailOrder)
             )}
             {activityTab === 'verifiers' && renderVerifierView(verifiers, verifiersLoading, handleOpenActivationFlow, handleToggleVerifierStatus, handleDeleteVerifier)}
           </>
@@ -701,6 +796,7 @@ export default function OrganizerActivitiesView(props: OrganizerActivitiesViewPr
       </ScrollView>
 
       {activationVerifier && renderActivationFlowModal(activationVerifier, activationQr, activationQrLoading, () => setActivationVerifier(null))}
+      {detailOrder && renderOrderDetailModal(detailOrder, () => setDetailOrder(null), handleOpenOrderActivity)}
 
       {/* FAB */}
       {showFAB && (

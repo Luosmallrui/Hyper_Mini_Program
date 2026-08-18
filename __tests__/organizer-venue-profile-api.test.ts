@@ -54,6 +54,8 @@ describe('organizer venue profile api contract', () => {
     expect(organizer).not.toContain('活动类型与入驻类型一致')
     expect(organizer).not.toContain('场地为长期展示，无需选择活动日期')
     expect(organizer).toContain("if (organizerType === 'venue')")
-    expect(organizer).toContain('{ venueAddressLocked: organizerType === \'venue\' }')
+    // 场地主办方默认沿用已审核场地地址；地图选点更换后随 step2 提交自定义地址
+    expect(organizer).toContain("venueAddressLocked: organizerType === 'venue'")
+    expect(organizer).toContain("venueCustomAddress: organizerType === 'venue' && venueAddressPicked")
   })
 })

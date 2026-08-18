@@ -109,6 +109,8 @@ interface ApiVerifierItem {
   phone: string
   status?: number
   channel?: string
+  created_at?: string
+  verified_count?: number
 }
 
 interface ApiVerifyOrder {
@@ -135,11 +137,14 @@ interface ApiOrganizerOrder {
   actual_price?: number
   quantity?: number
   buyer_name?: string
+  buyer_phone_masked?: string
   activity_id?: number | string
   activity_name?: string
   ticket_spec_name?: string
+  poster_list?: string
   pay_time?: string
   created_at?: string
+  verified_at?: string
   withdraw_status?: string
   withdraw_amount?: number
   sales_channel?: string
@@ -325,6 +330,8 @@ const mapVerifier = (item: ApiVerifierItem): VerifierItem => ({
   permissionScope: '活动',
   channel: item.channel === 'douyin' ? 'douyin' : 'wechat',
   inviteStatus: Number(item.status) === 1 ? 'active' : 'pending',
+  createdAt: formatDateTime(item.created_at) || '',
+  verifiedCount: typeof item.verified_count === 'number' ? item.verified_count : undefined,
 })
 
 const extractOrderNoFromQr = (qrCode: string) => {
@@ -390,7 +397,11 @@ const mapOrganizerOrder = (item: ApiOrganizerOrder, index: number): OrganizerOrd
   activityId: item.activity_id === undefined || item.activity_id === null ? '' : String(item.activity_id),
   activityTitle: item.activity_name || '',
   buyerName: item.buyer_name || '-',
+  buyerPhone: item.buyer_phone_masked || '',
   ticketType: item.ticket_spec_name || '',
+  quantity: Number(item.quantity || 0) || undefined,
+  poster: pickFirstImageUrl(item.poster_list),
+  verifiedAt: formatDateTime(item.verified_at) || '',
   amount: Number(item.actual_price || 0) / 100,
   status: mapOrganizerOrderStatus(item.status),
   createdAt: formatDateTime(item.pay_time || item.created_at),
@@ -1350,11 +1361,13 @@ const syncTicketSpecs = async (
 
 export const submitActivityDraft = async (
   draft: CreateActivityDraft,
-  options?: { venueAddressLocked?: boolean },
+  options?: { venueAddressLocked?: boolean; venueCustomAddress?: boolean },
 ): Promise<number> => {
   const range = parseDateRangeValue(draft.dateRange)
-  // 场地主办方的活动地址由后端强制使用已审核场地资料，前端不再提交 step2 位置字段
+  // 场地主办方默认不提交 step2（后端沿用已审核场地地址）；
+  // 用户地图选点更换过活动地址（venueCustomAddress）时正常提交 step2 地址字段
   const venueAddressLocked = Boolean(options?.venueAddressLocked)
+  const submitStep2 = !venueAddressLocked || Boolean(options?.venueCustomAddress)
   // 编辑已有活动：所有 step 都携带 activity_id；后端在 status=3 被修改时自动转为 status=1（二次审核）
   const editingId = draft.id ? Number(draft.id) : undefined
   const orig = draft.originalDraft
@@ -1405,8 +1418,8 @@ export const submitActivityDraft = async (
     activityId = step1.activity_id
   }
 
-  // Step 2：地址（场地主办方跳过：地址由后端强制使用已审核场地资料）
-  if (!venueAddressLocked) {
+  // Step 2：地址（场地主办方未选点时跳过，沿用已审核场地地址）
+  if (submitStep2) {
     const step2Fields: Record<string, unknown> = {}
     if (changed(draft.province || '', orig?.province || '')) step2Fields.province = draft.province || ''
     if (changed(draft.city || '', orig?.city || '')) step2Fields.city = draft.city || ''

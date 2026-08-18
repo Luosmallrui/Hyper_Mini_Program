@@ -428,6 +428,30 @@
   box-shadow: 0 11px 0 currentColor;
 }
 
+/* 订单核销入口：扫码框图标 */
+.nav-css-icon.verify-scan::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 34px;
+  height: 34px;
+  border: 4px solid currentColor;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.nav-css-icon.verify-scan::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 23px;
+  width: 40px;
+  height: 4px;
+  border-radius: 99px;
+  background: currentColor;
+}
+
 .nav-text {
   font-size: 20px;
   color: rgba(255, 255, 255, 1);

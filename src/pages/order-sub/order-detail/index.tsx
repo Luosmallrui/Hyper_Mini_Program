@@ -6,7 +6,6 @@ import 'taro-ui/dist/style/components/icon.scss'
 import { request } from '@/utils/request'
 import './index.scss'
 
-const posterImage = 'https://cdn.hypercn.cn/avatars/02/2/f3f49889.jpeg'
 const qrCodeImage = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='
 
 type DetailStatus = 'pending' | 'paid' | 'used' | 'refundPending' | 'refunding' | 'refunded' | 'refundRejected' | 'cancelled'
@@ -147,22 +146,22 @@ export default function OrderDetailPage() {
     activityId: 0,
     refundNo: '',
     status: 'paid',
-    eventName: 'POWER FLOW成都站',
-    eventTime: '2025.01.03-04 星期四 21:30-02:30',
-    eventLocation: '高新区盛园街道保利星云湾2栋',
-    eventPoster: posterImage,
-    ticketType: '单人票（赠啤酒1瓶）',
-    ticketPrice: 120,
+    eventName: '',
+    eventTime: '',
+    eventLocation: '',
+    eventPoster: '',
+    ticketType: '',
+    ticketPrice: 0,
     ticketCount: 1,
-    totalAmount: 120,
+    totalAmount: 0,
     createTime: '',
     payTime: '',
     expireTime: '',
     qrCode: '',
     attendee: {
-      name: '刘晨',
-      idCard: '221***********2524',
-      phone: '138****5678'
+      name: '',
+      idCard: '',
+      phone: ''
     }
   })
   const [refundReasons, setRefundReasons] = useState<RefundReason[]>([])
@@ -170,6 +169,9 @@ export default function OrderDetailPage() {
   const [refundLoading, setRefundLoading] = useState(false)
   const [paying, setPaying] = useState(false)
   const [now, setNow] = useState(Date.now())
+  // 商家服务电话与活动坐标（用于联系客服/查看地图），订单接口缺字段时回退拉取主办方公开资料
+  const [servicePhone, setServicePhone] = useState('')
+  const [eventCoords, setEventCoords] = useState<{ latitude: number; longitude: number } | null>(null)
 
   // 待支付倒计时：仅展示，后端负责自动取消
   useEffect(() => {
@@ -188,15 +190,36 @@ export default function OrderDetailPage() {
 
     const instance = Taro.getCurrentInstance()
     const orderNo = instance.router?.params?.orderNo || instance.router?.params?.order_no || instance.router?.params?.out_trade_no || ''
+    // role=verifier：从核销/管理后台进入，用户订单接口对非购票人越权，需走角色接口
+    const orderRole = String(instance.router?.params?.role || '')
 
     const fetchOrderDetail = async () => {
       if (!orderNo) return
       try {
-        const res = await request({
-          url: `/api/v1/order/${orderNo}`,
-          method: 'GET'
-        })
-        const detail = res?.data?.data
+        let detail: any = null
+        if (orderRole === 'verifier') {
+          // 依次尝试：核销员接口（X-Verifier-Id）→ 主办方接口 → 用户接口（购票人本人兜底）
+          const verifierId = Taro.getStorageSync('verifier_id') || Taro.getStorageSync('verifierId')
+          if (verifierId) {
+            try {
+              const res = await request({ url: `/api/v1/verifier/orders/${orderNo}`, method: 'GET', header: { 'X-Verifier-Id': String(verifierId) } })
+              detail = res?.data?.data || null
+            } catch (e) {}
+          }
+          if (!detail) {
+            try {
+              const res = await request({ url: `/api/v1/organizer/orders/${orderNo}`, method: 'GET' })
+              detail = res?.data?.data || null
+            } catch (e) {}
+          }
+        }
+        if (!detail) {
+          const res = await request({
+            url: `/api/v1/order/${orderNo}`,
+            method: 'GET'
+          })
+          detail = res?.data?.data
+        }
         if (!detail) return
         const refundNo = String(detail.refund_no || detail.refund?.refund_no || detail.refund_order?.refund_no || '')
         const refundStatus = detail.refund_status || detail.refund?.refund_status || detail.refund_order?.refund_status || detail.refund?.status || detail.refund_order?.status
@@ -210,7 +233,7 @@ export default function OrderDetailPage() {
             ? `${formatDateTime(detail.activity.start_time)} - ${formatDateTime(detail.activity.end_time)}`
             : formatDateTime(detail.activity?.start_time),
           eventLocation: detail.activity?.address || detail.activity?.location_name || detail.activity?.venue_name || '',
-          eventPoster: pickFirstImageUrl(detail.activity?.poster_list) || posterImage,
+          eventPoster: pickFirstImageUrl(detail.activity?.poster_list),
           ticketType: detail.ticket_spec?.name || '票券',
           ticketPrice: Number(((detail.actual_price || detail.total_price || 0) / Math.max(Number(detail.quantity || 1), 1) / 100).toFixed(2)),
           ticketCount: Number(detail.quantity || 1),
@@ -222,15 +245,41 @@ export default function OrderDetailPage() {
           attendee: {
             name: detail.buyer_name || '',
             idCard: detail.buyer_id_card || '',
-            phone: detail.buyer_phone || ''
+            phone: detail.buyer_phone || detail.buyer_phone_masked || String(Taro.getStorageSync('userInfo')?.phone_number || '')
           }
         })
+        // 商家服务电话/活动坐标：优先取订单接口字段，缺失时回退拉主办方公开资料（含 service_phone/经纬度）
+        const orderPhone = String(detail.activity?.organizer?.service_phone || detail.activity?.service_phone || '')
+        const orderLat = Number(detail.activity?.latitude ?? detail.activity?.lat)
+        const orderLng = Number(detail.activity?.longitude ?? detail.activity?.lng)
+        if (orderPhone) setServicePhone(orderPhone)
+        if (Number.isFinite(orderLat) && Number.isFinite(orderLng) && orderLat && orderLng) {
+          setEventCoords({ latitude: orderLat, longitude: orderLng })
+        }
+        const organizerId = detail.activity?.organizer?.id || detail.activity?.organizer_id || detail.organizer_id || ''
+        if ((!orderPhone || !Number.isFinite(orderLat)) && organizerId) {
+          try {
+            const orgRes = await request({ url: `/api/v1/organizers/${organizerId}`, method: 'GET' })
+            const orgData = orgRes?.data?.data
+            if (orgData) {
+              if (!orderPhone && orgData.service_phone) setServicePhone(String(orgData.service_phone))
+              const lat = Number(orgData.latitude)
+              const lng = Number(orgData.longitude)
+              if (Number.isFinite(lat) && Number.isFinite(lng) && lat && lng) {
+                setEventCoords((prev) => prev || { latitude: lat, longitude: lng })
+              }
+            }
+          } catch (orgError) {
+            console.warn('主办方联系方式加载失败:', orgError)
+          }
+        }
         if (refundNo) {
           void fetchRefundDetail(refundNo)
         }
       } catch (error) {
         console.error('Order detail load failed:', error)
         setOrderDetail(prev => ({ ...prev, orderNo: String(orderNo) }))
+        Taro.showToast({ title: '订单加载失败', icon: 'none' })
       }
     }
 
@@ -508,11 +557,36 @@ export default function OrderDetailPage() {
   }
 
   const handleContact = () => {
+    if (!servicePhone) {
+      Taro.showToast({ title: '暂无商家联系方式', icon: 'none' })
+      return
+    }
     Taro.showModal({
       title: '联系客服',
-      content: '客服电话：400-123-4567\n工作时间：09:00-21:00',
-      showCancel: false
+      content: `商家电话：${servicePhone}`,
+      confirmText: '拨打',
+      cancelText: '取消',
+      success: (res) => {
+        if (res.confirm) {
+          Taro.makePhoneCall({ phoneNumber: servicePhone }).catch(() => {})
+        }
+      }
     })
+  }
+
+  // 点击地址：打开微信地图查看活动位置（无坐标时提示）
+  const handleOpenLocation = () => {
+    if (!eventCoords) {
+      Taro.showToast({ title: '暂无位置信息', icon: 'none' })
+      return
+    }
+    Taro.openLocation({
+      latitude: eventCoords.latitude,
+      longitude: eventCoords.longitude,
+      name: orderDetail.eventName,
+      address: orderDetail.eventLocation,
+      scale: 16,
+    }).catch(() => {})
   }
 
   // 活动信息卡片：跳转活动详情（已下架活动由详情页展示下架态）
@@ -621,70 +695,86 @@ export default function OrderDetailPage() {
           </View>
         )}
 
-        <View className='section-card'>
-          <View className='section-title'>
-            <AtIcon value='file-generic' size='18' color='#cfcfcf'/>
-            <Text>活动信息</Text>
-          </View>
-          <View className='event-block' onClick={handleOpenActivity}>
-            <Image className='event-poster' src={orderDetail.eventPoster || posterImage} mode='aspectFill'/>
-            <View className='event-info'>
-              <Text className='event-name'>{orderDetail.eventName}</Text>
-              <View className='event-row'>
-                <AtIcon value='clock' size='14' color='#8f8f8f'/>
-                <Text className='event-text'>{orderDetail.eventTime}</Text>
-              </View>
-              {!!orderDetail.eventLocation && (
-                <View className='event-row'>
-                  <AtIcon value='map-pin' size='14' color='#8f8f8f'/>
-                  <Text className='event-text'>{orderDetail.eventLocation}</Text>
-                </View>
+        {!!orderDetail.eventName && (
+          <View className='section-card'>
+            <View className='section-title'>
+              <AtIcon value='file-generic' size='18' color='#cfcfcf'/>
+              <Text>活动信息</Text>
+            </View>
+            <View className='event-block' onClick={handleOpenActivity}>
+              {!!orderDetail.eventPoster && (
+                <Image className='event-poster' src={orderDetail.eventPoster} mode='aspectFill'/>
               )}
+              <View className='event-info'>
+                <Text className='event-name'>{orderDetail.eventName}</Text>
+                {!!orderDetail.eventTime && (
+                  <View className='event-row'>
+                    <AtIcon value='clock' size='14' color='#8f8f8f'/>
+                    <Text className='event-text'>{orderDetail.eventTime}</Text>
+                  </View>
+                )}
+                {!!orderDetail.eventLocation && (
+                  <View className='event-row' onClick={handleOpenLocation}>
+                    <AtIcon value='map-pin' size='14' color='#8f8f8f'/>
+                    <Text className='event-text'>{orderDetail.eventLocation}</Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
-        </View>
+        )}
 
-        <View className='section-card'>
-          <View className='section-title'>
-            <AtIcon value='bookmark' size='18' color='#cfcfcf'/>
-            <Text>票务信息</Text>
+        {!!orderDetail.ticketType && (
+          <View className='section-card'>
+            <View className='section-title'>
+              <AtIcon value='bookmark' size='18' color='#cfcfcf'/>
+              <Text>票务信息</Text>
+            </View>
+            <View className='info-row'>
+              <Text className='info-label'>票务类型</Text>
+              <Text className='info-value'>{orderDetail.ticketType}</Text>
+            </View>
+            <View className='info-row'>
+              <Text className='info-label'>票价</Text>
+              <Text className='info-value'>￥{orderDetail.ticketPrice}</Text>
+            </View>
+            <View className='info-row'>
+              <Text className='info-label'>数量</Text>
+              <Text className='info-value'>x{orderDetail.ticketCount}</Text>
+            </View>
+            <View className='info-row total'>
+              <Text className='info-label'>实付金额</Text>
+              <Text className='info-value price'>￥{orderDetail.totalAmount}</Text>
+            </View>
           </View>
-          <View className='info-row'>
-            <Text className='info-label'>票务类型</Text>
-            <Text className='info-value'>{orderDetail.ticketType}</Text>
-          </View>
-          <View className='info-row'>
-            <Text className='info-label'>票价</Text>
-            <Text className='info-value'>￥{orderDetail.ticketPrice}</Text>
-          </View>
-          <View className='info-row'>
-            <Text className='info-label'>数量</Text>
-            <Text className='info-value'>x{orderDetail.ticketCount}</Text>
-          </View>
-          <View className='info-row total'>
-            <Text className='info-label'>实付金额</Text>
-            <Text className='info-value price'>￥{orderDetail.totalAmount}</Text>
-          </View>
-        </View>
+        )}
 
-        <View className='section-card'>
-          <View className='section-title'>
-            <AtIcon value='user' size='18' color='#cfcfcf'/>
-            <Text>观演人信息</Text>
+        {(!!orderDetail.attendee.name || !!orderDetail.attendee.idCard || !!orderDetail.attendee.phone) && (
+          <View className='section-card'>
+            <View className='section-title'>
+              <AtIcon value='user' size='18' color='#cfcfcf'/>
+              <Text>观演人信息</Text>
+            </View>
+            {!!orderDetail.attendee.name && (
+              <View className='info-row'>
+                <Text className='info-label'>姓名</Text>
+                <Text className='info-value'>{orderDetail.attendee.name}</Text>
+              </View>
+            )}
+            {!!orderDetail.attendee.idCard && (
+              <View className='info-row'>
+                <Text className='info-label'>证件号</Text>
+                <Text className='info-value'>{orderDetail.attendee.idCard}</Text>
+              </View>
+            )}
+            {!!orderDetail.attendee.phone && (
+              <View className='info-row'>
+                <Text className='info-label'>手机号</Text>
+                <Text className='info-value'>{orderDetail.attendee.phone}</Text>
+              </View>
+            )}
           </View>
-          <View className='info-row'>
-            <Text className='info-label'>姓名</Text>
-            <Text className='info-value'>{orderDetail.attendee.name}</Text>
-          </View>
-          <View className='info-row'>
-            <Text className='info-label'>证件号</Text>
-            <Text className='info-value'>{orderDetail.attendee.idCard}</Text>
-          </View>
-          <View className='info-row'>
-            <Text className='info-label'>手机号</Text>
-            <Text className='info-value'>{orderDetail.attendee.phone}</Text>
-          </View>
-        </View>
+        )}
 
         <View className='section-card'>
           <View className='section-title'>
