@@ -1473,7 +1473,8 @@ export default function OrganizerPage() {
     const priceSource = selectedSpec || enabledSpec || draft.ticketSpecs[0]
     const posterSlot = draft.posterSlots.find((slot) => slot.key === 'detailPoster')
     const title = draft.name.trim()
-    const summary = draft.summary.trim()
+    // 概要是富文本 HTML，预览时去掉标签只留纯文本
+    const summary = draft.summary.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
     const dateText = draft.dateRange.trim().replace(/\s*[~·]\s*/g, ' - ')
     const price = String(priceSource?.price ?? '').trim()
 
@@ -1593,7 +1594,7 @@ export default function OrganizerPage() {
         Taro.showToast({ title: '请输入分享标题', icon: 'none' })
         return false
       }
-      if (!draft.summary.trim()) {
+      if (!draft.summary.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()) {
         Taro.showToast({ title: '请填写活动概要', icon: 'none' })
         return false
       }

@@ -29,8 +29,8 @@ const QUICK_ACTIONS = [
   { title: '票务配置', desc: '一键配置轻松快捷', iconSrc: iconCollageWhite, action: 'ticket' as const },
 ]
 
-const formatOrderStatValue = (val: number) => (val === 0 ? '0.00' : String(Math.round(val)))
 const formatStatValue = (val: number) => String(Math.round(val))
+const formatSalesValue = (val: number) => (Number(val) || 0).toFixed(2)
 
 export default function OrganizerHomeView(props: OrganizerHomeViewProps) {
   const { activityItems, stats, pageState, onRetry, onChangeTab, onOpenCreateWizard, onOpenSales, onOpenVerifiers, onOpenTicketConfig, followerCount, onOpenFollowers } = props
@@ -104,11 +104,11 @@ export default function OrganizerHomeView(props: OrganizerHomeViewProps) {
         <View className="home-stat-card">
           <View className="home-stat-grid">
             <View className="home-stat-cell">
-              <Text className="home-stat-value">{formatOrderStatValue(stats.todayOrders)}</Text>
+              <Text className="home-stat-value">{formatStatValue(stats.todayOrders)}</Text>
               <Text className="home-stat-label">今日订单</Text>
             </View>
             <View className="home-stat-cell">
-              <Text className="home-stat-value">{formatStatValue(stats.todaySales)}</Text>
+              <Text className="home-stat-value">{formatSalesValue(stats.todaySales)}</Text>
               <Text className="home-stat-label">今日销售</Text>
             </View>
             <View className="home-stat-cell">

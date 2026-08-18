@@ -21,6 +21,8 @@ interface OrganizerActivityItem {
   start_time?: string
   end_time?: string
   status?: number
+  /** 下架标记（后端返回时卡片展示「已下架」） */
+  is_hidden?: boolean | number
 }
 
 interface OrganizerVenueItem {
@@ -36,6 +38,8 @@ interface OrganizerVenueItem {
   address?: string
   /** 当前用户是否订阅该场地（venue 类型时用于订阅按钮） */
   is_subscribe?: boolean
+  /** 下架标记（后端返回时卡片展示「已下架」） */
+  is_hidden?: boolean | number
 }
 
 // C 端商家公开主页数据，见 docs/public_organizer_home_api_20260811.md
@@ -449,7 +453,10 @@ export default function OrganizerHomePage() {
                           <View className='list-card-img list-card-img-placeholder' />
                         )}
                         <View className='list-card-info'>
-                          <Text className='list-card-title'>{item.name || '活动'}</Text>
+                          <View className='list-card-title-row'>
+                            <Text className='list-card-title'>{item.name || '活动'}</Text>
+                            {!!item.is_hidden && <Text className='list-card-badge'>已下架</Text>}
+                          </View>
                           <Text className='list-card-sub'>{formatDateTimeText(item.start_time) || '时间待定'}</Text>
                         </View>
                       </View>
@@ -482,7 +489,10 @@ export default function OrganizerHomePage() {
                           <View className='list-card-img list-card-img-placeholder' />
                         )}
                         <View className='list-card-info'>
-                          <Text className='list-card-title'>{item.activity_name || item.name || '场地'}</Text>
+                          <View className='list-card-title-row'>
+                            <Text className='list-card-title'>{item.activity_name || item.name || '场地'}</Text>
+                            {!!item.is_hidden && <Text className='list-card-badge'>已下架</Text>}
+                          </View>
                           <Text className='list-card-sub'>{item.address || ''}</Text>
                         </View>
                       </View>

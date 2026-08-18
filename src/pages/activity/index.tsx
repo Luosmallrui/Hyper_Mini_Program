@@ -492,12 +492,12 @@ export default function ActivityPage() {
   }
 
   const heroImage = activity?.images?.[0] || activity?.poster_list || heroBg
-  const organizerName = activity?.organizer?.name || activity?.user_name || 'Pure Loop'
+  const organizerName = activity?.organizer?.name || activity?.user_name || '主办方'
   // 内容关注数（docs/content_follow_api_20260810.md），后端未部署 follow_count 时显示 0
   const organizerFans = String(activity?.follow_count ?? 0)
-  const titleText = activity?.name || 'POWER FLOW 嘻哈与电子音乐结合'
+  const titleText = activity?.name || '活动详情'
   const timeText = formatActivityTimeText(activity?.business_hours) || (activity?.is_hidden ? '-' : '时间待定')
-  const locationText = activity?.address || activity?.location_name || '高新区盛园街道保利星荟5栋1楼'
+  const locationText = activity?.address || activity?.location_name || ''
   const parseCoordinate = (value: unknown): number | null => {
     const num = Number(value)
     return Number.isFinite(num) ? num : null
@@ -547,7 +547,7 @@ export default function ActivityPage() {
     if (!requireProfile()) return
     if (!activity || followPending) return
     if (activity.is_hidden) {
-      Taro.showToast({ title: '活动已下架，暂不可关注', icon: 'none' })
+      Taro.showToast({ title: `${isVenue ? '场地' : '活动'}已下架，暂不可关注`, icon: 'none' })
       return
     }
     const followTarget = readContentFollowTarget(activity)
@@ -585,7 +585,7 @@ export default function ActivityPage() {
     if (!requireProfile()) return
     if (!activity || subscribePending) return
     if (activity.is_hidden) {
-      Taro.showToast({ title: '活动已下架，暂不可订阅', icon: 'none' })
+      Taro.showToast({ title: `${isVenue ? '场地' : '活动'}已下架，暂不可订阅`, icon: 'none' })
       return
     }
 
@@ -776,8 +776,8 @@ export default function ActivityPage() {
     return (
       <View className='activity-page'>
         <View className='activity-state'>
-          <Text className='activity-state-title'>活动已下架</Text>
-          <Text className='activity-state-text'>该活动已下架或不存在，去看看其他活动吧</Text>
+          <Text className='activity-state-title'>内容已下架</Text>
+          <Text className='activity-state-text'>该活动或场地已下架或不存在，去看看其他的吧</Text>
           <View className='activity-state-btn' onClick={handleBack}>
             <Text className='activity-state-btn-text'>返回</Text>
           </View>
@@ -824,10 +824,12 @@ export default function ActivityPage() {
             </View>
           </View>
 
-          <View className='location-row' onClick={handleOpenMap}>
-            <Text className='location-text'>{locationText}</Text>
-            <AtIcon className='location-icon' value='chevron-right' size='16' color='#fff' />
-          </View>
+          {!!locationText && (
+            <View className='location-row' onClick={handleOpenMap}>
+              <Text className='location-text'>{locationText}</Text>
+              <AtIcon className='location-icon' value='chevron-right' size='16' color='#fff' />
+            </View>
+          )}
 
           <View className='price-row'>
             <Text className='price-range'>{priceRange}</Text>
@@ -941,7 +943,7 @@ export default function ActivityPage() {
           {activity?.is_hidden ? (
             <View className='ticket-bar'>
               <View className='ticket-pill disabled'>
-                <Text className='ticket-text'>活动已下架</Text>
+                <Text className='ticket-text'>{isVenue ? '场地已下架' : '活动已下架'}</Text>
               </View>
             </View>
           ) : !isVenue && (
@@ -977,10 +979,12 @@ export default function ActivityPage() {
                     <Text className='drawer-meta-label'>时间：</Text>
                     <Text className='drawer-meta-value'>{timeText}</Text>
                   </View>
-                  <View className='drawer-meta-row drawer-meta-row--location'>
-                    <Text className='drawer-meta-label'>地点：</Text>
-                    <Text className='drawer-meta-value'>{locationText}</Text>
-                  </View>
+                  {!!locationText && (
+                    <View className='drawer-meta-row drawer-meta-row--location'>
+                      <Text className='drawer-meta-label'>地点：</Text>
+                      <Text className='drawer-meta-value'>{locationText}</Text>
+                    </View>
+                  )}
                   <Text className='drawer-price'>{priceRange}</Text>
                 </View>
               </View>

@@ -630,32 +630,35 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
       <View className="account-brand-card">
         <View className="account-brand-top flex-row">
           <View className="account-brand-logo-wrap">
-            <Image
-              className="account-brand-logo"
-              src={account?.logo || powerFlowLogo}
-              mode="aspectFill"
-            />
+            {/* 数据未返回前不渲染 Image，避免默认品牌图闪烁 */}
+            {!!account?.logo && (
+              <Image
+                className="account-brand-logo"
+                src={account.logo}
+                mode="aspectFill"
+              />
+            )}
           </View>
           <View className="account-brand-main flex-col">
-            <Text className="account-brand-name">{account?.name || 'POWER FLOW'}</Text>
+            <Text className="account-brand-name">{account?.name || ''}</Text>
             <View className={`account-brand-verified flex-row ${account?.verified === false ? 'is-unverified' : ''}`}>
-              <Text className="account-verified-text">{account?.verified === false ? '未认证' : '已认证'}</Text>
+              <Text className="account-verified-text">{account ? (account.verified === false ? '未认证' : '已认证') : '--'}</Text>
             </View>
           </View>
         </View>
         <View className="account-brand-stats flex-row">
           <View className="account-brand-stat flex-col">
-            <Text className="account-brand-stat-value">{account?.daysSinceJoined ?? 210}</Text>
+            <Text className="account-brand-stat-value">{account?.daysSinceJoined ?? '—'}</Text>
             <Text className="account-brand-stat-label">入驻天数</Text>
           </View>
           <View className="account-brand-stat-divider" />
           <View className="account-brand-stat flex-col">
-            <Text className="account-brand-stat-value">{account?.level || 'LV1'}</Text>
+            <Text className="account-brand-stat-value">{account?.level || '—'}</Text>
             <Text className="account-brand-stat-label">当前等级</Text>
           </View>
           <View className="account-brand-stat-divider" />
           <View className="account-brand-stat flex-col">
-            <Text className="account-brand-stat-value">{account?.serviceFeeRate || '5%'}</Text>
+            <Text className="account-brand-stat-value">{account?.serviceFeeRate || '—'}</Text>
             <Text className="account-brand-stat-label">服务费比例</Text>
           </View>
         </View>
@@ -692,11 +695,11 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
         <Text className="account-section-title">主办方等级</Text>
         <View className="account-level-row">
           <Text className="account-level-label">当前等级</Text>
-          <Text className="account-level-value">{account?.level || 'LV1'}</Text>
+          <Text className="account-level-value">{account?.level || '—'}</Text>
         </View>
         <View className="account-level-row">
           <Text className="account-level-label">服务费率</Text>
-          <Text className="account-level-value">{account?.serviceFeeRate || '5%'}</Text>
+          <Text className="account-level-value">{account?.serviceFeeRate || '—'}</Text>
         </View>
         <Text className="account-level-tip">默认等级为 LV1，后续等级和费率以平台后台配置为准。</Text>
         <Text className="account-level-tip">升级条件：累计有效订单、销售额、活动履约和账户合规状态达到平台规则。</Text>

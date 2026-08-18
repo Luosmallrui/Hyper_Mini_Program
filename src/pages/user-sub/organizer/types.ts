@@ -30,11 +30,15 @@ export type VerifyStatus =
 export interface VerifyTicketItem {
   id: string
   orderNo?: string
+  /** 关联活动 ID（有值时卡片可点击跳转活动详情） */
+  activityId?: string
   activityTitle: string
   ticketType: string
   quantity: number
   realName: string
   idCard: string
+  /** 购票手机号（脱敏），后端未返回时为空串 */
+  buyerPhone?: string
   cover: string
   status: 'verified' | 'unverified'
   verifiedAt?: string

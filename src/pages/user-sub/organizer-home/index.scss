@@ -191,6 +191,15 @@ page {
         font-size: 28rpx; color: #eee; font-weight: 600;
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       }
+      .list-card-title-row {
+        display: flex; align-items: center; gap: 12rpx; overflow: hidden;
+      }
+      .list-card-badge {
+        font-size: 20rpx; color: #FF5C74;
+        background: rgba(255, 46, 77, 0.14);
+        padding: 2rpx 12rpx; border-radius: 6rpx;
+        flex-shrink: 0; font-weight: 400;
+      }
       .list-card-sub {
         font-size: 22rpx; color: #888;
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

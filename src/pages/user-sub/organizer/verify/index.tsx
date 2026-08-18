@@ -32,8 +32,12 @@ interface OrganizerVerifyViewProps {
 
 const fallbackCover = powerFlowLogo
 
-const renderTicketCard = (ticket: VerifyTicketItem) => (
-  <View key={ticket.id} className="verify-ticket-card">
+const renderTicketCard = (ticket: VerifyTicketItem, onOpenActivity?: (ticket: VerifyTicketItem) => void) => (
+  <View
+    key={ticket.id}
+    className="verify-ticket-card"
+    onClick={() => { if (ticket.activityId) onOpenActivity?.(ticket) }}
+  >
     <Image className="verify-ticket-cover" src={ticket.cover || fallbackCover} mode="aspectFill" />
     <View className="verify-ticket-info">
       <View className="verify-ticket-row">
@@ -42,6 +46,7 @@ const renderTicketCard = (ticket: VerifyTicketItem) => (
       </View>
       <Text className="verify-ticket-type">{ticket.ticketType} {ticket.quantity}张</Text>
       <Text className="verify-ticket-person">实名信息：{ticket.realName} {ticket.idCard}</Text>
+      {!!ticket.buyerPhone && <Text className="verify-ticket-person">手机号：{ticket.buyerPhone}</Text>}
     </View>
   </View>
 )
@@ -104,6 +109,12 @@ export default function OrganizerVerifyView(props: OrganizerVerifyViewProps) {
 
   const visibleTickets = verifiedTickets.slice(0, 4)
   const verifiedCount = verifiedTickets.length
+
+  // 点击已核销卡片跳转对应活动详情（已下架活动由详情页展示下架态）
+  const handleOpenTicketActivity = (ticket: VerifyTicketItem) => {
+    if (!ticket.activityId) return
+    Taro.navigateTo({ url: `/pages/activity/index?id=${ticket.activityId}` })
+  }
 
   const processScanPayload = async (payload: VerifierScanPayload) => {
     const result = await scanVerifierTicket(payload)
@@ -313,7 +324,7 @@ export default function OrganizerVerifyView(props: OrganizerVerifyViewProps) {
         {verifiedLoading ? (
           <Text style={{ display: 'block', color: '#747474', padding: '32rpx 40rpx' }}>加载中...</Text>
         ) : visibleTickets.length > 0 ? (
-          visibleTickets.map((ticket) => renderTicketCard(ticket))
+          visibleTickets.map((ticket) => renderTicketCard(ticket, handleOpenTicketActivity))
         ) : (
           <Text style={{ display: 'block', color: '#747474', padding: '32rpx 40rpx' }}>暂无核销记录</Text>
         )}

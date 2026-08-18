@@ -114,11 +114,17 @@ interface ApiVerifierItem {
 interface ApiVerifyOrder {
   order_no?: string
   activity_name?: string
+  activity_id?: number | string
   ticket_spec_name?: string
   quantity?: number
   buyer_name_masked?: string
   buyer_id_card_masked?: string
+  buyer_phone_masked?: string
+  buyer_phone?: string
   poster_list?: string
+  poster?: string
+  activity_poster?: string
+  cover_image?: string
 }
 
 /** 商家订单列表项，字段与 PC 商家端 merchant-orders.ts 一致 */
@@ -326,15 +332,37 @@ const extractOrderNoFromQr = (qrCode: string) => {
   return match?.[1] || ''
 }
 
+// 海报字段可能是 JSON 数组串/逗号分隔串/单 URL，统一取第一张有效 http(s) 图
+const pickFirstImageUrl = (...values: Array<unknown>): string => {
+  for (const value of values) {
+    const text = String(value ?? '').trim()
+    if (!text) continue
+    if (text.startsWith('[')) {
+      try {
+        const arr = JSON.parse(text)
+        if (Array.isArray(arr)) {
+          const hit = arr.map((v) => String(v ?? '').trim()).find((v) => /^https?:\/\//.test(v))
+          if (hit) return hit
+        }
+      } catch (_e) {}
+    }
+    const first = text.split(',')[0].trim()
+    if (/^https?:\/\//.test(first)) return first
+  }
+  return ''
+}
+
 const mapVerifyTicket = (item: Partial<ApiVerifyOrder>, id: string, qrCode = ''): VerifyTicketItem => ({
   id,
   orderNo: item.order_no || extractOrderNoFromQr(qrCode),
+  activityId: item.activity_id ? String(item.activity_id) : '',
   activityTitle: item.activity_name || '票务订单',
   ticketType: item.ticket_spec_name || '票券',
   quantity: Number(item.quantity || 1),
   realName: item.buyer_name_masked || '-',
   idCard: item.buyer_id_card_masked || '',
-  cover: item.poster_list || '',
+  buyerPhone: item.buyer_phone_masked || item.buyer_phone || '',
+  cover: pickFirstImageUrl(item.poster_list, item.poster, item.activity_poster, item.cover_image),
   status: 'verified',
   verifiedAt: formatDateTime(new Date().toISOString()),
 })
@@ -506,11 +534,27 @@ export const fetchActivities = async (params: ActivityQueryParams = {}): Promise
 
 export const fetchDashboard = async (_params: DashboardQueryParams = {}): Promise<DashboardData> => {
   const activities = await fetchActivities()
+  // 今日订单/销售：复用销售数据页的聚合接口（start_date=end_date=今天），保证内外口径一致
+  let todayOrders = 0
+  let todaySales = 0
+  try {
+    const now = new Date()
+    const pad2 = (num: number) => String(num).padStart(2, '0')
+    const today = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`
+    const summary = await apiRequest<{ order_count?: number; total_amount?: number }>({
+      url: `/api/v1/organizer/orders/summary?start_date=${today}&end_date=${today}`,
+      method: 'GET',
+    })
+    todayOrders = Number(summary?.order_count || 0)
+    todaySales = Number(summary?.total_amount || 0) / 100
+  } catch (_e) {
+    // 汇总接口失败不阻断仪表盘，今日数据按 0 展示
+  }
   return {
     activities,
     stats: {
-      todayOrders: 0,
-      todaySales: 0,
+      todayOrders,
+      todaySales,
       totalSubscribers: activities.reduce((sum, item) => sum + (item.subscribers || 0), 0),
     },
   }
@@ -1461,11 +1505,21 @@ export const submitActivityDraft = async (
 }
 
 export const fetchVerifyRecords = async (): Promise<VerifyTicketItem[]> => {
-  const data = await apiRequest<{ list?: Array<Partial<ApiVerifyOrder> & { id?: string | number; verified_at?: string }> }>({
-    url: '/api/v1/verifier/verified-list?page=1&size=50',
-    method: 'GET',
-    header: getVerifierHeader(),
-  })
+  let data: { list?: Array<Partial<ApiVerifyOrder> & { id?: string | number; verified_at?: string }> } | undefined
+  try {
+    data = await apiRequest<{ list?: Array<Partial<ApiVerifyOrder> & { id?: string | number; verified_at?: string }> }>({
+      url: '/api/v1/verifier/verified-list?page=1&size=50',
+      method: 'GET',
+      header: getVerifierHeader(),
+    })
+  } catch (error: any) {
+    // 空列表时后端可能返回 404/「暂无记录」类错误，按空数组处理，不打扰用户
+    const message = String(error?.message || '')
+    if (Number(error?.code) === 404 || /暂无|没有|不存在|空|not\s*found|empty/i.test(message)) {
+      return []
+    }
+    throw error
+  }
   return (Array.isArray(data?.list) ? data.list : []).map((item, index) => ({
     ...mapVerifyTicket(item, String(item.id || `verified-${index}`)),
     verifiedAt: formatDateTime(item.verified_at) || '',

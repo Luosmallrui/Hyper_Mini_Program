@@ -65,6 +65,8 @@ export default function VenuePage() {
   const [relatedNotes, setRelatedNotes] = useState<RelatedNote[]>([])
   const [relatedNotesLoading, setRelatedNotesLoading] = useState(false)
   const [followerCount, setFollowerCount] = useState(0)
+  // 加载状态：loading 占位 / ready 正常详情 / offline 已下架或不存在（避免展示默认假数据）
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'offline'>('loading')
 
   useEffect(() => {
     const sysInfo = Taro.getWindowInfo()
@@ -79,7 +81,10 @@ export default function VenuePage() {
 
   useEffect(() => {
     const fetchVenue = async () => {
-      if (!venueId) return
+      if (!venueId) {
+        setLoadState('offline')
+        return
+      }
       // 主数据源：新场地详情 /venues/:organizer_id（见 docs/organizer_venue_activity_model_api_20260815.md §5）
       try {
         const venueRes = await request({
@@ -108,6 +113,7 @@ export default function VenuePage() {
             follow_target_id: venueData.follow_target_id,
           })
           if (Number.isFinite(followCount)) setFollowerCount(followCount)
+          setLoadState('ready')
           return
         }
         throw new Error('empty venue detail')
@@ -121,9 +127,15 @@ export default function VenuePage() {
           method: 'GET'
         })
         const detail = res?.data?.data || null
-        setVenue(detail)
+        if (detail) {
+          setVenue(detail)
+          setLoadState('ready')
+        } else {
+          setLoadState('offline')
+        }
       } catch (error) {
         console.error('Venue detail load failed:', error)
+        setLoadState('offline')
       }
     }
     fetchVenue()
@@ -301,6 +313,26 @@ export default function VenuePage() {
               <Text className='like-count'>{formatNumber(note.likeCount)}</Text>
             </View>
           </View>
+        </View>
+      </View>
+    )
+  }
+
+  if (loadState === 'loading') {
+    return (
+      <View className='venue-page venue-state-page'>
+        <Text className='venue-state-text'>加载中...</Text>
+      </View>
+    )
+  }
+
+  if (loadState === 'offline') {
+    return (
+      <View className='venue-page venue-state-page'>
+        <Text className='venue-state-title'>场地已下架</Text>
+        <Text className='venue-state-text'>该场地已下架或不存在，去看看其他的吧</Text>
+        <View className='venue-state-btn' onClick={() => Taro.navigateBack()}>
+          <Text className='venue-state-btn-text'>返回</Text>
         </View>
       </View>
     )

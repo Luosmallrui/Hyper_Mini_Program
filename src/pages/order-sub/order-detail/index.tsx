@@ -49,6 +49,23 @@ interface OrderDetailState {
 
 const pad = (num: number) => String(num).padStart(2, '0')
 
+// poster_list 可能是 JSON 数组串/逗号分隔串，统一取第一张有效图
+const pickFirstImageUrl = (value?: unknown): string => {
+  const text = String(value ?? '').trim()
+  if (!text) return ''
+  if (text.startsWith('[')) {
+    try {
+      const arr = JSON.parse(text)
+      if (Array.isArray(arr)) {
+        const hit = arr.map((v) => String(v ?? '').trim()).find((v) => /^https?:\/\//.test(v))
+        if (hit) return hit
+      }
+    } catch (_e) {}
+  }
+  const first = text.split(',')[0].trim()
+  return /^https?:\/\//.test(first) ? first : ''
+}
+
 const getRemaining = (expireTime?: string, now = Date.now()): number => {
   if (!expireTime) return -1
   const diff = new Date(expireTime).getTime() - now
@@ -192,8 +209,8 @@ export default function OrderDetailPage() {
           eventTime: detail.activity?.start_time && detail.activity?.end_time
             ? `${formatDateTime(detail.activity.start_time)} - ${formatDateTime(detail.activity.end_time)}`
             : formatDateTime(detail.activity?.start_time),
-          eventLocation: detail.activity?.address || '',
-          eventPoster: detail.activity?.poster_list || posterImage,
+          eventLocation: detail.activity?.address || detail.activity?.location_name || detail.activity?.venue_name || '',
+          eventPoster: pickFirstImageUrl(detail.activity?.poster_list) || posterImage,
           ticketType: detail.ticket_spec?.name || '票券',
           ticketPrice: Number(((detail.actual_price || detail.total_price || 0) / Math.max(Number(detail.quantity || 1), 1) / 100).toFixed(2)),
           ticketCount: Number(detail.quantity || 1),
@@ -498,6 +515,12 @@ export default function OrderDetailPage() {
     })
   }
 
+  // 活动信息卡片：跳转活动详情（已下架活动由详情页展示下架态）
+  const handleOpenActivity = () => {
+    if (!orderDetail.activityId) return
+    Taro.navigateTo({ url: `/pages/activity/index?id=${orderDetail.activityId}` })
+  }
+
   const statusConfig = getStatusConfig()
 
   return (
@@ -603,7 +626,7 @@ export default function OrderDetailPage() {
             <AtIcon value='file-generic' size='18' color='#cfcfcf'/>
             <Text>活动信息</Text>
           </View>
-          <View className='event-block'>
+          <View className='event-block' onClick={handleOpenActivity}>
             <Image className='event-poster' src={orderDetail.eventPoster || posterImage} mode='aspectFill'/>
             <View className='event-info'>
               <Text className='event-name'>{orderDetail.eventName}</Text>
@@ -611,10 +634,12 @@ export default function OrderDetailPage() {
                 <AtIcon value='clock' size='14' color='#8f8f8f'/>
                 <Text className='event-text'>{orderDetail.eventTime}</Text>
               </View>
-              <View className='event-row'>
-                <AtIcon value='map-pin' size='14' color='#8f8f8f'/>
-                <Text className='event-text'>{orderDetail.eventLocation}</Text>
-              </View>
+              {!!orderDetail.eventLocation && (
+                <View className='event-row'>
+                  <AtIcon value='map-pin' size='14' color='#8f8f8f'/>
+                  <Text className='event-text'>{orderDetail.eventLocation}</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
