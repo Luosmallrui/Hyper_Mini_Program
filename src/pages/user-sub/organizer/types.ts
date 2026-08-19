@@ -39,6 +39,8 @@ export interface VerifyTicketItem {
   idCard: string
   /** 购票手机号（脱敏），后端未返回时为空串 */
   buyerPhone?: string
+  /** 核销员姓名（商家全量记录视角返回） */
+  verifierName?: string
   cover: string
   status: 'verified' | 'unverified'
   verifiedAt?: string

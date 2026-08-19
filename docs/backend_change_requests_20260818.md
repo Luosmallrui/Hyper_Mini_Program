@@ -87,6 +87,13 @@
   - 已激活核销员：`GET /api/v1/verifier/orders/:order_no`（须携带核销员自己的 Authorization，仅可查看所属主办方活动的订单）
 - 前端已按角色链接入：核销/管理后台进入订单详情时携带 `role=verifier`，依次尝试核销员接口（`X-Verifier-Id`）→ 主办方接口 → 用户接口。
 
+**后端回复（2026-08-19，核销记录按视角拆分，已上线）**：
+
+- `GET /api/v1/verifier/verified-list`：核销员个人记录（当前登录用户亲自核销的历史，重新绑定后的旧记录聚合）。
+- `GET /api/v1/organizer/verification-records`：商家全量记录（主办方名下全部核销员，含核销员姓名、脱敏手机号、订单、活动、核销时间；支持 `verifier_id`/`activity_id`/`keyword`/日期筛选）。
+- `POST /api/v1/verifier/confirm`：核销员身份改为从登录 Token 解析，不再信任 `X-Verifier-Id`，新记录稳定归属正确核销员。
+- 前端接入口径：我的页「核销记录」入口（`source=userNav`）展示个人记录；管理后台内（扫码核销视图、核销记录页）展示商家全量记录。
+
 `GET /api/v1/organizer/verifiers` 列表项：
 
 | 字段 | 类型 | 说明 |

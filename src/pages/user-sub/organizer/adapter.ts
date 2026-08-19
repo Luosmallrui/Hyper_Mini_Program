@@ -1546,8 +1546,7 @@ export const submitActivityDraft = async (
   return activityId
 }
 
-export const fetchVerifyRecords = async (): Promise<VerifyTicketItem[]> => {
-  let data: { list?: Array<Partial<ApiVerifyOrder> & { id?: string | number; verified_at?: string }> } | undefined
+export const fetchVerifyRecords = async (): Promise<VerifyTicketItem[]> => {let data: { list?: Array<Partial<ApiVerifyOrder> & { id?: string | number; verified_at?: string }> } | undefined
   try {
     data = await apiRequest<{ list?: Array<Partial<ApiVerifyOrder> & { id?: string | number; verified_at?: string }> }>({
       url: '/api/v1/verifier/verified-list?page=1&size=50',
@@ -1564,6 +1563,29 @@ export const fetchVerifyRecords = async (): Promise<VerifyTicketItem[]> => {
   }
   return (Array.isArray(data?.list) ? data.list : []).map((item, index) => ({
     ...mapVerifyTicket(item, String(item.id || `verified-${index}`)),
+    verifiedAt: formatDateTime(item.verified_at) || '',
+  }))
+}
+
+/** 商家全量核销记录（主办方视角）：/organizer/verification-records，含核销员姓名/脱敏手机号/核销时间 */
+export const fetchOrganizerVerificationRecords = async (): Promise<VerifyTicketItem[]> => {
+  let data: { list?: Array<Partial<ApiVerifyOrder> & { id?: string | number; verified_at?: string; verifier_name?: string; verifier?: { name?: string } }> } | undefined
+  try {
+    data = await apiRequest<{ list?: Array<Partial<ApiVerifyOrder> & { id?: string | number; verified_at?: string; verifier_name?: string; verifier?: { name?: string } }> }>({
+      url: '/api/v1/organizer/verification-records?page=1&size=50',
+      method: 'GET',
+    })
+  } catch (error: any) {
+    // 空列表按空数组处理，与核销员个人记录口径一致
+    const message = String(error?.message || '')
+    if (Number(error?.code) === 404 || /暂无|没有|不存在|空|not\s*found|empty/i.test(message)) {
+      return []
+    }
+    throw error
+  }
+  return (Array.isArray(data?.list) ? data.list : []).map((item, index) => ({
+    ...mapVerifyTicket(item, String(item.id || `org-verified-${index}`)),
+    verifierName: String(item.verifier_name || item.verifier?.name || ''),
     verifiedAt: formatDateTime(item.verified_at) || '',
   }))
 }

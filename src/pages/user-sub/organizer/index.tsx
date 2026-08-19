@@ -24,6 +24,7 @@ import {
   fetchOrganizerProfile,
   fetchSalesSummary,
   fetchVerifyRecords,
+  fetchOrganizerVerificationRecords,
   getSettlementApplyInitialForm,
   loginOrganizerPassword,
   submitActivityDraft,
@@ -289,6 +290,8 @@ export default function OrganizerPage() {
   const [organizerLoginSubmitting, setOrganizerLoginSubmitting] = useState(false)
   const [verifyRecordsState, setVerifyRecordsState] = useState<VerifyRecordsState>('loading')
   const [verifyRecords, setVerifyRecords] = useState<VerifyTicketItem[]>([])
+  // 核销记录视角：我的页入口（source=userNav）=核销员个人记录；管理后台入口=商家全量记录
+  const [verifyRecordsScope, setVerifyRecordsScope] = useState<'personal' | 'organizer'>('organizer')
   const [navMetrics, setNavMetrics] = useState({
     statusBarHeight: 20,
     navBarHeight: 44,
@@ -428,6 +431,7 @@ export default function OrganizerPage() {
       setDraft(createDevPrefillDraft())
     } else if (view === 'verify') {
       setDashboardView('verify')
+      setVerifyRecordsScope(getStringParam(params.source) === 'userNav' ? 'personal' : 'organizer')
       setVerifyActivityTitle(getStringParam(params.activityTitle))
       setVerifyInitialModalStatus(verifyModalStatus)
       setVerifyInitialAddVerifierOpen(openAddVerifier)
@@ -444,7 +448,9 @@ export default function OrganizerPage() {
       }
     } else if (view === 'verifyRecords') {
       setDashboardView('verifyRecords')
-      loadVerifyRecords(getStringParam(params.recordsMode || params.mockMode))
+      const scope = getStringParam(params.source) === 'userNav' ? 'personal' : 'organizer'
+      setVerifyRecordsScope(scope)
+      loadVerifyRecords(getStringParam(params.recordsMode || params.mockMode), scope)
     } else if (view === 'settlementApply') {
       setDashboardView('settlementApply')
       // 运营城市固定为成都：省份/城市锁定，仅开放成都区县选择
@@ -632,7 +638,7 @@ export default function OrganizerPage() {
     if (activityTab === 'orders') void loadOrganizerOrders()
   }, [dashboardView, activityTab, orderWithdrawStatus, orderSalesChannel])
 
-  const loadVerifyRecords = async (mode = '') => {
+  const loadVerifyRecords = async (mode = '', scope: 'personal' | 'organizer' = verifyRecordsScope) => {
     setVerifyRecordsState('loading')
     try {
       if (mode === 'empty') {
@@ -640,7 +646,9 @@ export default function OrganizerPage() {
         setVerifyRecordsState('empty')
         return
       }
-      const list = await fetchVerifyRecords()
+      const list = scope === 'personal'
+        ? await fetchVerifyRecords()
+        : await fetchOrganizerVerificationRecords()
       setVerifyRecords(list)
       setVerifyRecordsState(list.length > 0 ? 'loaded' : 'empty')
     } catch {
@@ -2209,6 +2217,9 @@ export default function OrganizerPage() {
               </View>
               <Text className="verify-record-meta">{record.ticketType} {record.quantity}张</Text>
               <Text className="verify-record-meta">实名信息：{record.realName} {record.idCard}</Text>
+              {!!record.verifierName && (
+                <Text className="verify-record-meta">核销员：{record.verifierName}</Text>
+              )}
               <Text className="verify-record-time">{record.verifiedAt}</Text>
             </View>
           </View>
@@ -3077,6 +3088,7 @@ export default function OrganizerPage() {
         {dashboardView === 'account' && <OrganizerAccountView />}
         {dashboardView === 'verify' && (
           <OrganizerVerifyView
+            recordsScope={verifyRecordsScope}
             activityTitle={verifyActivityTitle}
             initialModalStatus={verifyInitialModalStatus}
             initialAddVerifierOpen={verifyInitialAddVerifierOpen}

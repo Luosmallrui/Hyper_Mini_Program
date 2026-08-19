@@ -6,6 +6,7 @@ import {
   confirmVerifierTicket,
   createVerifier,
   fetchVerifyRecords,
+  fetchOrganizerVerificationRecords,
   scanVerifierTicket,
 } from '../adapter'
 import { VerifyStatus, VerifyTicketItem } from '../types'
@@ -27,6 +28,8 @@ interface OrganizerVerifyViewProps {
   initialAddVerifierOpen?: boolean
   initialManualInputOpen?: boolean
   initialScan?: VerifierScanPayload
+  /** 核销记录视角：personal=核销员个人记录（我的页入口）；organizer=商家全量记录（管理后台） */
+  recordsScope?: 'personal' | 'organizer'
   onBack: () => void
 }
 
@@ -47,13 +50,14 @@ const renderTicketCard = (ticket: VerifyTicketItem, onOpenOrder?: (ticket: Verif
       <Text className="verify-ticket-type">{ticket.ticketType} {ticket.quantity}张</Text>
       <Text className="verify-ticket-person">实名信息：{ticket.realName} {ticket.idCard}</Text>
       {!!ticket.buyerPhone && <Text className="verify-ticket-person">手机号：{ticket.buyerPhone}</Text>}
+      {!!ticket.verifierName && <Text className="verify-ticket-person">核销员：{ticket.verifierName}</Text>}
       {!!ticket.verifiedAt && <Text className="verify-ticket-person">核销时间：{ticket.verifiedAt}</Text>}
     </View>
   </View>
 )
 
 export default function OrganizerVerifyView(props: OrganizerVerifyViewProps) {
-  const { initialAddVerifierOpen = false, initialManualInputOpen = false, initialModalStatus, initialScan, onBack } = props
+  const { initialAddVerifierOpen = false, initialManualInputOpen = false, initialModalStatus, initialScan, recordsScope = 'organizer', onBack } = props
   const [verifiedTickets, setVerifiedTickets] = useState<VerifyTicketItem[]>([])
   const [verifiedLoading, setVerifiedLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(Boolean(initialModalStatus))
@@ -76,7 +80,9 @@ export default function OrganizerVerifyView(props: OrganizerVerifyViewProps) {
   const loadVerifiedTickets = async () => {
     setVerifiedLoading(true)
     try {
-      const list = await fetchVerifyRecords()
+      const list = recordsScope === 'personal'
+        ? await fetchVerifyRecords()
+        : await fetchOrganizerVerificationRecords()
       setVerifiedTickets(list)
     } catch (error: any) {
       setVerifiedTickets([])
