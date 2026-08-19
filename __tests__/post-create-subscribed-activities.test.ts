@@ -6,7 +6,7 @@ const readSource = (...segments: string[]) => fs.readFileSync(path.join(__dirnam
 const LEGACY_SUBSCRIBE_LIST_ENDPOINT = ['/api/v1', 'subscribe', 'list'].join('/')
 
 describe('post create subscribed activity normalization', () => {
-  it('uses real activity ids and titles from legacy and nested subscribe list items', () => {
+  it('keeps venues and activities with real ids and titles from legacy and nested subscribe list items', () => {
     expect(normalizeSubscribedActivities([
       { id: 1, title: 'POWER FLOW 嘻哈与电子音乐结合', type: '活动' },
       { id: 99, activity_id: 10, activity: { id: 10, name: 'jjjj', type: 'activity' } },
@@ -16,6 +16,7 @@ describe('post create subscribed activity normalization', () => {
       { id: 1, title: 'POWER FLOW 嘻哈与电子音乐结合', type: '活动' },
       { id: 10, title: 'jjjj', type: 'activity' },
       { id: 11, title: 'kkkkk', type: 'activity' },
+      { id: 2, title: 'SWING鸡尾酒吧', type: '场地' },
     ])
   })
 

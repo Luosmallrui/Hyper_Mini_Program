@@ -7,6 +7,15 @@ import './index.less';
 
 const BASE_URL = 'https://www.hypercn.cn';
 
+// 解析 string 响应并保留 16 位以上的大数字 ID 为字符串，避免雪花 ID 丢精度
+const parseJSONWithBigInt = (jsonStr: string) => {
+  if (typeof jsonStr !== 'string') return jsonStr;
+  try {
+    const fixedStr = jsonStr.replace(/"(id|user_id|note_id|root_id|parent_id|next_cursor|reply_to_user_id|peer_id)":\s*(\d{16,})/g, '"$1": "$2"');
+    return JSON.parse(fixedStr);
+  } catch (e) { return {}; }
+};
+
 interface UserItem {
   id: string;
   avatar: string;
@@ -72,7 +81,7 @@ const FollowList: React.FC = () => {
         url: `${BASE_URL}/api/v1/follow/list`,
         method: 'GET',
         data: {
-          pageSize: 10,
+          pageSize: 20,
           cursor: currentCursor,
           type: activeTab
         },
@@ -83,9 +92,8 @@ const FollowList: React.FC = () => {
 
       let resBody: any = res.data;
       if (typeof resBody === 'string') {
-        try {
-          resBody = JSON.parse(resBody);
-        } catch (e) {
+        resBody = parseJSONWithBigInt(res.data as string);
+        if (!resBody || typeof resBody !== 'object' || Object.keys(resBody).length === 0) {
           throw new Error('数据解析失败');
         }
       }
@@ -285,6 +293,13 @@ const FollowList: React.FC = () => {
           {loading && (
             <View className="loading-more">
               <Text className="loading-text">加载中...</Text>
+            </View>
+          )}
+
+          {/* 加载更多：内容不足一屏时滚动加载不会触发，给手动入口 */}
+          {!loading && hasMore && list.length > 0 && (
+            <View className="loading-more" onClick={() => loadData(cursor)}>
+              <Text className="loading-text">加载更多</Text>
             </View>
           )}
 

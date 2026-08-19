@@ -47,8 +47,12 @@ interface Note {
   /** 列表接口透传字段：作者与点赞数（缺省时用当前用户信息兜底） */
   user_id?: string | number;
   nickname?: string;
+  user_name?: string;
   avatar?: string;
+  user_avatar?: string;
+  user?: { nickname?: string; user_name?: string; avatar?: string; user_id?: string | number };
   like_count?: number;
+  likes?: number;
 }
 
 interface UserStats {
@@ -779,9 +783,13 @@ export default function UserPage() {
           {notes.filter((_, i) => i % 2 === col).map(note => {
             const media = note.media_data?.[0];
             const imageHeight = calculateImageHeight(media);
-            // 作者信息：赞过/收藏列表用接口透传的作者字段；我的动态缺省时回退当前用户
-            const authorName = note.nickname || userInfo.nickname || '用户';
-            const authorAvatar = note.avatar || userInfo.avatar_url || userInfo.avatar || '';
+            // 作者信息：多字段名兼容（与广场 related-notes 归一化口径一致）；
+            // 我的动态缺省时回退当前用户，赞过/收藏缺省时显示「用户」而非误挂当前用户
+            const authorName = note.nickname || note.user_name || note.user?.nickname || note.user?.user_name
+              || (deletable ? userInfo.nickname : '') || '用户';
+            const authorAvatar = note.avatar || note.user_avatar || note.user?.avatar
+              || (deletable ? userInfo.avatar_url || userInfo.avatar : '') || '';
+            const likeCount = note.like_count ?? note.likes;
             return (
               <View
                 key={String(note.id)}
@@ -802,7 +810,7 @@ export default function UserPage() {
                     <Text className="note-author-name">{authorName}</Text>
                     <View className="note-like-wrap">
                       <Image className="note-like-icon" src={lightningOutlineIcon} mode="aspectFit" />
-                      <Text className="note-like-count">{formatNoteLikeCount(note.like_count)}</Text>
+                      <Text className="note-like-count">{formatNoteLikeCount(likeCount)}</Text>
                     </View>
                   </View>
                 </View>

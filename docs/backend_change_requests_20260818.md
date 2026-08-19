@@ -106,6 +106,9 @@
 1. **`GET /api/v1/organizer/activities`（我的活动列表）**：列表项请返回 `is_hidden`（平台下架标记）。前端「活动状态-下架」筛选依赖它；未返回时下架筛选恒为空。「结束」由前端按 `end_time < 当前时间` 推导，无需后端处理。
 2. **`GET /api/v1/organizer/verifier/:id/activation-qr`**：`douyin_qr` 当前返回为空，前端弹窗显示「抖音二维码暂未生成」。请返回真实抖音激活二维码图片 URL；暂不展示静态示例图（避免误导）。
 3. **`GET /api/v1/organizer/bank/withdraw/flow/list`**：用户反馈提现申请提交后「提现记录」为空。请确认响应列表字段名（前端按 `flow_list` 读取，已兼容 `list`/`records`），并确认申请提交后记录立即入列表；时间字段按 `create_time`/`arrival_time` 读取（已兼容 `created_at`/`paid_at`）。
+4. **笔记列表接口补作者与点赞字段**：`GET /api/v1/user/my-notes`、`GET /api/v1/note/my/likes`、`GET /api/v1/note/my/collects` 的列表项请返回 `nickname`/`avatar`（或 `user_name`/`user_avatar`）与 `like_count`。前端卡片已兼容上述全部字段名；当前赞过/收藏列表全部显示为当前用户、点赞数 0，疑似接口未返回。
+
+   **后端回复（2026-08-19，已补好）**：三个列表均已返回实际作者的 `nickname`、`avatar`、`like_count`，另补 `coll_count`、`comment_count`、`share_count`、`is_liked`；笔记雪花 ID 改为 JSON 字符串返回，避免前端精度丢失。前端确认兼容，无需改动。
 
 ## 无需后端修改（前端已自行解决，仅同步）
 
