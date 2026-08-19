@@ -8,6 +8,7 @@ import { requireLogin } from '@/utils/auth';
 import { CHENGDU_CITY, CHENGDU_DISTRICTS, CHENGDU_PROVINCE, fetchChengduDistricts } from '@/utils/chengdu-region';
 import { chooseUserLocation } from '@/utils/user-location';
 import lightningOutlineIcon from '@/assets/icons/lightning-outline.svg';
+import lightningFilledIcon from '@/assets/icons/lightning.svg';
 import { setTabBarIndex } from '../../store/tabbar';
 import { request } from '../../utils/request';
 import { CDN_IMAGES } from '@/utils/cdn';
@@ -53,6 +54,8 @@ interface Note {
   user?: { nickname?: string; user_name?: string; avatar?: string; user_id?: string | number };
   like_count?: number;
   likes?: number;
+  /** 当前用户是否已点赞（后端列表已返回，决定闪电图标实心与否） */
+  is_liked?: boolean;
 }
 
 interface UserStats {
@@ -809,8 +812,12 @@ export default function UserPage() {
                     <Image className="note-author-avatar" src={authorAvatar} mode="aspectFill" />
                     <Text className="note-author-name">{authorName}</Text>
                     <View className="note-like-wrap">
-                      <Image className="note-like-icon" src={lightningOutlineIcon} mode="aspectFit" />
-                      <Text className="note-like-count">{formatNoteLikeCount(likeCount)}</Text>
+                      <Image
+                        className={`note-like-icon ${note.is_liked ? 'liked' : ''}`}
+                        src={note.is_liked ? lightningFilledIcon : lightningOutlineIcon}
+                        mode="aspectFit"
+                      />
+                      <Text className={`note-like-count ${note.is_liked ? 'liked' : ''}`}>{formatNoteLikeCount(likeCount)}</Text>
                     </View>
                   </View>
                 </View>

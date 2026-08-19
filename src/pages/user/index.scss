@@ -763,6 +763,12 @@
   color: rgba(255, 255, 255, 0.45);
 }
 
+/* 已点赞：闪电与数字点亮 */
+.note-like-icon.liked,
+.note-like-count.liked {
+  color: #ff2e4d;
+}
+
 .note-delete-action {
   position: absolute;
   right: 10px;
