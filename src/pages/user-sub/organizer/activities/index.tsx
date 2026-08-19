@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { Button, Image, Input, Picker, ScrollView, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { AtIcon } from 'taro-ui'
-import activationDouyinQr from '../../../../assets/organizer/activation-douyin-qr.png'
-import activationWechatQr from '../../../../assets/organizer/activation-wechat-qr.png'
 import { ACTIVITY_TABS, FILTER_AUDIT_OPTIONS, FILTER_LIFE_OPTIONS, CHANNEL_LABEL_MAP } from '../constants'
 import {
   deleteVerifier,
@@ -344,12 +342,21 @@ const renderActivationDownloadIcon = () => (
   </View>
 )
 
-const renderActivationQrBlock = (src: string, label: string) => (
+// 加载中显示占位块而非静态示例图，避免真实二维码返回时画面闪烁替换；接口未返回时显示未生成
+const renderActivationQrBlock = (src: string, label: string, loading: boolean) => (
   <View className="activation-qr-block">
-    <Image className="activation-qr-image" src={src} mode="aspectFit" />
+    {loading ? (
+      <View className="activation-qr-image activation-qr-placeholder" />
+    ) : src ? (
+      <Image className="activation-qr-image" src={src} mode="aspectFit" />
+    ) : (
+      <View className="activation-qr-image activation-qr-placeholder activation-qr-empty">
+        <Text className="activation-qr-empty-text">{label}暂未生成</Text>
+      </View>
+    )}
     <View className="activation-qr-caption">
       <Text>{label}</Text>
-      {renderActivationDownloadIcon()}
+      {!!src && renderActivationDownloadIcon()}
     </View>
   </View>
 )
@@ -371,9 +378,9 @@ const renderActivationFlowModal = (
         <Text className="activation-flow-title">激活核销员</Text>
         <Text className="activation-flow-close" onClick={onClose}>×</Text>
       </View>
-      {/* 接口返回图片 URL 时优先展示；若返回的是 scene/深链文本（非图片地址）则回退到静态示例图 */}
-      {renderActivationQrBlock(activationQr?.wechatQrUrl || activationWechatQr, '微信二维码')}
-      {renderActivationQrBlock(activationQr?.douyinQrUrl || activationDouyinQr, '抖音二维码')}
+      {/* 二维码只展示接口返回的真实图片；未返回（如抖音码未生成）显示占位提示 */}
+      {renderActivationQrBlock(activationQr?.wechatQrUrl || '', '微信二维码', activationQrLoading)}
+      {renderActivationQrBlock(activationQr?.douyinQrUrl || '', '抖音二维码', activationQrLoading)}
       <Text className="activation-flow-desc">
         {activationQrLoading
           ? '激活码加载中...'

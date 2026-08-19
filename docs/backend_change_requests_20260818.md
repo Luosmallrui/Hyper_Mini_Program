@@ -94,6 +94,12 @@
 | `created_at` | string | 核销员添加时间，ISO 时间 |
 | `verified_count` | number | 该核销员累计核销数 |
 
+## 6. 管理后台筛选用字段 + 核销员抖音激活码（2026-08-19 补充）
+
+1. **`GET /api/v1/organizer/activities`（我的活动列表）**：列表项请返回 `is_hidden`（平台下架标记）。前端「活动状态-下架」筛选依赖它；未返回时下架筛选恒为空。「结束」由前端按 `end_time < 当前时间` 推导，无需后端处理。
+2. **`GET /api/v1/organizer/verifier/:id/activation-qr`**：`douyin_qr` 当前返回为空，前端弹窗显示「抖音二维码暂未生成」。请返回真实抖音激活二维码图片 URL；暂不展示静态示例图（避免误导）。
+3. **`GET /api/v1/organizer/bank/withdraw/flow/list`**：用户反馈提现申请提交后「提现记录」为空。请确认响应列表字段名（前端按 `flow_list` 读取，已兼容 `list`/`records`），并确认申请提交后记录立即入列表；时间字段按 `create_time`/`arrival_time` 读取（已兼容 `created_at`/`paid_at`）。
+
 ## 无需后端修改（前端已自行解决，仅同步）
 
 - 管理后台首页「今日订单 / 今日销售」：已改为前端调用 `GET /api/v1/organizer/orders/summary?start_date=今天&end_date=今天` 获取，与销售数据页同口径。

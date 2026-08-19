@@ -98,6 +98,8 @@ interface ApiActivityItem {
   status: ActivityStatusValue
   audit_type?: 'initial' | 're_audit' | string
   reject_reason?: string
+  /** 平台下架标记：true 时活动状态归为「下架」 */
+  is_hidden?: boolean | number
   /** 已上架活动存在待审核的修改快照（二审进行中，线上仍展示旧版本） */
   has_pending_revision?: boolean
   pending_revision_reason?: string
@@ -243,6 +245,21 @@ const mapActivityStatus = (status: ActivityStatusValue): {
 
 const getActivityName = (item: ApiActivityItem) => String(item?.name || '').trim()
 
+// 兼容 ISO（2026-08-18T18:00:00+08:00）与「yyyy-MM-dd HH:mm」两种时间格式
+const parseTimeMs = (value?: string) => {
+  if (!value) return NaN
+  const ts = new Date(value).getTime()
+  return Number.isFinite(ts) ? ts : new Date(value.replace(/-/g, '/')).getTime()
+}
+
+/** 活动状态推导：平台下架（is_hidden）→ down；结束时间已过 → ended；其余 → up */
+const deriveLifeStatus = (item: ApiActivityItem): OrganizerActivityLifeStatus => {
+  if (item.is_hidden === true || Number(item.is_hidden) === 1) return 'down'
+  const endTs = parseTimeMs(item.end_time)
+  if (Number.isFinite(endTs) && endTs < Date.now()) return 'ended'
+  return 'up'
+}
+
 const isRenderableActivityItem = (item: ApiActivityItem) => {
   const name = getActivityName(item)
   return Boolean(name) && name !== '未命名活动'
@@ -259,6 +276,7 @@ const mapActivityItem = (item: ApiActivityItem): OrganizerActivityItem => {
     eventStartAt: item.start_time || '',
     eventEndAt: item.end_time || '',
     ...mappedStatus,
+    lifeStatus: deriveLifeStatus(item),
     auditType: item.audit_type === 're_audit' ? 're_audit' : 'initial',
     hasPendingRevision: Boolean(item.has_pending_revision),
     pendingRevisionReason: item.pending_revision_reason || '',
@@ -1008,8 +1026,8 @@ const mapWithdrawRecord = (item: ApiWithdrawFlowItem): OrganizerWithdrawRecord =
   reason: item?.reason || '',
   accountHolder: item?.bank_account?.account_holder || '',
   bankName: item?.bank_account?.bank_name || '',
-  createTime: item?.create_time || '',
-  arrivalTime: item?.arrival_time || '',
+  createTime: item?.create_time || (item as any)?.created_at || '',
+  arrivalTime: item?.arrival_time || (item as any)?.paid_at || '',
 })
 
 export const fetchWithdrawRecords = async (
@@ -1018,14 +1036,25 @@ export const fetchWithdrawRecords = async (
 ): Promise<{ list: OrganizerWithdrawRecord[]; total: number }> => {
   const data = await apiRequest<{
     flow_list?: ApiWithdrawFlowItem[]
+    list?: ApiWithdrawFlowItem[]
+    records?: ApiWithdrawFlowItem[]
     total_items?: number
+    total?: number
   }>({
     url: `/api/v1/organizer/bank/withdraw/flow/list?page=${page}&pageSize=${pageSize}`,
     method: 'GET',
   })
+  // 列表字段兜底：flow_list / list / records 任一存在即用，避免字段名差异导致空列表
+  const rawList = Array.isArray(data?.flow_list)
+    ? data.flow_list
+    : Array.isArray(data?.list)
+      ? data.list
+      : Array.isArray(data?.records)
+        ? data.records
+        : []
   return {
-    list: (Array.isArray(data?.flow_list) ? data.flow_list : []).map(mapWithdrawRecord),
-    total: Number(data?.total_items || 0),
+    list: rawList.map(mapWithdrawRecord),
+    total: Number(data?.total_items ?? data?.total ?? 0),
   }
 }
 

@@ -2990,6 +2990,26 @@ page {
   background: #FFFFFF;
 }
 
+.activation-qr-placeholder {
+  background: #111;
+  border-radius: 8rpx;
+}
+
+.activation-qr-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx;
+  box-sizing: border-box;
+}
+
+.activation-qr-empty-text {
+  font-size: 22rpx;
+  color: #666;
+  text-align: center;
+  line-height: 1.5;
+}
+
 .activation-qr-caption {
   display: flex;
   align-items: center;

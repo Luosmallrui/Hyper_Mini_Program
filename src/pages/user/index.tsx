@@ -7,6 +7,7 @@ import { cacheUserInfo, normalizeUserInfoPayload } from '@/utils/user-info';
 import { requireLogin } from '@/utils/auth';
 import { CHENGDU_CITY, CHENGDU_DISTRICTS, CHENGDU_PROVINCE, fetchChengduDistricts } from '@/utils/chengdu-region';
 import { chooseUserLocation } from '@/utils/user-location';
+import lightningOutlineIcon from '@/assets/icons/lightning-outline.svg';
 import { setTabBarIndex } from '../../store/tabbar';
 import { request } from '../../utils/request';
 import { CDN_IMAGES } from '@/utils/cdn';
@@ -43,6 +44,11 @@ interface Note {
   media_data: NoteMedia[];
   type: number;
   created_at: string;
+  /** 列表接口透传字段：作者与点赞数（缺省时用当前用户信息兜底） */
+  user_id?: string | number;
+  nickname?: string;
+  avatar?: string;
+  like_count?: number;
 }
 
 interface UserStats {
@@ -758,6 +764,13 @@ export default function UserPage() {
     return Math.min(Math.max(calculatedHeight, 200), 420);
   };
 
+  const formatNoteLikeCount = (count?: number): string => {
+    const num = Number(count || 0);
+    if (num >= 10000) return `${(num / 10000).toFixed(1).replace(/\.0$/, '')}w`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+    return String(num);
+  };
+
   // 动态/赞过/收藏共用的双列瀑布流；deletable 仅“我的动态”为 true（长按删除自己帖子）
   const renderNoteWaterfall = (notes: Note[], deletable: boolean) => (
     <View className="waterfall">
@@ -766,6 +779,9 @@ export default function UserPage() {
           {notes.filter((_, i) => i % 2 === col).map(note => {
             const media = note.media_data?.[0];
             const imageHeight = calculateImageHeight(media);
+            // 作者信息：赞过/收藏列表用接口透传的作者字段；我的动态缺省时回退当前用户
+            const authorName = note.nickname || userInfo.nickname || '用户';
+            const authorAvatar = note.avatar || userInfo.avatar_url || userInfo.avatar || '';
             return (
               <View
                 key={String(note.id)}
@@ -779,7 +795,17 @@ export default function UserPage() {
                   mode="aspectFill"
                   style={{ height: `${imageHeight}px` }}
                 />
-                <Text className="note-title">{note.title}</Text>
+                <View className="note-body">
+                  <Text className="note-title">{note.title}</Text>
+                  <View className="note-footer">
+                    <Image className="note-author-avatar" src={authorAvatar} mode="aspectFill" />
+                    <Text className="note-author-name">{authorName}</Text>
+                    <View className="note-like-wrap">
+                      <Image className="note-like-icon" src={lightningOutlineIcon} mode="aspectFit" />
+                      <Text className="note-like-count">{formatNoteLikeCount(note.like_count)}</Text>
+                    </View>
+                  </View>
+                </View>
                 {deletable && (
                   <View className="note-delete-action" onClick={(event) => deleteMyNote(note.id, event)}>
                     删除

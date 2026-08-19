@@ -703,18 +703,64 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
+.note-body {
+  padding: 12px 14px 14px;
+}
+
 .note-title {
   display: block;
-  padding: 12px 14px 14px;
   font-size: 24px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(255, 255, 255, 0.92);
   line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+/* 卡片底部：作者信息 + 点赞数（小红书式） */
+.note-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.note-author-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.note-author-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.45);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-like-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.note-like-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.note-like-count {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .note-delete-action {
