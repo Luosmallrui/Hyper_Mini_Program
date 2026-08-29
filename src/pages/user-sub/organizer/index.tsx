@@ -3147,7 +3147,8 @@ export default function OrganizerPage() {
                 ? '扫码催一下，审核同事会收到本次活动的提醒。审核通过后，活动将自动上线。'
                 : '扫码催一下，审核同事会收到本次入驻申请的提醒。审核通过后即可使用主办方功能。'}
             </Text>
-            <Image className="urge-audit-qr" src={auditUrgeQrCode} mode="aspectFit" />
+            <Image className="urge-audit-qr" src={auditUrgeQrCode} mode="aspectFit" showMenuByLongpress />
+            <Text className="urge-audit-text">长按二维码识别，联系审核客服</Text>
             <View className="urge-audit-btn" onClick={() => setUrgeAuditModalOpen(false)}>
               <Text className="urge-audit-btn-text">知道了</Text>
             </View>

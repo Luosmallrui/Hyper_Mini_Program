@@ -270,7 +270,7 @@ const mapActivityItem = (item: ApiActivityItem): OrganizerActivityItem => {
   return {
     id: String(item.id),
     title: getActivityName(item),
-    cover: item.poster_list || '',
+    cover: pickFirstImageUrl(item.poster_list),
     publishedAt: mappedStatus.status === 'published' ? formatDateTime(item.start_time) : '',
     eventTime: formatEventTime(item.start_time, item.end_time),
     eventStartAt: item.start_time || '',
