@@ -1018,6 +1018,14 @@ export default function IndexPage() {
     return raw
   }
 
+  // marker 标题：超过 18 字截断，避免地图上过长的文字遮挡
+  const formatMarkerTitle = (title: string) => {
+    const safe = (title || '').trim()
+    if (!safe) return ''
+    if (safe.length <= 18) return safe
+    return `${safe.slice(0, 18)}...`
+  }
+
   const updateMarkers = async (list: PartyItem[], activeIndex: number) => {
     const buildToken = ++markerBuildTokenRef.current
     const renderVersion = ++markerRenderVersionRef.current
@@ -1034,7 +1042,7 @@ export default function IndexPage() {
       const isActive = index === activeIndex
       const fallbackPath = resolveMarkerFallback(item)
       const rawIconPath = resolveDisplayMarkerIconPath(item) || fallbackPath
-      const markerTitle = ''
+      const markerTitle = formatMarkerTitle(item.title)
       const latitude = Number(item.lat)
       const longitude = Number(item.lng)
       const safeLatitude = Number.isFinite(latitude) ? latitude : initialCenter.lat

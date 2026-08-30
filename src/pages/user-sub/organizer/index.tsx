@@ -10,7 +10,6 @@ import OrganizerHomeView from './home'
 import OrganizerVerifyView from './verify'
 import {
   createInitialDraft,
-  organizerActivities,
   organizerTicketSpecs,
 } from './mock'
 import {
@@ -82,21 +81,27 @@ const isMerchantUser = (user: any, roleOverride = '') => {
   return Boolean(user?.is_merchant || user?.merchant_id)
 }
 
-const createActivityFromDraft = (draft: CreateActivityDraft): OrganizerActivityItem => ({
-  id: `draft-${Date.now()}`,
-  title: draft.name,
-  cover: draft.posterSlots[0]?.fileName ? organizerActivities[0].cover : organizerActivities[1].cover,
-  publishedAt: '刚刚保存',
-  eventTime: draft.dateRange || '待设置活动时间',
-  eventStartAt: '',
-  eventEndAt: '',
-  status: 'pending',
-  auditStatus: 'draft',
-  lifeStatus: 'up',
-  orders: 0,
-  sales: 0,
-  subscribers: 0,
-})
+const createActivityFromDraft = (draft: CreateActivityDraft): OrganizerActivityItem => {
+  // 乐观卡封面用用户实际上传的列表海报（本地临时路径可直接显示，刷新后由服务器 CDN 图替换）
+  const listPoster = draft.posterSlots.find((slot) => slot.key === 'listPoster')?.filePath
+    || draft.posterSlots.find((slot) => slot.key === 'detailPoster')?.filePath
+    || ''
+  return {
+    id: `draft-${Date.now()}`,
+    title: draft.name,
+    cover: listPoster,
+    publishedAt: '刚刚保存',
+    eventTime: draft.dateRange || '待设置活动时间',
+    eventStartAt: '',
+    eventEndAt: '',
+    status: 'pending',
+    auditStatus: 'draft',
+    lifeStatus: 'up',
+    orders: 0,
+    sales: 0,
+    subscribers: 0,
+  }
+}
 
 const getDisplayStatus = (item: OrganizerActivityItem): { label: string; color: string } => {
   if (item.status === 'rejected') {
@@ -1610,6 +1615,17 @@ export default function OrganizerPage() {
         Taro.showToast({ title: '请填写活动概要', icon: 'none' })
         return false
       }
+      // 活动开始时间不能是过去时间（防止创建即过期的活动被地图过滤）
+      const rangeStart = parseDateRangeValue(draft.dateRange).start
+      const startTs = rangeStart ? new Date(rangeStart).getTime() || new Date(rangeStart.replace(/-/g, '/')).getTime() : NaN
+      if (!rangeStart || !Number.isFinite(startTs)) {
+        Taro.showToast({ title: '请选择活动开始时间', icon: 'none' })
+        return false
+      }
+      if (startTs < Date.now()) {
+        Taro.showToast({ title: '活动开始时间不能早于当前时间', icon: 'none' })
+        return false
+      }
     }
 
     if (step === 3 && !ALLOW_ORGANIZER_DEBUG) {
@@ -1650,6 +1666,8 @@ export default function OrganizerPage() {
       })
       const nextActivity = { ...createActivityFromDraft(draft), id: String(activityId), auditStatus: 'pending' as const }
       setActivityItems((prev) => [nextActivity, ...prev])
+      // 静默同步服务器列表：乐观卡的本地临时封面尽快替换为 CDN 海报
+      void loadDashboardData()
       setAuditPendingSource('activity')
       setDashboardView('auditPending')
       setActivityTab('mine')

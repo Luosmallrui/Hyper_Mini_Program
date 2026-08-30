@@ -27,7 +27,7 @@ export const USER_AVATAR_MARKER_SIZE = 40
 const AVATAR_MARKER_SIZE = USER_AVATAR_MARKER_SIZE
 const AVATAR_CANVAS_SIZE = AVATAR_MARKER_SIZE
 
-const STYLE_VERSION = 'v17.icon.active-background.user-avatar-larger'
+const STYLE_VERSION = 'v18.title-hd'
 
 let renderQueue = Promise.resolve()
 const queueTask = <T>(task: () => Promise<T>): Promise<T> => {
@@ -55,11 +55,12 @@ const drawCanvasAndExport = async (
   width: number,
   height: number,
   timeoutMs = 2600,
+  outScale?: number,
 ): Promise<string> => {
   return queueTask(async () => {
     const drawDone = new Promise<string>((resolve) => {
       ctx.draw(false, () => {
-        exportCanvas(canvasId, width, height).then((path) => resolve(path || ''))
+        exportCanvas(canvasId, width, height, outScale).then((path) => resolve(path || ''))
       })
     })
     const result = await withTimeout(drawDone, timeoutMs)
@@ -181,13 +182,16 @@ const resolveImage = async (srcInput: unknown) => {
   }
 }
 
-const exportCanvas = (canvasId: string, width: number, height: number): Promise<string> => {
+const exportCanvas = (canvasId: string, width: number, height: number, outScale?: number): Promise<string> => {
   return new Promise((resolve) => {
-    // 获取设备像素比，用于导出高清图片
-    let dpr = 2
-    try {
-      dpr = Taro.getSystemInfoSync().pixelRatio || 2
-    } catch (e) {}
+    // 获取设备像素比，用于导出高清图片；
+    // 调用方已按像素比放大绘制时应传 outScale=1（1:1 导出，避免二次放大）
+    let dpr = outScale ?? 2
+    if (outScale === undefined) {
+      try {
+        dpr = Taro.getSystemInfoSync().pixelRatio || 2
+      } catch (e) {}
+    }
 
     setTimeout(() => {
       Taro.canvasToTempFilePath({
@@ -520,32 +524,44 @@ export const buildStrokedTitleMarker = async (
   const contentHeight = lineHeight + paddingY * 2 + strokeWidth * 2
   const width = Math.max(24, contentWidth)
   const height = Math.max(18, topOffset + contentHeight)
-  const textX = textAlign === 'center'
-    ? width / 2
-    : (strokeWidth + paddingX)
-  const textY = topOffset + strokeWidth + paddingY + (lineHeight - fontSize) / 2
 
-  ctx.clearRect(0, 0, width, height)
-  ctx.setFontSize(fontSize)
+  // 高清绘制：按设备像素比放大画布坐标系，导出时 1:1，展示按逻辑尺寸，文字不再糊
+  let dpr = 2
   try {
-    ctxAny.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`
+    dpr = Math.min(3, Math.max(1, Taro.getSystemInfoSync().pixelRatio || 2))
+  } catch (e) {}
+  // 离屏画布 1200x240，超出时收缩比例防止裁剪
+  const scale = Math.max(1, Math.min(dpr, 1200 / width, 240 / height))
+  const drawWidth = Math.round(width * scale)
+  const drawHeight = Math.round(height * scale)
+  const drawFontSize = fontSize * scale
+  const drawStrokeWidth = strokeWidth * scale
+  const textX = (textAlign === 'center'
+    ? drawWidth / 2
+    : (drawStrokeWidth + paddingX * scale))
+  const textY = topOffset * scale + drawStrokeWidth + paddingY * scale + (lineHeight - fontSize) / 2 * scale
+
+  ctx.clearRect(0, 0, drawWidth, drawHeight)
+  ctx.setFontSize(drawFontSize)
+  try {
+    ctxAny.font = `${fontStyle} ${fontWeight} ${drawFontSize}px ${fontFamily}`
   } catch (error) {}
   ctx.setTextAlign(textAlign)
   ctxAny.setTextBaseline?.('top')
 
   ctx.setStrokeStyle(strokeColor)
   // lineWidth 设为描边宽度的 2 倍，因为 stroke 是居中绘制的，内部会被 fillText 覆盖
-  ctx.setLineWidth(strokeWidth * 2)
+  ctx.setLineWidth(drawStrokeWidth * 2)
   ctx.setLineJoin('round') // 圆滑的连接点，完全消除毛刺
   ctx.strokeText(safeTitle, textX, textY)
 
   ctx.setFillStyle(fillColor)
   ctx.fillText(safeTitle, textX, textY)
 
-  let iconPath = await drawCanvasAndExport(ctx, TITLE_MARKER_CANVAS_ID, width, height, 3000)
+  let iconPath = await drawCanvasAndExport(ctx, TITLE_MARKER_CANVAS_ID, drawWidth, drawHeight, 3000, 1)
   if (!iconPath) {
     await wait(120)
-    iconPath = await drawCanvasAndExport(ctx, TITLE_MARKER_CANVAS_ID, width, height, 3000)
+    iconPath = await drawCanvasAndExport(ctx, TITLE_MARKER_CANVAS_ID, drawWidth, drawHeight, 3000, 1)
   }
 
   const asset = { iconPath, width, height }

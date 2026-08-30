@@ -125,6 +125,9 @@ interface ApiVerifyOrder {
   buyer_id_card_masked?: string
   buyer_phone_masked?: string
   buyer_phone?: string
+  /** 已核销张数 / 剩余可核销张数（按张核销，见 docs/ticket_per_ticket_verify_20260830.md） */
+  verified_count?: number
+  remaining?: number
   poster_list?: string
   poster?: string
   activity_poster?: string
@@ -203,12 +206,16 @@ const parseDateRangeValue = (value: string) => {
   }
 }
 
-/** 统一为后端要求的 "2006-01-02 15:04:05" 格式：月日补零，缺时间补 00:00:00 */
-const ensureTimeSuffix = (dateStr: string): string => {
+/** 统一为后端要求的 "2006-01-02 15:04:05" 格式：月日补零；
+ *  缺时间时开始时间补 00:00:00、结束时间补 23:59:59（endOfDay=true），避免当天创建的活动/售票即过期 */
+const ensureTimeSuffix = (dateStr: string, endOfDay = false): string => {
   if (!dateStr) return ''
   const m = dateStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/)
   if (!m) return dateStr
   const padPart = (v: string | undefined) => String(v ?? '00').padStart(2, '0')
+  if (endOfDay && m[4] === undefined) {
+    return `${m[1]}-${padPart(m[2])}-${padPart(m[3])} 23:59:59`
+  }
   return `${m[1]}-${padPart(m[2])}-${padPart(m[3])} ${padPart(m[4])}:${padPart(m[5])}:${padPart(m[6])}`
 }
 
@@ -1343,7 +1350,7 @@ const buildTicketSpecPayload = (spec: TicketSpec) => ({
   name: spec.name,
   is_enabled: spec.enabled ? 1 : 0,
   sale_start: ensureTimeSuffix(spec.startAt),
-  sale_end: ensureTimeSuffix(spec.endAt),
+  sale_end: ensureTimeSuffix(spec.endAt, true),
   price: yuanToFen(spec.price),
   stock: normalizeCount(spec.stock),
   purchase_limit: normalizeCount(spec.limit),
@@ -1410,7 +1417,7 @@ export const submitActivityDraft = async (
   }
 
   const startTime = ensureTimeSuffix(range.start)
-  const endTime = ensureTimeSuffix(range.end)
+  const endTime = ensureTimeSuffix(range.end, true)
 
   // Step 1：基础资料（活动发布仅支持 party，见 docs/organizer_venue_activity_model_api_20260815.md §4）
   const step1Fields: Record<string, unknown> = {}
@@ -1513,7 +1520,7 @@ export const submitActivityDraft = async (
           name: item.name,
           is_enabled: item.enabled ? 1 : 0,
           sale_start: ensureTimeSuffix(item.startAt),
-          sale_end: ensureTimeSuffix(item.endAt),
+          sale_end: ensureTimeSuffix(item.endAt, true),
           price: yuanToFen(item.price),
           stock: normalizeCount(item.stock),
           purchase_limit: normalizeCount(item.limit),
@@ -1594,6 +1601,9 @@ export const scanVerifierTicket = async (payload: { qrCode: string; activityId?:
   success: boolean
   ticket?: VerifyTicketItem
   status?: VerifyStatus
+  /** 已核销张数 / 剩余可核销张数（按张核销） */
+  verifiedCount?: number
+  remaining?: number
 }> => {
   const data = await apiRequest<{ success?: boolean; error_code?: string; order?: ApiVerifyOrder }>({
     url: '/api/v1/verifier/scan',
@@ -1610,19 +1620,31 @@ export const scanVerifierTicket = async (payload: { qrCode: string; activityId?:
       success: true,
       status: 'recognized',
       ticket: mapVerifyTicket(data.order || {}, `scan-${Date.now()}`, payload.qrCode),
+      verifiedCount: Number(data.order?.verified_count ?? 0),
+      remaining: Number(data.order?.remaining ?? data.order?.quantity ?? 1),
     }
   }
 
   return { success: false, status: mapVerifierScanErrorCode(data?.error_code) }
 }
 
-export const confirmVerifierTicket = async (orderNo: string): Promise<void> => {
-  await apiRequest<{ success?: boolean }>({
+/** 按张核销：quantity 为本次核销张数（默认 1，超出剩余后端按剩余核销） */
+export const confirmVerifierTicket = async (orderNo: string, quantity = 1): Promise<{
+  quantity: number
+  verifiedCount: number
+  remaining: number
+}> => {
+  const data = await apiRequest<{ success?: boolean; quantity?: number; verified_count?: number; remaining?: number }>({
     url: '/api/v1/verifier/confirm',
     method: 'POST',
-    data: { order_no: orderNo },
+    data: { order_no: orderNo, quantity: Math.max(1, Math.round(quantity)) },
     header: getVerifierHeader(),
   })
+  return {
+    quantity: Number(data?.quantity ?? quantity) || 1,
+    verifiedCount: Number(data?.verified_count ?? 0),
+    remaining: Number(data?.remaining ?? 0),
+  }
 }
 
 export const getDistricts = () => [...organizerDistricts]

@@ -63,6 +63,11 @@ export default function OrganizerVerifyView(props: OrganizerVerifyViewProps) {
   const [modalVisible, setModalVisible] = useState(Boolean(initialModalStatus))
   const [modalStatus, setModalStatus] = useState<VerifyStatus>(initialModalStatus || 'recognized')
   const [scannedTicket, setScannedTicket] = useState<VerifyTicketItem | null>(null)
+  // 按张核销：扫码预检返回的已核销/剩余张数，以及本次选择的核销张数
+  const [scanVerifiedCount, setScanVerifiedCount] = useState(0)
+  const [scanRemaining, setScanRemaining] = useState(0)
+  const [confirmQuantity, setConfirmQuantity] = useState(1)
+  const [lastConfirmResult, setLastConfirmResult] = useState<{ quantity: number; remaining: number } | null>(null)
   const [statusBarHeight, setStatusBarHeight] = useState(44)
   const [addVerifierOpen, setAddVerifierOpen] = useState(initialAddVerifierOpen)
   const [newVerifierName, setNewVerifierName] = useState('')
@@ -131,7 +136,14 @@ export default function OrganizerVerifyView(props: OrganizerVerifyViewProps) {
   const processScanPayload = async (payload: VerifierScanPayload) => {
     const result = await scanVerifierTicket(payload)
     setScannedTicket(result.ticket ? { ...result.ticket, status: 'unverified' } : null)
-    setModalStatus(result.status || (result.success ? 'recognized' : 'failed'))
+    const remaining = Number(result.remaining ?? 1)
+    setScanVerifiedCount(Number(result.verifiedCount ?? 0))
+    setScanRemaining(remaining)
+    setConfirmQuantity(1)
+    setLastConfirmResult(null)
+    // 按张核销：剩余为 0 的订单视为已核销完成
+    const status = result.status || (result.success ? (remaining <= 0 ? 'alreadyVerified' : 'recognized') : 'failed')
+    setModalStatus(status)
     setModalVisible(true)
   }
 
@@ -218,7 +230,8 @@ export default function OrganizerVerifyView(props: OrganizerVerifyViewProps) {
     }
     Taro.showLoading({ title: '核销中...', mask: true })
     try {
-      await confirmVerifierTicket(scannedTicket.orderNo)
+      const result = await confirmVerifierTicket(scannedTicket.orderNo, confirmQuantity)
+      setLastConfirmResult({ quantity: result.quantity, remaining: result.remaining })
       setModalStatus('success')
       await loadVerifiedTickets()
     } catch (error: any) {
@@ -253,7 +266,7 @@ export default function OrganizerVerifyView(props: OrganizerVerifyViewProps) {
       case 'recognized':
         return {
           icon: 'check-circle', iconColor: '#FFFFFF', title: '识别成功', subtitle: '',
-          description: '', buttonText: '确认核销', buttonAction: handleConfirmRecognized, showCancel: false, showTicketStatus: false,
+          description: '', buttonText: confirmQuantity > 1 ? `确认核销 ${confirmQuantity} 张` : '确认核销', buttonAction: handleConfirmRecognized, showCancel: false, showTicketStatus: false,
         }
       case 'success':
         return {
@@ -388,6 +401,25 @@ export default function OrganizerVerifyView(props: OrganizerVerifyViewProps) {
                   </View>
                 </View>
               )
+            )}
+
+            {/* 按张核销：预检展示已核销/剩余，多张时可选本次核销张数 */}
+            {modalStatus === 'recognized' && (
+              <View className="verify-quota-row">
+                <Text className="verify-quota-text">已核销 {scanVerifiedCount} 张 · 剩余 {scanRemaining} 张</Text>
+                {scanRemaining > 1 && (
+                  <View className="verify-qty-stepper">
+                    <Text className="verify-qty-btn" onClick={() => setConfirmQuantity((q) => Math.max(1, q - 1))}>−</Text>
+                    <Text className="verify-qty-num">本次 {confirmQuantity} 张</Text>
+                    <Text className="verify-qty-btn" onClick={() => setConfirmQuantity((q) => Math.min(scanRemaining, q + 1))}>＋</Text>
+                  </View>
+                )}
+              </View>
+            )}
+            {modalStatus === 'success' && lastConfirmResult && (
+              <Text className="verify-quota-text verify-quota-summary">
+                本次核销 {lastConfirmResult.quantity} 张{lastConfirmResult.remaining > 0 ? `，还剩 ${lastConfirmResult.remaining} 张` : '，已全部核销'}
+              </Text>
             )}
 
             <View className="verify-modal-btn" onClick={modalConfig.buttonAction}>

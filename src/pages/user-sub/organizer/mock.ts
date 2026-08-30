@@ -271,9 +271,13 @@ export const todayDateString = () => {
 }
 
 const initialDateRange = () => {
-  // 活动日期默认选择今天作为开始日期（补零，后端要求 "2006-01-02" 格式）
-  const today = todayDateString()
-  return `${today} · ${today}`
+  // 默认活动时间：开始取当前时间 2 小时后（整点），结束取当天 23:59。
+  // 不能默认「今天 00:00」——那已经是过去时间，提交校验会拦、地图也会过滤
+  const now = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const fmtDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  const start = new Date(now.getTime() + 2 * 60 * 60 * 1000)
+  return `${fmtDate(start)} ${pad(start.getHours())}:00 · ${fmtDate(start)} 23:59`
 }
 
 export const organizerTicketSpecs: TicketSpec[] = [

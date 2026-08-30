@@ -39,6 +39,8 @@ interface OrderDetailState {
   payTime: string
   expireTime: string
   qrCode: string
+  /** 已核销张数（按张核销后由接口返回；>0 时禁止退款） */
+  verifiedCount: number
   attendee: {
     name: string
     idCard: string
@@ -158,6 +160,7 @@ export default function OrderDetailPage() {
     payTime: '',
     expireTime: '',
     qrCode: '',
+    verifiedCount: 0,
     attendee: {
       name: '',
       idCard: '',
@@ -242,6 +245,7 @@ export default function OrderDetailPage() {
           payTime: formatDateTime(detail.pay_time),
           expireTime: detail.expire_time || '',
           qrCode: detail.qr_code || '',
+          verifiedCount: Number(detail.verified_count ?? detail.verifiedCount ?? 0),
           attendee: {
             name: detail.buyer_name || '',
             idCard: detail.buyer_id_card || '',
@@ -408,6 +412,11 @@ export default function OrderDetailPage() {
   }
 
   const handleRefund = () => {
+    // 按张核销后：只要有票被核销过就不允许退款
+    if (orderDetail.verifiedCount > 0) {
+      Taro.showToast({ title: '已核销门票不支持退款', icon: 'none' })
+      return
+    }
     Taro.showModal({
       title: '申请退款',
       content: '确认要申请退款吗？退款后将按平台规则退还款项，请继续选择退款原因。',
@@ -810,15 +819,17 @@ export default function OrderDetailPage() {
       </View>
 
       {orderDetail.status === 'paid' && (
-        <View className='bottom-actions'>
+        <View className={`bottom-actions ${orderDetail.verifiedCount > 0 ? 'single' : ''}`}>
           <View className='action-btn secondary' onClick={handleContact}>
             <AtIcon value='phone' size='18' color='#cfcfcf'/>
             <Text>联系客服</Text>
           </View>
-          <View className={`action-btn danger ${refundLoading ? 'disabled' : ''}`} onClick={handleRefund}>
-            <AtIcon value='reload' size='18' color='#ff4d4f'/>
-            <Text>{refundLoading ? '处理中' : '申请退款'}</Text>
-          </View>
+          {orderDetail.verifiedCount === 0 && (
+            <View className={`action-btn danger ${refundLoading ? 'disabled' : ''}`} onClick={handleRefund}>
+              <AtIcon value='reload' size='18' color='#ff4d4f'/>
+              <Text>{refundLoading ? '处理中' : '申请退款'}</Text>
+            </View>
+          )}
         </View>
       )}
 
