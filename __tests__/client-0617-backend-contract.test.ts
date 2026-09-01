@@ -23,14 +23,16 @@ describe('client 0617 backend contract alignment', () => {
     expect(source).toContain('/api/v1/verifier/verified-list?page=1&size=50')
   })
 
-  it('queries points records with the documented cursor, limit, and action params', () => {
+  it('queries points records with cursor/limit for all tab and filters income/expense client-side', () => {
     const source = readSource('src', 'pages', 'user-sub', 'points', 'index.tsx')
 
     expect(source).toContain("url: '/api/v1/points/records'")
     expect(source).toContain('buildPointsRecordsQuery(activeTab, currentCursor, isRefresh)')
     expect(source).toContain('cursor: isRefresh ? 0 : (cursor ?? 0)')
     expect(source).toContain('limit: 20')
-    expect(source).toContain('query.action = activeTab')
+    // 后端 action 筛选实测返回空：收入/支出 Tab 拉全量后按金额正负本地过滤
+    expect(source).toContain('fetchAllPointRecords')
+    expect(source).toContain("activeTab === 'income' ? record.amount > 0 : record.amount < 0")
     expect(source).not.toContain('pageSize: 20')
     expect(source).not.toContain("type: activeTab === 'all'")
   })

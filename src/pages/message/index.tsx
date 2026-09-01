@@ -6,6 +6,12 @@ import { request } from '@/utils/request'
 import { isLoggedIn, requireLogin } from '@/utils/auth'
 import { getCustomTabBarHeight } from '@/utils/layout'
 import { getDirectMessageEnabledSync, getCustomerServiceUserIdSync, refreshDirectMessageEnabled } from '@/utils/system-config'
+import {
+  fetchNotificationUnreadCount,
+  fetchNotifications,
+  type NotificationUnreadCount,
+  type NotificationType,
+} from '@/utils/notifications'
 import './index.scss'
 import customerServiceIcon from '../../assets/icons/customer-service.svg'
 import hyperAssistantIcon from '../../assets/icons/hyper-assistant.svg'
@@ -42,6 +48,38 @@ export default function MessagePage() {
   const [isLogin, setIsLogin] = useState(false)
   const [directMessageEnabled, setDirectMessageEnabled] = useState(getDirectMessageEnabledSync)
   const [customerServiceUserId, setCustomerServiceUserId] = useState(getCustomerServiceUserIdSync)
+  // 通知收件箱：系统/互动/支付三类未读数与最新一条摘要
+  const [noticeUnread, setNoticeUnread] = useState<NotificationUnreadCount>({ total: 0, system: 0, interaction: 0, payment: 0 })
+  const [noticeLatest, setNoticeLatest] = useState<Record<string, { title: string; time: string }>>({})
+  // 积分账户入口：真实积分余额
+  const [pointsBalance, setPointsBalance] = useState<number | null>(null)
+
+  // 拉取通知未读数与各类型最新一条（入口卡片摘要）
+  const fetchNotificationData = async () => {
+    const unread = await fetchNotificationUnreadCount()
+    setNoticeUnread(unread)
+    const types: NotificationType[] = ['system', 'interaction', 'payment']
+    const latestEntries = await Promise.all(types.map(async (t) => {
+      const res = await fetchNotifications(t, 1, 1)
+      const first = res.list[0]
+      return [t, first ? { title: first.title, time: first.created_at.slice(0, 10) } : null] as const
+    }))
+    const latest: Record<string, { title: string; time: string }> = {}
+    latestEntries.forEach(([t, value]) => { if (value) latest[t] = value })
+    setNoticeLatest(latest)
+  }
+
+  // 积分账户入口的余额展示（失败保持 null，显示兜底文案）
+  const fetchPointsBalance = async () => {
+    try {
+      const res = await request({ url: '/api/v1/points/balance', method: 'GET' })
+      const data: any = res?.data?.data
+      const balance = Number(data?.balance ?? data?.points ?? data?.available ?? data?.available_points ?? 0)
+      if (Number.isFinite(balance)) setPointsBalance(balance)
+    } catch (error) {
+      console.warn('[MessagePage] points balance failed:', error)
+    }
+  }
 
   const [navBarPaddingTop, setNavBarPaddingTop] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
@@ -62,9 +100,13 @@ export default function MessagePage() {
     setIsLogin(loggedIn)
     if (!loggedIn) {
       setSessionList([])
+      setNoticeUnread({ total: 0, system: 0, interaction: 0, payment: 0 })
+      setNoticeLatest({})
       return
     }
     fetchSessionList()
+    void fetchNotificationData()
+    void fetchPointsBalance()
   })
 
   useEffect(() => {
@@ -84,17 +126,23 @@ export default function MessagePage() {
 
   useEffect(() => {
     const total = sessionList.reduce((acc, curr) => acc + curr.unread, 0)
-    setTotalUnread(total)
+    const badgeTotal = total + noticeUnread.total
+    setTotalUnread(badgeTotal)
 
-    if (total > 0) {
-      Taro.setTabBarBadge({ index: 2, text: total > 99 ? '99+' : String(total) }).catch(() => {})
+    if (badgeTotal > 0) {
+      Taro.setTabBarBadge({ index: 2, text: badgeTotal > 99 ? '99+' : String(badgeTotal) }).catch(() => {})
     } else {
       Taro.removeTabBarBadge({ index: 2 }).catch(() => {})
     }
-  }, [sessionList])
+  }, [sessionList, noticeUnread])
 
   useEffect(() => {
     const onNewMessage = (res: any) => {
+      // 通知收件箱实时事件：刷新三类通知未读数与摘要
+      if (res.event === 'notice.new') {
+        void fetchNotificationData()
+        return
+      }
       const newMsg = res.payload || res
       if (res.event && res.event !== 'chat') return
 
@@ -278,12 +326,44 @@ export default function MessagePage() {
     return `${date.getMonth() + 1}/${date.getDate()}`
   }
 
-  const systemNotices: SystemNoticeItem[] = [
-    { id: 'sys_1', title: '系统消息', desc: '暂无系统消息', time: '', iconSrc: systemMessageIcon, unread: 0 },
-    { id: 'sys_2', title: '互动通知', desc: '暂无互动', time: '', iconSrc: interactionNotificationIcon, unread: 0 },
+  const systemNotices: (SystemNoticeItem & { noticeType?: NotificationType; noticeRoute?: string })[] = [
+    {
+      id: 'sys_1',
+      title: '系统消息',
+      desc: noticeLatest.system?.title || '暂无系统消息',
+      time: noticeLatest.system?.time || '',
+      iconSrc: systemMessageIcon,
+      unread: noticeUnread.system,
+      noticeType: 'system',
+    },
+    {
+      id: 'sys_2',
+      title: '互动通知',
+      desc: noticeLatest.interaction?.title || '暂无互动',
+      time: noticeLatest.interaction?.time || '',
+      iconSrc: interactionNotificationIcon,
+      unread: noticeUnread.interaction,
+      noticeType: 'interaction',
+    },
     { id: 'sys_3', title: 'HYPER小助手', desc: '欢迎来到 HyperFun', time: '', iconSrc: hyperAssistantIcon, unread: 0 },
-    { id: 'sys_4', title: '积分账户', desc: '当前积分 0', time: '', iconSrc: pointsAccountIcon, unread: 0 },
-    { id: 'sys_5', title: '支付消息', desc: '暂无支付记录', time: '', iconSrc: paymentNotificationIcon, unread: 0 },
+    {
+      id: 'sys_4',
+      title: '积分账户',
+      desc: `当前积分 ${pointsBalance === null ? 0 : pointsBalance.toFixed(1)}`,
+      time: '',
+      iconSrc: pointsAccountIcon,
+      unread: 0,
+      noticeRoute: '/pages/user-sub/points/index',
+    },
+    {
+      id: 'sys_5',
+      title: '支付消息',
+      desc: noticeLatest.payment?.title || '暂无支付记录',
+      time: noticeLatest.payment?.time || '',
+      iconSrc: paymentNotificationIcon,
+      unread: noticeUnread.payment,
+      noticeType: 'payment',
+    },
     {
       id: 'sys_6',
       title: '客服消息',
@@ -293,6 +373,15 @@ export default function MessagePage() {
       unread: 0
     },
   ]
+
+  const handleOpenNotice = (item: SystemNoticeItem & { noticeType?: NotificationType; noticeRoute?: string }) => {
+    if (item.noticeRoute) {
+      Taro.navigateTo({ url: item.noticeRoute })
+      return
+    }
+    if (!item.noticeType) return
+    Taro.navigateTo({ url: `/pages/message-sub/notification/index?type=${item.noticeType}` })
+  }
 
   // 私信关闭时，消息列表只保留客服会话（单聊且 peer_id 为客服账号），隐藏普通用户会话与群聊
   const visibleSessionList = directMessageEnabled
@@ -387,7 +476,7 @@ export default function MessagePage() {
               )
             }
             return (
-              <View key={item.id} className='msg-item system-item'>
+              <View key={item.id} className='msg-item system-item' onClick={() => handleOpenNotice(item)}>
                 {content}
               </View>
             )

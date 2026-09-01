@@ -56,6 +56,10 @@ export default defineAppConfig({
       pages: ['index', 'group-create/index', 'group-members/index', 'group-select/index']
     },
     {
+      root: 'pages/message-sub',
+      pages: ['notification/index']
+    },
+    {
       root: 'pages/my-tickets',
       pages: ['index']
     }

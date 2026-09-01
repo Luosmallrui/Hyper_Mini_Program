@@ -100,12 +100,39 @@ export default function PointsPage() {
     } catch (error) { console.error(error) }
   }
 
+  // 拉取全部积分记录（游标翻页，封顶 10 页防死循环），供收入/支出 Tab 本地过滤
+  const fetchAllPointRecords = async (): Promise<PointRecord[]> => {
+    const all: PointRecord[] = []
+    let cursor: string | number = 0
+    for (let i = 0; i < 10; i++) {
+      const res = await request({
+        url: '/api/v1/points/records',
+        method: 'GET',
+        data: { cursor, limit: 50 }
+      })
+      if (!res.data || res.data.code !== 200) break
+      const { records = [], next_cursor, has_more } = res.data.data || {}
+      all.push(...records)
+      if (!has_more) break
+      cursor = next_cursor ?? 0
+    }
+    return all
+  }
+
   const loadPointsRecords = async (isRefresh: boolean = false) => {
     if (loading || (!isRefresh && !hasMore)) return
     setLoading(true)
     const currentCursor = isRefresh ? '' : pointsData.next_cursor
 
     try {
+      if (activeTab !== 'all') {
+        // 收入/支出 Tab：后端 action 筛选实测返回空（与文档契约不符），改为拉全量后按金额正负本地过滤
+        const allRecords = await fetchAllPointRecords()
+        const filtered = allRecords.filter((record) => (activeTab === 'income' ? record.amount > 0 : record.amount < 0))
+        setPointsData(prev => ({ ...prev, records: filtered, next_cursor: null }))
+        setHasMore(false)
+        return
+      }
       const res = await request({
         url: '/api/v1/points/records',
         method: 'GET',

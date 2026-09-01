@@ -109,6 +109,7 @@
 4. **笔记列表接口补作者与点赞字段**：`GET /api/v1/user/my-notes`、`GET /api/v1/note/my/likes`、`GET /api/v1/note/my/collects` 的列表项请返回 `nickname`/`avatar`（或 `user_name`/`user_avatar`）与 `like_count`。前端卡片已兼容上述全部字段名；当前赞过/收藏列表全部显示为当前用户、点赞数 0，疑似接口未返回。
 
    **后端回复（2026-08-19，已补好）**：三个列表均已返回实际作者的 `nickname`、`avatar`、`like_count`，另补 `coll_count`、`comment_count`、`share_count`、`is_liked`；笔记雪花 ID 改为 JSON 字符串返回，避免前端精度丢失。前端确认兼容，无需改动。
+5. **`GET /api/v1/points/records` 的 `action=income/expense` 筛选不生效**：积分页「积分收入/积分支出」Tab 返回空（「全部」正常）。与文档 `client_0617_backend_update.md` 的契约不符。前端已改为拉全量后按金额正负本地过滤兜底（2026-08-24），后端修复后可切回接口筛选。
 
 ## 7. PC 总后台活动状态 + 活动封面默认图（2026-08-24 补充）
 
