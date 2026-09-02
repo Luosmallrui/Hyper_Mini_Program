@@ -1,0 +1,116 @@
+.image-cropper-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-cropper-panel {
+  background: linear-gradient(160deg, rgba(40, 41, 46, 1) 0%, rgba(24, 25, 28, 1) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.image-cropper-title {
+  font-size: 32px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 24px;
+}
+
+.image-cropper-frame {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  touch-action: none;
+}
+
+.image-cropper-box {
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-sizing: border-box;
+  touch-action: none;
+}
+
+.image-cropper-handle {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  touch-action: none;
+}
+
+.image-cropper-handle::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 3px solid #fff;
+}
+
+.image-cropper-handle.tl { top: -8px; left: -8px; }
+.image-cropper-handle.tl::after { top: 6px; left: 6px; border-right: none; border-bottom: none; }
+.image-cropper-handle.tr { top: -8px; right: -8px; }
+.image-cropper-handle.tr::after { top: 6px; right: 6px; border-left: none; border-bottom: none; }
+.image-cropper-handle.bl { bottom: -8px; left: -8px; }
+.image-cropper-handle.bl::after { bottom: 6px; left: 6px; border-right: none; border-top: none; }
+.image-cropper-handle.br { bottom: -8px; right: -8px; }
+.image-cropper-handle.br::after { bottom: 6px; right: 6px; border-left: none; border-top: none; }
+
+.image-cropper-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-cropper-mask-text {
+  font-size: 26px;
+  color: #fff;
+}
+
+.image-cropper-hint {
+  margin-top: 16px;
+  font-size: 22px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.image-cropper-footer {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.image-cropper-btn {
+  padding: 16px 32px;
+  border-radius: 999px;
+  font-size: 26px;
+}
+
+.image-cropper-btn.ghost {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.image-cropper-btn.primary {
+  background: #fff;
+  color: #000;
+  font-weight: 600;
+}

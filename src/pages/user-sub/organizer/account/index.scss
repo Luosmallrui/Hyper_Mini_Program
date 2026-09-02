@@ -813,6 +813,8 @@
   padding: 6rpx 18rpx;
   border-radius: 999rpx;
   flex-shrink: 0;
+  /* 行内默认 stretch 会把徽章拉高成竖条，垂直居中即可 */
+  align-self: center;
 }
 
 .account-record-status.s0 {

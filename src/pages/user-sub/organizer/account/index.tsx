@@ -32,6 +32,7 @@ import iconPassword from '../../../../assets/organizer/icon-password.png'
 import iconWallet from '../../../../assets/organizer/icon-wallet.png'
 import { CDN_IMAGES } from '@/utils/cdn'
 import { MARKER_ICONS } from '@/utils/marker-icons'
+import ImageCropper from '@/components/ImageCropper'
 import './index.scss'
 
 const powerFlowLogo = CDN_IMAGES.powerFlowLogo
@@ -353,21 +354,44 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
     }
   }
 
+  // LOGO 裁剪：选图后先打开裁剪弹窗（默认整图铺满 1:1 框，可自由选取或使用原图），确认后再上传
+  const [logoCrop, setLogoCrop] = useState<{ open: boolean; target: 'organizer' | 'venue'; sourceImage: string }>({
+    open: false,
+    target: 'organizer',
+    sourceImage: '',
+  })
+  // 场地封面裁剪弹窗
+  const [venueCoverCrop, setVenueCoverCrop] = useState<{ open: boolean; sourceImage: string }>({ open: false, sourceImage: '' })
+
+  const handleLogoCropConfirm = async (croppedPath: string) => {
+    const target = logoCrop.target
+    setLogoCrop((prev) => ({ ...prev, open: false }))
+    const setUploading = target === 'organizer' ? setLogoUploading : setVenueImageUploading
+    setUploading(true)
+    try {
+      const url = await uploadOrganizerAsset(croppedPath, 'organizer_logo')
+      if (url) {
+        if (target === 'organizer') setOrganizerForm((prev) => ({ ...prev, logo: url }))
+        else updateVenueForm({ logo: url })
+      }
+    } catch {
+      Taro.showToast({ title: 'LOGO 上传失败，请重试', icon: 'none' })
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const handleChooseLogo = async () => {
     if (logoUploading) return
     try {
       const res = await Taro.chooseImage({ count: 1, sizeType: ['compressed'], sourceType: ['album', 'camera'] })
       const filePath = res.tempFilePaths[0]
       if (!filePath) return
-      setLogoUploading(true)
-      const url = await uploadOrganizerAsset(filePath, 'organizer_logo')
-      if (url) setOrganizerForm((prev) => ({ ...prev, logo: url }))
+      setLogoCrop({ open: true, target: 'organizer', sourceImage: filePath })
     } catch (error: any) {
       if (error?.errMsg && !/cancel/.test(error.errMsg)) {
         Taro.showToast({ title: 'LOGO 上传失败，请重试', icon: 'none' })
       }
-    } finally {
-      setLogoUploading(false)
     }
   }
 
@@ -377,15 +401,11 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
       const res = await Taro.chooseImage({ count: 1, sizeType: ['compressed'], sourceType: ['album', 'camera'] })
       const filePath = res.tempFilePaths[0]
       if (!filePath) return
-      setVenueImageUploading(true)
-      const url = await uploadOrganizerAsset(filePath, 'organizer_logo')
-      if (url) updateVenueForm({ logo: url })
+      setLogoCrop({ open: true, target: 'venue', sourceImage: filePath })
     } catch (error: any) {
       if (error?.errMsg && !/cancel/.test(error.errMsg)) {
         Taro.showToast({ title: 'LOGO 上传失败，请重试', icon: 'none' })
       }
-    } finally {
-      setVenueImageUploading(false)
     }
   }
 
@@ -448,21 +468,41 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
       })
       const filePaths = res.tempFilePaths.filter(Boolean)
       if (filePaths.length === 0) return
+
+      // 封面打开取景框裁剪（4:3，可「使用原图」）；图册保持直传
+      if (target === 'cover') {
+        setVenueCoverCrop({ open: true, sourceImage: filePaths[0] })
+        return
+      }
+
       setVenueImageUploading(true)
       Taro.showLoading({ title: '上传中...', mask: true })
       const urls: string[] = []
       for (const filePath of filePaths) {
-        urls.push(await uploadOrganizerAsset(filePath, target === 'cover' ? 'venue_cover' : 'venue_gallery'))
+        urls.push(await uploadOrganizerAsset(filePath, 'venue_gallery'))
       }
-      if (target === 'cover') {
-        updateVenueForm({ cover_image: urls[0] || '' })
-      } else {
-        updateVenueForm({ gallery: [...venueForm.gallery, ...urls].filter(Boolean) })
-      }
+      updateVenueForm({ gallery: [...venueForm.gallery, ...urls].filter(Boolean) })
     } catch (error: any) {
       if (error?.errMsg && !/cancel/.test(error.errMsg)) {
         Taro.showToast({ title: '图片上传失败，请重试', icon: 'none' })
       }
+    } finally {
+      setVenueImageUploading(false)
+      Taro.hideLoading()
+    }
+  }
+
+  // 场地封面裁剪确认/使用原图：上传并回填
+  const handleVenueCoverCropConfirm = async (path: string) => {
+    if (!path) return
+    setVenueCoverCrop({ open: false, sourceImage: '' })
+    setVenueImageUploading(true)
+    Taro.showLoading({ title: '上传中...', mask: true })
+    try {
+      const url = await uploadOrganizerAsset(path, 'venue_cover')
+      updateVenueForm({ cover_image: url })
+    } catch (error: any) {
+      Taro.showToast({ title: error?.message || '图片上传失败，请重试', icon: 'none' })
     } finally {
       setVenueImageUploading(false)
       Taro.hideLoading()
@@ -1320,6 +1360,37 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
       )}
 
       <View className="account-safe-bottom" />
+
+      {/* LOGO 裁剪弹窗（1:1）：默认整图铺满，可自由选取或使用原图 */}
+      <ImageCropper
+        open={logoCrop.open}
+        sourceImage={logoCrop.sourceImage}
+        aspectWidth={1}
+        aspectHeight={1}
+        title="裁剪 LOGO"
+        onUseOriginal={() => {
+          const original = logoCrop.sourceImage
+          setLogoCrop((prev) => ({ ...prev, open: false }))
+          if (original) void handleLogoCropConfirm(original)
+        }}
+        onConfirm={(tempPath) => void handleLogoCropConfirm(tempPath)}
+        onCancel={() => setLogoCrop((prev) => ({ ...prev, open: false }))}
+      />
+
+      {/* 场地封面裁剪弹窗（4:3 取景框） */}
+      <ImageCropper
+        open={venueCoverCrop.open}
+        sourceImage={venueCoverCrop.sourceImage}
+        aspectWidth={4}
+        aspectHeight={3}
+        title="裁剪场地封面"
+        onUseOriginal={() => {
+          const original = venueCoverCrop.sourceImage
+          if (original) void handleVenueCoverCropConfirm(original)
+        }}
+        onConfirm={(tempPath) => void handleVenueCoverCropConfirm(tempPath)}
+        onCancel={() => setVenueCoverCrop({ open: false, sourceImage: '' })}
+      />
     </View>
   )
 }

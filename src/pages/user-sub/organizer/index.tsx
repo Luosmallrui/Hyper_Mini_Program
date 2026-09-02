@@ -8,6 +8,7 @@ import OrganizerAccountView from './account'
 import { BOTTOM_TABS, STEP_TITLES, DISPLAY_STATUS_MAP } from './constants'
 import OrganizerHomeView from './home'
 import OrganizerVerifyView from './verify'
+import ImageCropper from '@/components/ImageCropper'
 import {
   createInitialDraft,
   organizerTicketSpecs,
@@ -289,6 +290,10 @@ export default function OrganizerPage() {
   const addressJustPickedRef = useRef(false)
   const [settlementSubmitting, setSettlementSubmitting] = useState(false)
   const [settlementLogoUploading, setSettlementLogoUploading] = useState(false)
+  // 入驻申请 LOGO 裁剪弹窗
+  const [settlementLogoCrop, setSettlementLogoCrop] = useState<{ open: boolean; sourceImage: string }>({ open: false, sourceImage: '' })
+  // 场地封面裁剪弹窗
+  const [venueCoverCrop, setVenueCoverCrop] = useState<{ open: boolean; sourceImage: string }>({ open: false, sourceImage: '' })
   const [venueImageUploading, setVenueImageUploading] = useState(false)
   const [organizerLoginPhone, setOrganizerLoginPhone] = useState('')
   const [organizerLoginPassword, setOrganizerLoginPassword] = useState('')
@@ -391,11 +396,6 @@ export default function OrganizerPage() {
     sourceImage: '',
     imageWidth: 0,
     imageHeight: 0,
-  })
-  const [cropImagePos, setCropImagePos] = useState({ x: 0, y: 0 })
-  const [cropImageScale, setCropImageScale] = useState(1)
-  const cropTouchRef = useRef<{ startX: number; startY: number; lastX: number; lastY: number; lastDist: number; moving: boolean }>({
-    startX: 0, startY: 0, lastX: 0, lastY: 0, lastDist: 0, moving: false,
   })
 
   // Preview modal state
@@ -1306,7 +1306,7 @@ export default function OrganizerPage() {
     openCalendar(target, specId)
   }
 
-  // Upload poster（自由尺寸，仅限制文件大小 2M）
+  // Upload poster：详情/列表海报选图后打开裁剪弹窗（默认整图铺满，可自由选取）；长图保留原图不裁剪
   const handleOpenCropModal = async (slotKey: string) => {
     try {
       const res = await Taro.chooseImage({
@@ -1324,164 +1324,52 @@ export default function OrganizerPage() {
           return
         }
       } catch (_) {}
-      // 所有海报槽位自由尺寸：直接保留原图，不做固定比例裁剪
-      updateDraft(
-        'posterSlots',
-        draft.posterSlots.map((slot) =>
-          slot.key === slotKey ? { ...slot, fileName: `${slotKey}-${Date.now()}.png`, filePath: tempFilePath } : slot,
-        ),
-      )
+
+      // 长图全宽展示，不裁剪，直接保留原图
+      if (slotKey === 'detailLong') {
+        updateDraft(
+          'posterSlots',
+          draft.posterSlots.map((slot) =>
+            slot.key === slotKey ? { ...slot, fileName: `${slotKey}-${Date.now()}.png`, filePath: tempFilePath } : slot,
+          ),
+        )
+        return
+      }
+
+      // 其余海报打开裁剪弹窗（小红书式取景框选区，也可「使用原图」）
+      setCropModal({ open: true, slotKey, uploading: false, sourceImage: tempFilePath, imageWidth: 0, imageHeight: 0 })
     } catch (_) {
       // user cancelled
     }
   }
 
-  const handleCropConfirm = async () => {
-    if (!cropModal.sourceImage) return
-    setCropModal((prev) => ({ ...prev, uploading: true }))
-
-    try {
-      const dims = CROP_DIMENSIONS[cropModal.slotKey] || { width: 500, height: 500 }
-      const { imageWidth, imageHeight } = cropModal
-      if (!imageWidth || !imageHeight) throw new Error('图片尺寸获取失败')
-
-      // aspect-fill：图片始终铺满裁剪框，裁切窗口与框同比例，输出不变形
-      const baseScale = Math.max(dims.width / imageWidth, dims.height / imageHeight)
-      const scaledW = imageWidth * baseScale * cropImageScale
-      const scaledH = imageHeight * baseScale * cropImageScale
-
-      // image top-left in crop-area coords (centered + user pan)
-      const imgX = (dims.width - scaledW) / 2 + cropImagePos.x
-      const imgY = (dims.height - scaledH) / 2 + cropImagePos.y
-
-      // map crop frame (0,0,dims.w,dims.h) → source image rect
-      const srcX = Math.max(0, -imgX / (baseScale * cropImageScale))
-      const srcY = Math.max(0, -imgY / (baseScale * cropImageScale))
-      const srcW = Math.min(imageWidth - srcX, dims.width / (baseScale * cropImageScale))
-      const srcH = Math.min(imageHeight - srcY, dims.height / (baseScale * cropImageScale))
-
-      // Step 5: draw to offscreen Canvas 2D
-      const wxApi: any = Taro
-      const canvas = wxApi.createOffscreenCanvas?.({ type: '2d', width: dims.width, height: dims.height })
-        || (typeof (globalThis as any).wx !== 'undefined' && (globalThis as any).wx.createOffscreenCanvas?.({ type: '2d', width: dims.width, height: dims.height }))
-      if (!canvas) throw new Error('无法创建离屏 Canvas')
-
-      const ctx = canvas.getContext('2d')
-      const img = canvas.createImage()
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve()
-        img.onerror = () => reject(new Error('图片加载失败'))
-        img.src = cropModal.sourceImage
-      })
-
-      ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, dims.width, dims.height)
-
-      // Step 6: export canvas to temp file
-      const tempPath: string = await new Promise((resolve, reject) => {
-        Taro.canvasToTempFilePath({
-          canvas,
-          x: 0,
-          y: 0,
-          width: dims.width,
-          height: dims.height,
-          destWidth: dims.width * 2,
-          destHeight: dims.height * 2,
-          fileType: 'png',
-          success: (r) => resolve(r.tempFilePath),
-          fail: (err) => reject(err),
-        })
-      })
-
-      const fileName = `${cropModal.slotKey}-${Date.now()}.png`
-      updateDraft(
-        'posterSlots',
-        draft.posterSlots.map((slot) =>
-          slot.key === cropModal.slotKey ? { ...slot, fileName, filePath: tempPath } : slot,
-        ),
-      )
-      setCropModal({ open: false, slotKey: '', uploading: false, sourceImage: '', imageWidth: 0, imageHeight: 0 })
-    } catch (err) {
-      console.error('[Crop] error:', err)
-      Taro.showToast({ title: '裁剪失败，请重试', icon: 'none' })
-      setCropModal((prev) => ({ ...prev, uploading: false }))
-    }
-  }
-
-  const handleCropCancel = () => {
+  const closePosterCrop = () => {
     setCropModal({ open: false, slotKey: '', uploading: false, sourceImage: '', imageWidth: 0, imageHeight: 0 })
   }
 
-  // Crop touch handlers — drag to pan, pinch to zoom
-  const getTouchDist = (touches: any[]) => {
-    if (touches.length < 2) return 0
-    const dx = touches[0].clientX - touches[1].clientX
-    const dy = touches[0].clientY - touches[1].clientY
-    return Math.sqrt(dx * dx + dy * dy)
+  // 海报裁剪确认（小红书式取景框，由 ImageCropper 组件导出裁剪结果）
+  const handlePosterCropConfirm = (tempPath: string) => {
+    const slotKey = cropModal.slotKey
+    updateDraft(
+      'posterSlots',
+      draft.posterSlots.map((slot) =>
+        slot.key === slotKey ? { ...slot, fileName: `${slotKey}-${Date.now()}.png`, filePath: tempPath } : slot,
+      ),
+    )
+    closePosterCrop()
   }
 
-  // 平移/缩放后钳制，保证图片始终铺满裁剪框（aspect-fill），避免露边
-  const clampCropPos = (pos: { x: number; y: number }, scale: number) => {
-    const dims = CROP_DIMENSIONS[cropModal.slotKey] || { width: 500, height: 500 }
-    const { imageWidth, imageHeight } = cropModal
-    if (!imageWidth || !imageHeight) return pos
-    const baseScale = Math.max(dims.width / imageWidth, dims.height / imageHeight)
-    const maxX = Math.max(0, (imageWidth * baseScale * scale - dims.width) / 2)
-    const maxY = Math.max(0, (imageHeight * baseScale * scale - dims.height) / 2)
-    return {
-      x: Math.min(maxX, Math.max(-maxX, pos.x)),
-      y: Math.min(maxY, Math.max(-maxY, pos.y)),
-    }
-  }
-
-  const onCropTouchStart = (e: any) => {
-    const touches = e.touches
-    if (!touches || touches.length === 0) return
-    const t = cropTouchRef.current
-    t.lastX = touches[0].clientX
-    t.lastY = touches[0].clientY
-    t.lastDist = touches.length >= 2 ? getTouchDist(touches) : 0
-    t.moving = false
-  }
-
-  const onCropTouchMove = (e: any) => {
-    const touches = e.touches
-    if (!touches || touches.length === 0) return
-    const t = cropTouchRef.current
-
-    // Pinch zoom (two fingers)
-    if (touches.length >= 2) {
-      const newDist = getTouchDist(touches)
-      if (t.lastDist > 0) {
-        const ratio = newDist / t.lastDist
-        setCropImageScale((prev) => {
-          const next = Math.min(3, Math.max(1, prev * ratio))
-          setCropImagePos((pos) => clampCropPos(pos, next))
-          return next
-        })
-      }
-      t.lastDist = newDist
-      t.lastX = (touches[0].clientX + touches[1].clientX) / 2
-      t.lastY = (touches[0].clientY + touches[1].clientY) / 2
-      t.moving = true
-      return
-    }
-
-    // Single finger drag
-    t.lastDist = 0
-    const dx = touches[0].clientX - t.lastX
-    const dy = touches[0].clientY - t.lastY
-    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) t.moving = true
-    setCropImagePos((prev) => clampCropPos({ x: prev.x + dx, y: prev.y + dy }, cropImageScale))
-    t.lastX = touches[0].clientX
-    t.lastY = touches[0].clientY
-  }
-
-  const onCropTouchEnd = (e: any) => {
-    const t = cropTouchRef.current
-    // When lifting from 2 fingers to 1, reset lastDist so next 2-finger gesture re-initializes
-    if ((e.touches?.length || 0) < 2) {
-      t.lastDist = 0
-    }
+  // 裁剪弹窗「使用原图」：不裁剪，直接保留整图
+  const handlePosterCropUseOriginal = () => {
+    const { slotKey, sourceImage } = cropModal
+    if (!sourceImage) return
+    updateDraft(
+      'posterSlots',
+      draft.posterSlots.map((slot) =>
+        slot.key === slotKey ? { ...slot, fileName: `${slotKey}-${Date.now()}.png`, filePath: sourceImage } : slot,
+      ),
+    )
+    closePosterCrop()
   }
 
   const previewModel = useMemo(() => {
@@ -1816,23 +1704,43 @@ export default function OrganizerPage() {
       const filePaths = res.tempFilePaths.filter(Boolean)
       if (filePaths.length === 0) return
 
+      // 场地封面：打开取景框裁剪（4:3，可「使用原图」）；图册保持直传
+      if (target === 'cover') {
+        setVenueCoverCrop({ open: true, sourceImage: filePaths[0] })
+        return
+      }
+
       setVenueImageUploading(true)
       Taro.showLoading({ title: '上传中...', mask: true })
       const urls: string[] = []
       for (const filePath of filePaths) {
-        urls.push(await uploadOrganizerAsset(filePath, target === 'cover' ? 'venue_cover' : 'venue_gallery'))
+        urls.push(await uploadOrganizerAsset(filePath, 'venue_gallery'))
       }
-      if (target === 'cover') {
-        updateVenueProfile({ cover_image: urls[0] || '' })
-      } else {
-        updateVenueProfile({ gallery: [...settlementForm.venue_profile.gallery, ...urls].filter(Boolean) })
-      }
+      updateVenueProfile({ gallery: [...settlementForm.venue_profile.gallery, ...urls].filter(Boolean) })
       Taro.showToast({ title: '上传成功', icon: 'success' })
     } catch (error: any) {
       const message = String(error?.errMsg || '')
       if (!message.includes('cancel')) {
         Taro.showToast({ title: error?.message || '上传失败，请重试', icon: 'none' })
       }
+    } finally {
+      setVenueImageUploading(false)
+      Taro.hideLoading()
+    }
+  }
+
+  // 场地封面裁剪确认/使用原图：上传并回填
+  const handleVenueCoverCropConfirm = async (path: string) => {
+    if (!path) return
+    setVenueCoverCrop({ open: false, sourceImage: '' })
+    setVenueImageUploading(true)
+    Taro.showLoading({ title: '上传中...', mask: true })
+    try {
+      const url = await uploadOrganizerAsset(path, 'venue_cover')
+      updateVenueProfile({ cover_image: url })
+      Taro.showToast({ title: '上传成功', icon: 'success' })
+    } catch (error: any) {
+      Taro.showToast({ title: error?.message || '上传失败，请重试', icon: 'none' })
     } finally {
       setVenueImageUploading(false)
       Taro.hideLoading()
@@ -1870,17 +1778,28 @@ export default function OrganizerPage() {
       })
       const filePath = res.tempFilePaths[0]
       if (!filePath) return
-
-      setSettlementLogoUploading(true)
-      Taro.showLoading({ title: '上传中...', mask: true })
-      const url = await uploadOrganizerAsset(filePath, 'organizer_logo')
-      updateSettlementForm('logo', url)
-      Taro.showToast({ title: '上传成功', icon: 'success' })
+      // 打开 LOGO 裁剪弹窗（1:1，默认整图铺满，可自由选取或使用原图）
+      setSettlementLogoCrop({ open: true, sourceImage: filePath })
     } catch (error: any) {
       const message = String(error?.errMsg || '')
       if (!message.includes('cancel')) {
         Taro.showToast({ title: error?.message || '上传失败，请重试', icon: 'none' })
       }
+    }
+  }
+
+  // 入驻申请 LOGO 裁剪确认/使用原图：上传（裁剪后或原始）并回填表单
+  const handleSettlementLogoCropConfirm = async (path: string) => {
+    if (!path) return
+    setSettlementLogoCrop({ open: false, sourceImage: '' })
+    setSettlementLogoUploading(true)
+    Taro.showLoading({ title: '上传中...', mask: true })
+    try {
+      const url = await uploadOrganizerAsset(path, 'organizer_logo')
+      updateSettlementForm('logo', url)
+      Taro.showToast({ title: '上传成功', icon: 'success' })
+    } catch (error: any) {
+      Taro.showToast({ title: error?.message || '上传失败，请重试', icon: 'none' })
     } finally {
       setSettlementLogoUploading(false)
       Taro.hideLoading()
@@ -2845,78 +2764,6 @@ export default function OrganizerPage() {
     )
   }
 
-  const renderCropModal = () => {
-    const dims = CROP_DIMENSIONS[cropModal.slotKey] || { width: 500, height: 500 }
-    return (
-      <View className="crop-overlay">
-        <View className="crop-panel" onClick={(e) => e.stopPropagation()}>
-          <View className="crop-header">
-            <Text className="crop-title">素材裁切</Text>
-            <View className="crop-upload-btn" onClick={handleOpenCropModal.bind(null, cropModal.slotKey)}>
-              <Text>上传图片</Text>
-            </View>
-          </View>
-          <View
-            className="crop-area"
-            style={{ position: 'relative', width: dims.width, height: dims.height, overflow: 'hidden' }}
-            onTouchStart={onCropTouchStart}
-            onTouchMove={onCropTouchMove}
-            onTouchEnd={onCropTouchEnd}
-          >
-            {cropModal.sourceImage ? (
-              (() => {
-                // 与确认裁切保持一致：aspect-fill 铺满裁剪框
-                const baseScale = Math.max(dims.width / cropModal.imageWidth, dims.height / cropModal.imageHeight)
-                const scaledW = cropModal.imageWidth * baseScale * cropImageScale
-                const scaledH = cropModal.imageHeight * baseScale * cropImageScale
-                const imgX = (dims.width - scaledW) / 2 + cropImagePos.x
-                const imgY = (dims.height - scaledH) / 2 + cropImagePos.y
-                return (
-                  <View style={{ position: 'absolute', left: imgX, top: imgY, width: scaledW, height: scaledH }}>
-                    <Image
-                      className="crop-source-image"
-                      src={cropModal.sourceImage}
-                      mode="aspectFit"
-                      style={{ width: '100%', height: '100%' }}
-                    />
-                  </View>
-                )
-              })()
-            ) : (
-              <View className="crop-placeholder">
-                <Text className="crop-placeholder-text">请选择图片</Text>
-              </View>
-            )}
-            {/* Crop frame overlay */}
-            <View className="crop-frame" style={{ position: 'absolute', top: 0, left: 0, width: dims.width, height: dims.height }}>
-              <Text className="crop-dimensions">{dims.width} x {dims.height}</Text>
-              <View className="crop-corner tl" />
-              <View className="crop-corner tr" />
-              <View className="crop-corner bl" />
-              <View className="crop-corner br" />
-            </View>
-            {cropModal.uploading && (
-              <View className="crop-uploading-mask">
-                <Text className="crop-uploading-text">裁剪中...</Text>
-              </View>
-            )}
-          </View>
-          <View className="crop-hint">
-            <Text className="crop-hint-text">拖动图片调整位置 · 双指缩放</Text>
-          </View>
-          <View className="crop-footer">
-            <View className="crop-cancel-btn" onClick={handleCropCancel}>
-              <Text>取消</Text>
-            </View>
-            <View className="crop-confirm-btn" onClick={handleCropConfirm}>
-              <Text>确认</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-    )
-  }
-
   const renderPreviewModal = () => {
     return (
       <View className="preview-overlay" onClick={() => setPreviewOpen(false)}>
@@ -3153,7 +3000,48 @@ export default function OrganizerPage() {
       ) : null}
 
       {calendarPanelOpen && renderCalendar()}
-      {cropModal.open && renderCropModal()}
+
+      {/* 海报裁剪弹窗（小红书式取景框选区，比例按槽位：详情 4:5 / 列表 4:3） */}
+      <ImageCropper
+        open={cropModal.open}
+        sourceImage={cropModal.sourceImage}
+        aspectWidth={(CROP_DIMENSIONS[cropModal.slotKey] || { width: 500, height: 500 }).width / 500}
+        aspectHeight={(CROP_DIMENSIONS[cropModal.slotKey] || { width: 500, height: 500 }).height / 500}
+        title="素材裁切"
+        onUseOriginal={handlePosterCropUseOriginal}
+        onConfirm={handlePosterCropConfirm}
+        onCancel={closePosterCrop}
+      />
+
+      {/* 入驻申请 LOGO 裁剪弹窗（1:1） */}
+      <ImageCropper
+        open={settlementLogoCrop.open}
+        sourceImage={settlementLogoCrop.sourceImage}
+        aspectWidth={1}
+        aspectHeight={1}
+        title="裁剪 LOGO"
+        onUseOriginal={() => {
+          const original = settlementLogoCrop.sourceImage
+          if (original) void handleSettlementLogoCropConfirm(original)
+        }}
+        onConfirm={(tempPath) => void handleSettlementLogoCropConfirm(tempPath)}
+        onCancel={() => setSettlementLogoCrop({ open: false, sourceImage: '' })}
+      />
+
+      {/* 场地封面裁剪弹窗（4:3 取景框） */}
+      <ImageCropper
+        open={venueCoverCrop.open}
+        sourceImage={venueCoverCrop.sourceImage}
+        aspectWidth={4}
+        aspectHeight={3}
+        title="裁剪场地封面"
+        onUseOriginal={() => {
+          const original = venueCoverCrop.sourceImage
+          if (original) void handleVenueCoverCropConfirm(original)
+        }}
+        onConfirm={(tempPath) => void handleVenueCoverCropConfirm(tempPath)}
+        onCancel={() => setVenueCoverCrop({ open: false, sourceImage: '' })}
+      />
       {previewOpen && renderPreviewModal()}
 
       {urgeAuditModalOpen && (

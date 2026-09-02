@@ -40,6 +40,7 @@ export default function NotificationPage() {
 
   const [statusBarHeight, setStatusBarHeight] = useState(20)
   const [navBarHeight, setNavBarHeight] = useState(44)
+  const [navBarPaddingRight, setNavBarPaddingRight] = useState(0)
   const [list, setList] = useState<NotificationItem[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -67,6 +68,8 @@ export default function NotificationPage() {
     const sbHeight = sysInfo.statusBarHeight || 20
     setStatusBarHeight(sbHeight)
     setNavBarHeight((menuInfo.top - sbHeight) * 2 + menuInfo.height || 44)
+    // 右侧给小程序胶囊让位，否则「全部已读」被胶囊挡住点不到
+    setNavBarPaddingRight((sysInfo.screenWidth - menuInfo.left) + 8)
 
     if (!isLoggedIn()) {
       requireLogin()
@@ -108,7 +111,7 @@ export default function NotificationPage() {
 
   return (
     <View className='notification-page'>
-      <View className='custom-nav' style={{ paddingTop: `${statusBarHeight}px`, height: `${navBarHeight}px` }}>
+      <View className='custom-nav' style={{ paddingTop: `${statusBarHeight}px`, height: `${navBarHeight}px`, paddingRight: `${navBarPaddingRight}px` }}>
         <View className='nav-back' onClick={() => Taro.navigateBack()}>
           <AtIcon value='chevron-left' size='24' color='#fff' />
         </View>

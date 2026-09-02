@@ -14,7 +14,8 @@
   align-items: center;
   padding-left: 16px;
   padding-right: 16px;
-  box-sizing: border-box;
+  /* content-box：paddingTop 状态栏不挤占内容区，否则返回键/标题被顶到状态栏里 */
+  box-sizing: content-box;
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0));
 }
 
