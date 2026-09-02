@@ -88,8 +88,8 @@ describe('user-location shared helper', () => {
   })
 })
 
-describe('getLocation strong dependency is removed', () => {
-  it('pages no longer call Taro.getLocation / wx.getLocation directly', () => {
+describe('getLocation via shared helper with chooseLocation fallback', () => {
+  it('pages no longer call Taro.getLocation / wx.getLocation directly (shared helper only)', () => {
     const targets = [
       ['src', 'pages', 'index', 'index.tsx'],
       ['src', 'pages', 'activity-list', 'index.tsx'],
@@ -100,6 +100,10 @@ describe('getLocation strong dependency is removed', () => {
       expect(source).not.toContain('Taro.getLocation(')
       expect(source).not.toContain('wx.getLocation(')
     })
+    // 唯一直接调用点在共享工具（高精度定位，失败回退选点缓存）
+    const helper = readSource('src', 'utils', 'user-location.ts')
+    expect(helper).toContain('getRealTimeLocation')
+    expect(helper).toContain("Taro.getLocation({ type: 'gcj02', isHighAccuracy: true })")
   })
 
   it('pages use chooseLocation as the location entry', () => {
@@ -109,6 +113,9 @@ describe('getLocation strong dependency is removed', () => {
     ;[home, list, postCreate].forEach((source) => {
       expect(source).toContain('chooseUserLocation')
     })
+    // 首页位置标记：实时定位优先，选点缓存兜底
+    expect(home).toContain('getRealTimeLocation')
+    expect(home).toContain('getStoredChosenLocation')
   })
 
   it('qqmap sdk bundle no longer calls wx.getLocation', () => {
@@ -118,9 +125,9 @@ describe('getLocation strong dependency is removed', () => {
     expect(sdk).not.toContain('wx.getLocation(')
   })
 
-  it('app config only declares chooseLocation as required private info', () => {
+  it('app config declares getLocation + chooseLocation and the location permission desc', () => {
     const config = readSource('src', 'app.config.ts')
-    expect(config).toContain("requiredPrivateInfos: ['chooseLocation']")
-    expect(config).not.toContain('scope.userLocation')
+    expect(config).toContain("requiredPrivateInfos: ['chooseLocation', 'getLocation']")
+    expect(config).toContain('scope.userLocation')
   })
 })

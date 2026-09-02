@@ -12,7 +12,7 @@ import {
   normalizeActivityMarkerSourceId,
 } from '@/utils/activity-marker'
 import { cacheUserInfo } from '@/utils/user-info'
-import { chooseUserLocation, getStoredChosenLocation } from '@/utils/user-location'
+import { chooseUserLocation, getRealTimeLocation, getStoredChosenLocation } from '@/utils/user-location'
 import CommonHeader from '@/components/CommonHeader'
 import ProfileBindModal from '@/components/ProfileBindModal'
 import { useProfileBindGate } from '@/hooks/useProfileBindGate'
@@ -1278,19 +1278,20 @@ export default function IndexPage() {
     }
   }
 
-  // 从用户选点缓存恢复位置标记；定位统一走 wx.chooseLocation，不再调用 wx.getLocation
+  // 位置标记：优先 wx.getLocation 实时定位（已申请高精度定位权限），拒绝/未开通时回退用户选点缓存
   const refreshUserLocationMarker = async (): Promise<{ latitude: number; longitude: number } | null> => {
     if (!hasTokenRef.current) {
       setUserLocationMarker(null)
       return null
     }
 
-    const storedLocation = getStoredChosenLocation()
-    if (!storedLocation) {
+    const realTime = await getRealTimeLocation()
+    const location = realTime || getStoredChosenLocation()
+    if (!location) {
       setUserLocationMarker(null)
       return null
     }
-    return buildUserLocationMarker(storedLocation.latitude, storedLocation.longitude)
+    return buildUserLocationMarker(location.latitude, location.longitude)
   }
 
   const handleSwiperChange = (e: any) => {

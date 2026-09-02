@@ -44,6 +44,26 @@ export function saveChosenLocation(location: ChosenLocation) {
 }
 
 /**
+ * 高精度实时定位（wx.getLocation，需在 app.config 声明 requiredPrivateInfos + 接口设置申请开通）。
+ * 授权成功返回坐标并写入缓存；用户拒绝/接口未开通/调用失败时返回 null，调用方回退选点缓存。
+ */
+export async function getRealTimeLocation(): Promise<ChosenLocation | null> {
+  try {
+    const res = await Taro.getLocation({ type: 'gcj02', isHighAccuracy: true })
+    const latitude = Number(res.latitude)
+    const longitude = Number(res.longitude)
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null
+    const location: ChosenLocation = { latitude, longitude, name: '', address: '' }
+    saveChosenLocation(location)
+    return location
+  } catch (error) {
+    // 用户拒绝授权或未开通接口属正常流程，静默回退
+    console.warn('getRealTimeLocation failed:', error)
+    return null
+  }
+}
+
+/**
  * 核心定位入口：调起微信原生地图选点（wx.chooseLocation）。
  * 成功时写入缓存并返回选点结果；用户取消或调用失败时返回 null。
  */
