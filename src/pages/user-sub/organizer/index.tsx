@@ -144,6 +144,10 @@ const CROP_DIMENSIONS: Record<string, { width: number; height: number }> = {
   detailPoster: { width: 500, height: 625 },
   detailLong: { width: 375, height: 600 },
   listPoster: { width: 600, height: 450 },
+  // 地图卡片头图可见区域：高固定 200rpx（src/pages/index/index.less .card-header-bg），
+  // 宽=750rpx 屏宽 − swiper 边距 20pt×2（≈40rpx×2）− 卡片内边距 12rpx×2 ≈ 646rpx，比例约 3.23:1；
+  // 输出按 2 倍尺寸保证清晰度（designWidth 750 下 1px=1rpx）
+  mapPoster: { width: 1292, height: 400 },
 }
 
 const ORGANIZER_MAP_KEY = 'Y7YBZ-3UUEN-Z3KFC-SH4QG-LH5RT-IAB4S'
@@ -1517,7 +1521,8 @@ export default function OrganizerPage() {
     }
 
     if (step === 3 && !ALLOW_ORGANIZER_DEBUG) {
-      const missingSlots = draft.posterSlots.filter((slot) => !slot.fileName)
+      // 选填槽位（如地图封面 optional）不参与必填校验
+      const missingSlots = draft.posterSlots.filter((slot) => !slot.fileName && !slot.optional)
       if (missingSlots.length > 0) {
         const missingLong = missingSlots.find((s) => s.key === 'detailLong')
         const missingOthers = missingSlots.filter((s) => s.key !== 'detailLong')
@@ -2959,6 +2964,10 @@ export default function OrganizerPage() {
             initialAddVerifierOpen={verifyInitialAddVerifierOpen}
             initialManualInputOpen={verifyInitialManualInputOpen}
             initialScan={verifyInitialScan}
+            onShowAllRecords={() => {
+              setDashboardView('verifyRecords')
+              void loadVerifyRecords('', verifyRecordsScope)
+            }}
             onBack={handleOrganizerBack}
           />
         )}

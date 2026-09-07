@@ -47,6 +47,40 @@ describe('organizer venue profile api contract', () => {
     expect(adapter).not.toContain('updateOrganizerBusinessHours')
   })
 
+  // 地图封面契约：活动 poster_map / 场地 map_cover（2026-09-03 后端新增，选填，缺省不清空）
+  it('submits activity map cover as poster_map in step3 and backfills it on edit', () => {
+    const adapter = readSource('src', 'pages', 'user-sub', 'organizer', 'adapter.ts')
+
+    expect(adapter).toContain('poster_map?: string')
+    expect(adapter).toContain("mapPoster: 'poster_map'")
+    expect(adapter).toContain('mapPoster: detail.poster_map')
+    expect(adapter).toContain("poster_map: posterFields.poster_map || ''")
+  })
+
+  it('keeps the map cover slot optional in the wizard', () => {
+    const mock = readSource('src', 'pages', 'user-sub', 'organizer', 'mock.ts')
+    const organizer = readSource('src', 'pages', 'user-sub', 'organizer', 'index.tsx')
+
+    expect(mock).toContain("key: 'mapPoster'")
+    expect(mock).toContain('optional: true')
+    expect(organizer).toContain('mapPoster: { width: 1292, height: 400 }')
+    // 必填校验排除选填槽位
+    expect(organizer).toContain('!slot.fileName && !slot.optional')
+  })
+
+  it('submits venue map cover flat as map_cover through /organizer/profile', () => {
+    const adapter = readSource('src', 'pages', 'user-sub', 'organizer', 'adapter.ts')
+    const account = readSource('src', 'pages', 'user-sub', 'organizer', 'account', 'index.tsx')
+
+    expect(adapter).toContain('map_cover?: string')
+    expect(adapter).toContain("mapCover: rawVenue.map_cover || ''")
+    expect(adapter).toContain('map_cover: vp.mapCover')
+    // 账户页上传地图封面走 venue_map_cover，并回读修订快照
+    expect(account).toContain("'venue_map_cover'")
+    expect(account).toContain('form.map_cover = vp.mapCover')
+    expect(account).toContain("if (typeof revision.map_cover === 'string') form.map_cover = revision.map_cover")
+  })
+
   it('keeps the organizer wizard free of the venue creation branch', () => {
     const organizer = readSource('src', 'pages', 'user-sub', 'organizer', 'index.tsx')
 

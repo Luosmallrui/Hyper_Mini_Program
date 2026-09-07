@@ -115,7 +115,13 @@ export default function NotificationPage() {
         <View className='nav-back' onClick={() => Taro.navigateBack()}>
           <AtIcon value='chevron-left' size='24' color='#fff' />
         </View>
-        <Text className='nav-title'>{pageTitle}</Text>
+        {/* 标题相对整条导航栏绝对居中，不受左右按钮宽度影响 */}
+        <Text
+          className='nav-title'
+          style={{ top: `${statusBarHeight}px`, height: `${navBarHeight}px`, lineHeight: `${navBarHeight}px` }}
+        >
+          {pageTitle}
+        </Text>
         <View className={`nav-action ${!hasUnread ? 'disabled' : ''}`} onClick={handleMarkAllRead}>
           <Text>{markingAll ? '处理中' : '全部已读'}</Text>
         </View>

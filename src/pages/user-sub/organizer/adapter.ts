@@ -800,6 +800,8 @@ export const updateOrganizerMarkerIcon = async (markerIcon: string): Promise<voi
 /** 场地固定资料（type=venue 主办方），见 docs/organizer_venue_activity_model_api_20260815.md */
 export interface OrganizerVenueProfile {
   coverImage: string
+  /** 地图封面（选填）：地图 marker 卡片优先展示，空则后端回退 coverImage */
+  mapCover: string
   gallery: string[]
   description: string
   businessHours: string
@@ -842,6 +844,7 @@ type ApiOrganizerProfile = {
   marker_icon?: string
   venue_profile?: {
     cover_image?: string
+    map_cover?: string
     gallery?: string[]
     description?: string
     business_hours?: string
@@ -873,6 +876,7 @@ export const fetchOrganizerProfile = async (): Promise<OrganizerProfileData> => 
   const venueProfile: OrganizerVenueProfile | null = rawVenue
     ? {
         coverImage: rawVenue.cover_image || '',
+        mapCover: rawVenue.map_cover || '',
         gallery: Array.isArray(rawVenue.gallery) ? rawVenue.gallery.filter(Boolean) : [],
         description: rawVenue.description || '',
         businessHours: rawVenue.business_hours || '',
@@ -925,6 +929,7 @@ export const updateOrganizerVenueProfile = async (payload: {
       district: payload.district,
       marker_icon: payload.markerIcon,
       cover_image: vp.coverImage,
+      map_cover: vp.mapCover,
       gallery: vp.gallery,
       description: vp.description,
       business_hours: vp.businessHours,
@@ -1223,6 +1228,7 @@ interface ActivityDetailRaw {
   poster_detail?: string
   poster_long?: string
   poster_list?: string
+  poster_map?: string
   poster_wechat?: string
   qualification_doc?: string
   status?: number
@@ -1270,6 +1276,7 @@ const mapActivityDetailToDraft = (detail: ActivityDetailRaw): CreateActivityDraf
       detailPoster: detail.poster_detail,
       detailLong: detail.poster_long,
       listPoster: detail.poster_list,
+      mapPoster: detail.poster_map,
     }
     const url = urlMap[slot.key] || ''
     // 已有海报为 http(s) 地址：fileName 用于展示，filePath 用于提交（http 地址会原样回传，不重复上传）
@@ -1479,6 +1486,7 @@ export const submitActivityDraft = async (
     detailPoster: 'poster_detail',
     detailLong: 'poster_long',
     listPoster: 'poster_list',
+    mapPoster: 'poster_map',
   }
   const posterFields: Record<string, string> = {}
   for (const slot of draft.posterSlots) {
@@ -1501,6 +1509,7 @@ export const submitActivityDraft = async (
         poster_detail: posterFields.poster_detail || '',
         poster_long: posterFields.poster_long || '',
         poster_list: posterFields.poster_list || '',
+        poster_map: posterFields.poster_map || '',
         poster_wechat: posterFields.poster_wechat || '',
       },
     })

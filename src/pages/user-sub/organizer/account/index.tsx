@@ -81,6 +81,7 @@ interface VenueProfileEditForm {
   district: string
   marker_icon: string
   cover_image: string
+  map_cover: string
   gallery: string[]
   description: string
   business_hours: string
@@ -100,6 +101,7 @@ const emptyVenueProfileEditForm = (): VenueProfileEditForm => ({
   district: '',
   marker_icon: '',
   cover_image: '',
+  map_cover: '',
   gallery: [],
   description: '',
   business_hours: '',
@@ -128,6 +130,7 @@ const buildVenueProfileEditForm = (profile: OrganizerProfileData): VenueProfileE
   form.marker_icon = profile.markerIcon
   if (vp) {
     form.cover_image = vp.coverImage
+    form.map_cover = vp.mapCover
     form.gallery = [...vp.gallery]
     form.description = vp.description
     form.business_hours = vp.businessHours || profile.businessHours
@@ -147,6 +150,7 @@ const buildVenueProfileEditForm = (profile: OrganizerProfileData): VenueProfileE
     if (typeof revision.city === 'string' && revision.city) form.city = revision.city
     if (typeof revision.district === 'string' && revision.district) form.district = revision.district
     if (typeof revision.cover_image === 'string') form.cover_image = revision.cover_image
+    if (typeof revision.map_cover === 'string') form.map_cover = revision.map_cover
     if (Array.isArray(revision.gallery)) form.gallery = revision.gallery.filter(Boolean)
     if (typeof revision.description === 'string') form.description = revision.description
     if (typeof revision.business_hours === 'string') form.business_hours = revision.business_hours
@@ -360,8 +364,8 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
     target: 'organizer',
     sourceImage: '',
   })
-  // 场地封面裁剪弹窗
-  const [venueCoverCrop, setVenueCoverCrop] = useState<{ open: boolean; sourceImage: string }>({ open: false, sourceImage: '' })
+  // 场地封面/地图封面裁剪弹窗（target 区分回填字段与上传 type）
+  const [venueCoverCrop, setVenueCoverCrop] = useState<{ open: boolean; target: 'cover' | 'mapCover'; sourceImage: string }>({ open: false, target: 'cover', sourceImage: '' })
 
   const handleLogoCropConfirm = async (croppedPath: string) => {
     const target = logoCrop.target
@@ -458,20 +462,20 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
     setVenueForm((prev) => ({ ...prev, ...patch }))
   }
 
-  const handleUploadVenueImage = async (target: 'cover' | 'gallery') => {
+  const handleUploadVenueImage = async (target: 'cover' | 'gallery' | 'mapCover') => {
     if (venueImageUploading) return
     try {
       const res = await Taro.chooseImage({
-        count: target === 'cover' ? 1 : 9,
+        count: target === 'gallery' ? 9 : 1,
         sizeType: ['compressed'],
         sourceType: ['album', 'camera'],
       })
       const filePaths = res.tempFilePaths.filter(Boolean)
       if (filePaths.length === 0) return
 
-      // 封面打开取景框裁剪（4:3，可「使用原图」）；图册保持直传
-      if (target === 'cover') {
-        setVenueCoverCrop({ open: true, sourceImage: filePaths[0] })
+      // 封面/地图封面打开取景框裁剪（4:3，可「使用原图」）；图册保持直传
+      if (target === 'cover' || target === 'mapCover') {
+        setVenueCoverCrop({ open: true, target, sourceImage: filePaths[0] })
         return
       }
 
@@ -492,15 +496,17 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
     }
   }
 
-  // 场地封面裁剪确认/使用原图：上传并回填
+  // 场地封面/地图封面裁剪确认/使用原图：上传并回填（地图封面走 venue_map_cover）
   const handleVenueCoverCropConfirm = async (path: string) => {
     if (!path) return
-    setVenueCoverCrop({ open: false, sourceImage: '' })
+    const target = venueCoverCrop.target
+    setVenueCoverCrop((prev) => ({ ...prev, open: false, sourceImage: '' }))
     setVenueImageUploading(true)
     Taro.showLoading({ title: '上传中...', mask: true })
     try {
-      const url = await uploadOrganizerAsset(path, 'venue_cover')
-      updateVenueForm({ cover_image: url })
+      const url = await uploadOrganizerAsset(path, target === 'mapCover' ? 'venue_map_cover' : 'venue_cover')
+      if (target === 'mapCover') updateVenueForm({ map_cover: url })
+      else updateVenueForm({ cover_image: url })
     } catch (error: any) {
       Taro.showToast({ title: error?.message || '图片上传失败，请重试', icon: 'none' })
     } finally {
@@ -550,6 +556,7 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
         markerIcon: venueForm.marker_icon,
         venueProfile: {
           coverImage: venueForm.cover_image,
+          mapCover: venueForm.map_cover,
           gallery: venueForm.gallery,
           description: venueForm.description,
           businessHours: venueForm.business_hours.trim(),
@@ -1199,6 +1206,23 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
                 )}
               </View>
 
+              <Text className="account-field-required">地图封面（选填）</Text>
+              <View className="account-venue-upload" onClick={() => handleUploadVenueImage('mapCover')}>
+                {venueForm.map_cover ? (
+                  <Image
+                    src={venueForm.map_cover}
+                    className="account-venue-cover-img"
+                    mode="aspectFill"
+                    onClick={(e) => { e.stopPropagation(); Taro.previewImage({ current: venueForm.map_cover, urls: [venueForm.map_cover] }) }}
+                  />
+                ) : (
+                  <Text className="account-venue-upload-title">
+                    {venueImageUploading ? '上传中...' : '点击上传地图封面'}
+                  </Text>
+                )}
+              </View>
+              <Text className="account-venue-coord">用于地图场地卡片封面；不传则地图沿用场地封面</Text>
+
               <Text className="account-field-required">场地图册</Text>
               <View className="account-venue-upload" onClick={() => handleUploadVenueImage('gallery')}>
                 <Text className="account-venue-upload-title">
@@ -1377,19 +1401,19 @@ export default function OrganizerAccountView(_props: OrganizerAccountViewProps) 
         onCancel={() => setLogoCrop((prev) => ({ ...prev, open: false }))}
       />
 
-      {/* 场地封面裁剪弹窗（4:3 取景框） */}
+      {/* 场地封面(4:3)/地图封面(1292:400≈3.23:1，与地图卡片头图可见区域一致)裁剪弹窗 */}
       <ImageCropper
         open={venueCoverCrop.open}
         sourceImage={venueCoverCrop.sourceImage}
-        aspectWidth={4}
-        aspectHeight={3}
-        title="裁剪场地封面"
+        aspectWidth={venueCoverCrop.target === 'mapCover' ? 1292 / 500 : 4}
+        aspectHeight={venueCoverCrop.target === 'mapCover' ? 400 / 500 : 3}
+        title={venueCoverCrop.target === 'mapCover' ? '裁剪地图封面' : '裁剪场地封面'}
         onUseOriginal={() => {
           const original = venueCoverCrop.sourceImage
           if (original) void handleVenueCoverCropConfirm(original)
         }}
         onConfirm={(tempPath) => void handleVenueCoverCropConfirm(tempPath)}
-        onCancel={() => setVenueCoverCrop({ open: false, sourceImage: '' })}
+        onCancel={() => setVenueCoverCrop((prev) => ({ ...prev, open: false, sourceImage: '' }))}
       />
     </View>
   )

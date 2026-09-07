@@ -146,6 +146,11 @@
       align-self: stretch;
       padding: 4px 0;
 
+      // 无未读红点时只有时间一个子元素，垂直居中
+      &.right-meta--solo {
+        justify-content: center;
+      }
+
       .time {
         font-size: 22px;
         color: #666;

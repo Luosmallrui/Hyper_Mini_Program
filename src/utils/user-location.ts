@@ -23,8 +23,8 @@ const normalizeChosenLocation = (raw: any): ChosenLocation | null => {
 }
 
 /**
- * 读取用户最近一次通过 wx.chooseLocation 选择的位置。
- * 小程序端不再依赖 wx.getLocation，各页面统一以这份缓存作为定位兜底。
+ * 读取用户最近一次定位/选点的位置缓存。
+ * wx.getLocation 实时定位成功后也会写入这份缓存，各页面统一以它作为定位兜底。
  */
 export function getStoredChosenLocation(): ChosenLocation | null {
   try {
@@ -64,7 +64,8 @@ export async function getRealTimeLocation(): Promise<ChosenLocation | null> {
 }
 
 /**
- * 核心定位入口：调起微信原生地图选点（wx.chooseLocation）。
+ * 地图选点入口：调起微信原生地图选点（wx.chooseLocation）。
+ * 用于场地地址选点等需要用户手动挑选位置的场景；首页定位按钮走 getRealTimeLocation。
  * 成功时写入缓存并返回选点结果；用户取消或调用失败时返回 null。
  */
 export async function chooseUserLocation(): Promise<ChosenLocation | null> {

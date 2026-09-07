@@ -106,15 +106,19 @@ describe('getLocation via shared helper with chooseLocation fallback', () => {
     expect(helper).toContain("Taro.getLocation({ type: 'gcj02', isHighAccuracy: true })")
   })
 
-  it('pages use chooseLocation as the location entry', () => {
+  it('home locate button uses getRealTimeLocation; other pages keep chooseLocation entry', () => {
     const home = readSource('src', 'pages', 'index', 'index.tsx')
     const list = readSource('src', 'pages', 'activity-list', 'index.tsx')
     const postCreate = readSource('src', 'pages', 'square-sub', 'post-create', 'index.tsx')
-    ;[home, list, postCreate].forEach((source) => {
+    // 首页定位按钮：wx.getLocation 实时定位（权限已开通，58669c4 的 chooseLocation 替代方案已回退）
+    expect(home).toContain('getRealTimeLocation')
+    expect(home).not.toContain('chooseUserLocation')
+    // 列表距离排序/发帖页：实时定位优先，地图选点作为兜底或手动入口保留
+    ;[list, postCreate].forEach((source) => {
+      expect(source).toContain('getRealTimeLocation')
       expect(source).toContain('chooseUserLocation')
     })
     // 首页位置标记：实时定位优先，选点缓存兜底
-    expect(home).toContain('getRealTimeLocation')
     expect(home).toContain('getStoredChosenLocation')
   })
 

@@ -12,7 +12,7 @@ import {
   normalizeActivityMarkerSourceId,
 } from '@/utils/activity-marker'
 import { cacheUserInfo } from '@/utils/user-info'
-import { chooseUserLocation, getRealTimeLocation, getStoredChosenLocation } from '@/utils/user-location'
+import { getRealTimeLocation, getStoredChosenLocation } from '@/utils/user-location'
 import CommonHeader from '@/components/CommonHeader'
 import ProfileBindModal from '@/components/ProfileBindModal'
 import { useProfileBindGate } from '@/hooks/useProfileBindGate'
@@ -51,7 +51,8 @@ const MARKER_LABEL_ANCHOR_Y_ACTIVE = 7
 const MARKER_LABEL_ANCHOR_Y_INACTIVE = 21
 const ACTIVE_BACKGROUND_RATIO = 735 / 817
 const ACTIVE_FOREGROUND_ICON_HEIGHT = 40
-const ACTIVE_FOREGROUND_ICON_ANCHOR_Y = 1.55
+// 前景图标锚点：图标中心对齐气泡主体视觉中心（不含底部尖角），按截图实测微调
+const ACTIVE_FOREGROUND_ICON_ANCHOR_Y = 1.38
 const USER_LOCATION_MARKER_DISPLAY_SIZE = Math.max(16, Math.round(USER_AVATAR_MARKER_SIZE * 0.94))
 const MORE_TAGS: Array<{ id: number; name: string; sort: number }> = []
 const DEFAULT_DISTANCE_OPTIONS: Array<{ label: string; value: number | null }> = [
@@ -1319,11 +1320,17 @@ export default function IndexPage() {
   }
 
   const handleLocate = async () => {
-    // 定位入口统一为微信原生选点（wx.chooseLocation），对游客开放，取消时不打扰
-    const chosen = await chooseUserLocation()
-    if (!chosen) return
+    // wx.getLocation 权限已开通：定位入口恢复为实时定位（wx.getLocation），失败时提示开启定位权限
+    const realTime = await getRealTimeLocation()
+    if (!realTime) {
+      Taro.showToast({
+        title: '定位失败，请开启定位权限',
+        icon: 'none',
+      })
+      return
+    }
 
-    const location = await buildUserLocationMarker(chosen.latitude, chosen.longitude)
+    const location = await buildUserLocationMarker(realTime.latitude, realTime.longitude)
     if (!location) {
       Taro.showToast({
         title: '定位失败，请重试',

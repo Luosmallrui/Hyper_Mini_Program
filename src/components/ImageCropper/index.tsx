@@ -76,7 +76,7 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
       },
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, sourceImage])
+  }, [open, sourceImage, aspect])
 
   const clampBox = (next: Box): Box => {
     const w = Math.min(Math.max(next.w, BOX_MIN), viewport.w)

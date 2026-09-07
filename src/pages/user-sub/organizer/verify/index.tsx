@@ -30,6 +30,8 @@ interface OrganizerVerifyViewProps {
   initialScan?: VerifierScanPayload
   /** 核销记录视角：personal=核销员个人记录（我的页入口）；organizer=商家全量记录（管理后台） */
   recordsScope?: 'personal' | 'organizer'
+  /** “查看更多”点击：跳到完整核销记录列表 */
+  onShowAllRecords?: () => void
   onBack: () => void
 }
 
@@ -57,7 +59,7 @@ const renderTicketCard = (ticket: VerifyTicketItem, onOpenOrder?: (ticket: Verif
 )
 
 export default function OrganizerVerifyView(props: OrganizerVerifyViewProps) {
-  const { initialAddVerifierOpen = false, initialManualInputOpen = false, initialModalStatus, initialScan, recordsScope = 'organizer', onBack } = props
+  const { initialAddVerifierOpen = false, initialManualInputOpen = false, initialModalStatus, initialScan, recordsScope = 'organizer', onShowAllRecords, onBack } = props
   const [verifiedTickets, setVerifiedTickets] = useState<VerifyTicketItem[]>([])
   const [verifiedLoading, setVerifiedLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(Boolean(initialModalStatus))
@@ -342,7 +344,7 @@ export default function OrganizerVerifyView(props: OrganizerVerifyViewProps) {
         {/* Section header */}
         <View className="verify-section-header">
           <Text className="verify-section-title">已核销（{verifiedCount}）</Text>
-          <Text className="verify-section-more">查看更多</Text>
+          <Text className="verify-section-more" onClick={() => onShowAllRecords?.()}>查看更多</Text>
         </View>
 
         {/* Verified ticket list */}

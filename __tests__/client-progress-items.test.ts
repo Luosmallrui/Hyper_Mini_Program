@@ -17,12 +17,13 @@ describe('client progress completion contracts', () => {
     expect(attendee).toContain('setShowRealNameNotice(true)')
   })
 
-  it('navigates subscribed cards from search into venue or activity detail pages', () => {
+  it('navigates subscribed cards from search into organizer-home or activity detail pages', () => {
     const source = readSource('src', 'pages', 'search', 'index.tsx')
 
     expect(source).toContain('handleSubscriptionClick')
     expect(source).toContain('onClick={() => handleSubscriptionClick(sub)}')
-    expect(source).toContain('/pages/venue/index')
+    // 场地类订阅直达商家主页（ba8bcd5 起），活动类进活动详情
+    expect(source).toContain('/pages/user-sub/organizer-home/index')
     expect(source).toContain('/pages/activity/index')
   })
 
@@ -115,9 +116,11 @@ describe('client progress completion contracts', () => {
     expect(`${userCenter}\n${postDetail}`).not.toMatch(/馃|摑|鎵|搴|鍒|寮圭獥/)
   })
 
-  it('shows settlement, organizer admin, and verifier records as independent user-center entries', () => {
+  it('shows settlement, organizer admin, and verifier scan as independent user-center entries', () => {
     const source = readSource('src', 'pages', 'user', 'index.tsx')
     const style = readSource('src', 'pages', 'user', 'index.scss')
+    const verifyView = readSource('src', 'pages', 'user-sub', 'organizer', 'verify', 'index.tsx')
+    const organizerPage = readSource('src', 'pages', 'user-sub', 'organizer', 'index.tsx')
 
     expect(source).toContain('const settlementEntry = {')
     expect(source).toContain("label: '我要入驻'")
@@ -127,11 +130,15 @@ describe('client progress completion contracts', () => {
     expect(source).not.toContain("label: '账号中心'")
     expect(source).not.toContain("action: organizerAuditStatus === 1 ? 'organizerPending'")
     expect(source).not.toContain("(isOrganizerApproved ? undefined : 'settlementApply')")
-    expect(source).toContain('const verifierEntry = isActiveVerifier')
-    expect(source).toContain("label: '核销记录'")
+    // 核销记录不单列入口：核销员只保留「订单核销」直达，完整记录在核销页“查看更多”进入
+    expect(source).toContain('const verifyScanEntry = isActiveVerifier')
+    expect(source).toContain("label: '订单核销'")
+    expect(source).not.toContain("label: '核销记录'")
+    expect(source).not.toContain('verifierEntry')
+    expect(verifyView).toContain('onShowAllRecords')
+    expect(organizerPage).toContain('onShowAllRecords={() => {')
     expect(source).toContain('settlementEntry,')
     expect(source).toContain('organizerEntry,')
-    expect(source).toContain('verifierEntry')
     expect(source).toContain('scrollX')
     expect(source).toContain('showScrollbar={false}')
     expect(source).toContain('main-nav-scrollbar')

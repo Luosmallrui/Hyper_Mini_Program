@@ -12,6 +12,7 @@
   z-index: 100;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding-left: 16px;
   padding-right: 16px;
   /* content-box：paddingTop 状态栏不挤占内容区，否则返回键/标题被顶到状态栏里 */
@@ -28,14 +29,20 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .nav-title {
-  flex: 1;
+  position: absolute;
+  left: 0;
+  right: 0;
   text-align: center;
   font-size: 32rpx;
   font-weight: 600;
   color: #fff;
+  /* 标题横跨整栏只做展示，点击穿透到返回键/全部已读 */
+  pointer-events: none;
 }
 
 .nav-action {
@@ -43,6 +50,8 @@
   font-size: 26rpx;
   color: rgba(255, 255, 255, 0.75);
   padding: 8rpx 4rpx;
+  position: relative;
+  z-index: 1;
 }
 
 .nav-action.disabled {

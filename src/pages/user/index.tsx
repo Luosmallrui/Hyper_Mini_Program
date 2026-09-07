@@ -1168,15 +1168,7 @@ export default function UserPage() {
     route: '/pages/user-sub/organizer/index'
   };
 
-  const verifierEntry = isActiveVerifier
-    ? {
-        iconClass: 'verify-records',
-        label: '核销记录',
-        route: '/pages/user-sub/organizer/index?view=verifyRecords&source=userNav'
-      }
-    : null;
-
-  // 核销员直达扫码核销视图的外层入口（不用再进管理后台找）
+  // 核销员直达扫码核销视图的外层入口（不用再进管理后台找）；核销记录已在核销视图内，不再单独设入口
   const verifyScanEntry = isActiveVerifier
     ? {
         iconClass: 'verify-scan',
@@ -1200,8 +1192,7 @@ export default function UserPage() {
     },
     settlementEntry,
     organizerEntry,
-    verifyScanEntry,
-    verifierEntry
+    verifyScanEntry
   ].filter(Boolean) as Array<{
     icon?: string;
     iconClass?: string;

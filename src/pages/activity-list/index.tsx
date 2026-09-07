@@ -10,7 +10,7 @@ import {
   isActivityMarker,
   normalizeActivityMarkerSourceId,
 } from '@/utils/activity-marker'
-import { chooseUserLocation, getStoredChosenLocation } from '@/utils/user-location'
+import { chooseUserLocation, getRealTimeLocation, getStoredChosenLocation } from '@/utils/user-location'
 import CommonHeader from '@/components/CommonHeader'
 import ProfileBindModal from '@/components/ProfileBindModal'
 import { useProfileBindGate } from '@/hooks/useProfileBindGate'
@@ -161,9 +161,11 @@ export default function ActivityListPage() {
     return coord
   }, [])
 
-  // 只读取用户选点缓存，不主动调起定位授权；选点入口在“距离优先”排序里
-  const ensureUserCoord = useCallback(() => {
+  // wx.getLocation 权限已开通：优先实时定位，拒绝/失败时回退选点缓存；手动选点入口在“距离优先”排序里
+  const ensureUserCoord = useCallback(async () => {
     if (userCoordRef.current) return userCoordRef.current
+    const realTime = await getRealTimeLocation()
+    if (realTime) return applyUserCoord({ lat: realTime.latitude, lng: realTime.longitude })
     const stored = getStoredChosenLocation()
     if (!stored) return null
     return applyUserCoord({ lat: stored.latitude, lng: stored.longitude })
@@ -370,7 +372,7 @@ export default function ActivityListPage() {
     try {
       const activeCategoryId = typeof options?.categoryId === 'number' ? options.categoryId : selectedCatId
       const activeSortLabel = options?.sortLabel || selectedSort
-      const coord = userCoordRef.current || ensureUserCoord()
+      const coord = userCoordRef.current || (await ensureUserCoord())
       const activeDistrictId = typeof options?.districtId !== 'undefined' ? options.districtId : selectedDistrictId
       const activeAreaId = typeof options?.areaId !== 'undefined' ? options.areaId : selectedAreaId
       const activeTagIds = Array.isArray(options?.tagIds) ? options.tagIds : selectedTagIds
@@ -663,8 +665,8 @@ export default function ActivityListPage() {
                   onClick={() => {
                     void (async () => {
                       if (sort === '距离优先' && !userCoordRef.current) {
-                        // 距离排序需要参考坐标，统一走微信原生选点（chooseLocation）
-                        const chosen = await chooseUserLocation()
+                        // 距离排序需要参考坐标，优先 wx.getLocation 实时定位，失败回退地图选点
+                        const chosen = (await getRealTimeLocation()) || (await chooseUserLocation())
                         if (chosen) {
                           applyUserCoord({ lat: chosen.latitude, lng: chosen.longitude })
                         } else {

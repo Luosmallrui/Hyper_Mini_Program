@@ -1041,3 +1041,95 @@ page {
 .ticket-pill.disabled .ticket-text {
   color: rgba(255, 255, 255, 0.6);
 }
+
+/* 购票分享海报入口与预览弹窗 */
+.poster-pill {
+  width: 140px;
+  height: 50px;
+  border-radius: 25px;
+  border: 1px solid #747474;
+  padding: 0;
+  margin-left: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.poster-modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.poster-modal {
+  width: 620px;
+  max-height: 86vh;
+  background: #1c1c1e;
+  border-radius: 24px;
+  padding: 32px 32px 40px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.poster-modal-title {
+  color: #fff;
+  font-size: 30px;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+.poster-modal-loading {
+  width: 556px;
+  height: 700px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 26px;
+}
+
+.poster-modal-image {
+  width: 556px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.poster-modal-actions {
+  width: 100%;
+  margin-top: 32px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.poster-modal-btn {
+  flex: 1;
+  height: 80px;
+  border-radius: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #fff;
+  border: 1px solid #555;
+  box-sizing: border-box;
+}
+
+.poster-modal-btn.save {
+  background: #fff;
+  color: #111;
+  border: none;
+  font-weight: 600;
+  opacity: 0.4;
+}
+
+.poster-modal-btn.save.enabled {
+  opacity: 1;
+}

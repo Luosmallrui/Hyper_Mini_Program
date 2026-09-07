@@ -101,10 +101,10 @@ export default defineAppConfig({
     ],
   },
   requiredPrivateInfos: ['chooseLocation', 'getLocation'],
-  // 高精度定位授权弹窗说明（wx.getLocation 接口审核要求：真实导航业务用途）
+  // 高精度定位授权弹窗说明（wx.getLocation 接口审核要求：真实导航业务用途；微信限制 desc ≤ 30 字）
   permission: {
     'scope.userLocation': {
-      desc: '你的位置将用于在地图上展示附近活动与场地，并支持导航前往活动地点',
+      desc: '你的位置将用于展示附近活动与场地，并支持导航前往活动地点',
     },
   },
   lazyCodeLoading: 'requiredComponents',

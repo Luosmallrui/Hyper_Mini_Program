@@ -461,7 +461,7 @@ export default function MessagePage() {
                     <Text className='desc'>{item.desc}</Text>
                   </View>
                 </View>
-                <View className='right-meta'>
+                <View className={`right-meta${item.unread > 0 ? '' : ' right-meta--solo'}`}>
                   <Text className='time'>{item.time}</Text>
                   {item.unread > 0 && <View className='badge-dot' />}
                 </View>

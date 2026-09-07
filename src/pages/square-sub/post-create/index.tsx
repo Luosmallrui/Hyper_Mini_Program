@@ -5,7 +5,7 @@ import { AtIcon } from 'taro-ui'
 import 'taro-ui/dist/style/components/icon.scss'
 import { request } from '../../../utils/request'
 import { reverseGeocode, searchByKeyword, type POIItem } from '../../../utils/qqmap'
-import { chooseUserLocation, getStoredChosenLocation } from '../../../utils/user-location'
+import { chooseUserLocation, getRealTimeLocation, getStoredChosenLocation } from '../../../utils/user-location'
 import ProfileBindModal from '@/components/ProfileBindModal'
 import { useProfileBindGate } from '@/hooks/useProfileBindGate'
 import { normalizeSubscribedActivities, type SubscribedActivityItem } from './subscribed-activities'
@@ -127,13 +127,16 @@ export default function PostCreatePage() {
     }
   }, [])
 
-  // 页面加载 -> 有选点缓存时以其为中心拉取附近 POI；否则等用户在弹窗里地图选点
+  // 页面加载 -> 优先 wx.getLocation 实时定位拉取附近 POI；失败回退选点缓存；都没有则等用户在弹窗里地图选点
   useEffect(() => {
-    const stored = getStoredChosenLocation()
-    if (!stored) return
-    userLatRef.current = stored.latitude
-    userLngRef.current = stored.longitude
-    void fetchNearbyPois(stored.latitude, stored.longitude)
+    void (async () => {
+      const realTime = await getRealTimeLocation()
+      const stored = realTime || getStoredChosenLocation()
+      if (!stored) return
+      userLatRef.current = stored.latitude
+      userLngRef.current = stored.longitude
+      void fetchNearbyPois(stored.latitude, stored.longitude)
+    })()
   }, [])
 
   useDidShow(() => {
@@ -248,7 +251,7 @@ export default function PostCreatePage() {
     setShowLocationPicker(true)
   }
 
-  // 核心定位入口：微信原生地图选点（wx.chooseLocation）
+  // 手动选点入口：微信原生地图选点（wx.chooseLocation）；页面加载的自动定位走 getRealTimeLocation
   const handleChooseLocationNative = async () => {
     const chosen = await chooseUserLocation()
     if (!chosen) return

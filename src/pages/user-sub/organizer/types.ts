@@ -235,6 +235,8 @@ export interface UploadSlotState {
   helper: string
   fileName: string
   filePath?: string
+  /** 选填槽位：不参与必填校验（如地图封面，不传时地图沿用列表海报） */
+  optional?: boolean
 }
 
 export interface CreateActivityDraft {

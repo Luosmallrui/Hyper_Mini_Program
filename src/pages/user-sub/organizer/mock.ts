@@ -261,6 +261,13 @@ export const organizerPosterSlots: UploadSlotState[] = [
     helper: '适用于活动列表及分享页展示，比例4:3文件大小2M以下',
     fileName: '',
   },
+  {
+    key: 'mapPoster',
+    label: '地图封面（选填）',
+    helper: '用于地图活动卡片封面，宽幅条图（约16:5），大小2M及以下\n不传则地图沿用列表海报',
+    fileName: '',
+    optional: true,
+  },
 ]
 
 /** 今天日期（补零格式），票务售卖时间默认今天起售 */

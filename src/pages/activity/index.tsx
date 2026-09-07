@@ -15,6 +15,7 @@ const backgroundWebp = CDN_IMAGES.backgroundWebp
 import certificationIcon from '../../assets/images/certification.png'
 import { calculateTicketPointsDeduction, formatYuanFromCents, POINT_DISCOUNT_CENTS } from './points'
 import { buildActivitySharePayload, getActivityShareErrorMessage } from './share'
+import { generateActivityPoster, resolveActivityIdFromParams } from './poster'
 import { getActivitySubscriptionEndpoint } from './subscription'
 import { buildOrderViewerFields, toggleViewerSelection } from './viewer-selection'
 import {
@@ -143,7 +144,8 @@ interface SessionItem {
 
 export default function ActivityPage() {
   const router = useRouter()
-  const activityId = router.params?.id || ''
+  // 扫码（小程序码）进入时活动 ID 在 query.scene，优先取 id，兼容 scene 及其扩展格式
+  const activityId = resolveActivityIdFromParams(router.params)
   const { requireProfile, bindVisible, closeBindModal } = useProfileBindGate()
   const [activity, setActivity] = useState<MerchantDetail | null>(null)
 
@@ -167,6 +169,12 @@ export default function ActivityPage() {
   const [loadingSession, setLoadingSession] = useState(false)
   const [shareMsg, setShareMsg] = useState('')
   const [selectedShareSession, setSelectedShareSession] = useState<SessionItem | null>(null)
+  // 购票分享海报弹窗：loading=生成中；imagePath=合成完成的本地临时图片
+  const [posterModal, setPosterModal] = useState<{ open: boolean; loading: boolean; imagePath: string }>({
+    open: false,
+    loading: false,
+    imagePath: '',
+  })
   const [followPending, setFollowPending] = useState(false)
   const [subscribePending, setSubscribePending] = useState(false)
   const [pointsBalance, setPointsBalance] = useState(0)
@@ -735,6 +743,57 @@ export default function ActivityPage() {
     void handleShareToSession(selectedShareSession)
   }
 
+  // 购票分享海报：拉取后端小程序码（CDN URL）→ 离屏 canvas 合成 → 预览
+  const handleOpenPoster = async () => {
+    if (!activityId || !activity || posterModal.loading) return
+    setPosterModal({ open: true, loading: true, imagePath: '' })
+    try {
+      const res = await request({
+        url: `/api/v1/activity/${activityId}/wxacode`,
+        method: 'GET',
+      })
+      const resData = parseResponse(res?.data)
+      const qrUrl = resData?.data?.url || ''
+      if (Number(resData?.code) !== 200 || !qrUrl) {
+        throw new Error(resData?.msg || '小程序码获取失败')
+      }
+      const imagePath = await generateActivityPoster({
+        title: titleText,
+        timeText,
+        locationText,
+        posterUrl: activity?.poster_list || activity?.images?.[0] || heroBg,
+        qrUrl,
+        organizerName,
+        organizerAvatarUrl: activity?.user_avatar || '',
+      })
+      setPosterModal({ open: true, loading: false, imagePath })
+    } catch (error) {
+      console.error('generate activity poster failed:', error)
+      setPosterModal({ open: false, loading: false, imagePath: '' })
+      Taro.showToast({ title: error instanceof Error ? error.message : '海报生成失败', icon: 'none' })
+    }
+  }
+
+  const handleClosePoster = () => {
+    if (posterModal.loading) return
+    setPosterModal((prev) => ({ ...prev, open: false }))
+  }
+
+  const handleSavePoster = async () => {
+    if (!posterModal.imagePath) return
+    try {
+      await Taro.saveImageToPhotosAlbum({ filePath: posterModal.imagePath })
+      Taro.showToast({ title: '已保存到相册', icon: 'success' })
+      setPosterModal((prev) => ({ ...prev, open: false }))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String((error as any)?.errMsg || '')
+      Taro.showToast({
+        title: /auth|deny|cancel/i.test(message) ? '请在设置中允许保存到相册' : '保存失败，请重试',
+        icon: 'none',
+      })
+    }
+  }
+
   const handleRelatedNoteClick = (noteId: string) => {
     Taro.navigateTo({ url: `/pages/square-sub/post-detail/index?id=${noteId}` })
   }
@@ -839,6 +898,11 @@ export default function ActivityPage() {
             {directMessageEnabled && (
               <View className='share-pill' onClick={handleOpenShare}>
                 <Text className='share-text'>{isVenue ? '分享场地' : '分享活动'}</Text>
+              </View>
+            )}
+            {!isVenue && (
+              <View className='poster-pill' onClick={() => { void handleOpenPoster() }}>
+                <Text className='share-text'>购票海报</Text>
               </View>
             )}
           </View>
@@ -1202,6 +1266,31 @@ export default function ActivityPage() {
           </View>
         </View>
       </AtFloatLayout>
+      )}
+
+      {/* 购票分享海报预览：canvas 离屏合成后的图片，可保存相册用于宣发扫码购票 */}
+      {posterModal.open && (
+        <View className='poster-modal-mask' onClick={handleClosePoster}>
+          <View className='poster-modal' onClick={(e) => e.stopPropagation()}>
+            <Text className='poster-modal-title'>购票分享海报</Text>
+            {posterModal.loading ? (
+              <View className='poster-modal-loading'>
+                <Text>海报生成中...</Text>
+              </View>
+            ) : (
+              <Image className='poster-modal-image' src={posterModal.imagePath} mode='widthFix' />
+            )}
+            <View className='poster-modal-actions'>
+              <View className='poster-modal-btn' onClick={handleClosePoster}>取消</View>
+              <View
+                className={`poster-modal-btn save ${posterModal.imagePath ? 'enabled' : ''}`}
+                onClick={() => { void handleSavePoster() }}
+              >
+                保存到相册
+              </View>
+            </View>
+          </View>
+        </View>
       )}
     </View>
   )
