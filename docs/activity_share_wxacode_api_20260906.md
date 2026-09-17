@@ -61,3 +61,18 @@ Authorization: Bearer <access_token>（建议允许游客访问，与活动详�
 1. 调用接口返回 `code: 200` 且 `url` 为可公开访问的 CDN 图片地址。
 2. 微信「扫一扫」扫描该码，直接进入小程序正式版活动详情页并展示对应活动。
 3. 同一活动重复调用返回相同 URL，不重复消耗微信接口配额。
+
+## 7. 上线/换环境检查清单（重要）
+
+`env_version` 是生成时固化进小程序码图片的：`trial` 码扫码进体验版，非体验者会被微信拦截在「没有体验权限」页（2026-09 联调期间已实测踩坑）。因此：
+
+1. 正式上线前将 `app.qr_code_env_version` 配置为 `release`。
+2. **切换配置后必须删除 OSS 上 `ticketing/wxacode/activity/` 下已缓存的 png**，让各活动下次请求时按新配置重新生成；只改配置不清缓存，旧码仍跳旧版本。
+3. 切换后用非体验者微信号扫码验证一次，确认进入正式版。
+
+## 8. 后端实现说明（2026-09-06 已上线）
+
+- 路由：`GET /api/v1/activity/:id/wxacode`，挂 `optionalAuth`（游客可访问，与活动详情一致）。
+- 实现：`service/ticketing.go` `GetActivityWxacode`——校验活动存在（不存在返回 404）→ OSS `HeadObject` 判断 `ticketing/wxacode/activity/<id>.png` 是否已存在（存在直接返回 URL，不消耗微信配额）→ 否则调 `wxacode.getUnlimited`（`scene=活动ID`、`page=pages/activity/index`、`check_path=false`、`width=430`）→ `UploadRaw` 转存 OSS → 返回 CDN URL。
+- `env_version` 走配置 `app.qr_code_env_version`（缺省 `trial`，正式上线后配置为 `release`）。
+- 配套改动：`IOssService` 新增 `ObjectExists` / `CDNUrl` 两个方法；清理了 `GenerateUnlimitedQRCode` 里打印含 access_token URL 的调试输出。
