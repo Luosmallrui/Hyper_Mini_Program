@@ -1034,10 +1034,13 @@ const mapWithdrawRecord = (item: ApiWithdrawFlowItem): OrganizerWithdrawRecord =
   id: String(item?.id ?? ''),
   flowNo: item?.flow_no || '',
   status: Number(item?.status ?? 0),
-  totalAmount: Number(item?.total_amount ?? 0),
-  reason: item?.reason || '',
-  accountHolder: item?.bank_account?.account_holder || '',
-  bankName: item?.bank_account?.bank_name || '',
+  // 金额字段兜底：total_amount / amount（后端流水实际字段，单位分）/ withdraw_amount
+  totalAmount: Number(item?.total_amount ?? (item as any)?.amount ?? (item as any)?.withdraw_amount ?? 0),
+  // 驳回原因：remark（后端流水实际字段）/ reason
+  reason: (item as any)?.remark || item?.reason || '',
+  // 收款账户：后端流水为平铺字段，兼容旧的嵌套结构
+  accountHolder: (item as any)?.bank_account_name || item?.bank_account?.account_holder || '',
+  bankName: (item as any)?.bank_name || item?.bank_account?.bank_name || '',
   createTime: item?.create_time || (item as any)?.created_at || '',
   arrivalTime: item?.arrival_time || (item as any)?.paid_at || '',
 })
