@@ -26,7 +26,6 @@ import {
   fetchVerifyRecords,
   fetchOrganizerVerificationRecords,
   getSettlementApplyInitialForm,
-  loginOrganizerPassword,
   submitActivityDraft,
   submitSettlementApply as submitSettlementApplyRequest,
   uploadOrganizerAsset,
@@ -299,9 +298,7 @@ export default function OrganizerPage() {
   // 场地封面裁剪弹窗
   const [venueCoverCrop, setVenueCoverCrop] = useState<{ open: boolean; sourceImage: string }>({ open: false, sourceImage: '' })
   const [venueImageUploading, setVenueImageUploading] = useState(false)
-  const [organizerLoginPhone, setOrganizerLoginPhone] = useState('')
-  const [organizerLoginPassword, setOrganizerLoginPassword] = useState('')
-  const [organizerLoginSubmitting, setOrganizerLoginSubmitting] = useState(false)
+  // 管理后台入口不再使用账号密码登录：微信登录态 + 后端 staff 身份校验直接放行
   const [verifyRecordsState, setVerifyRecordsState] = useState<VerifyRecordsState>('loading')
   const [verifyRecords, setVerifyRecords] = useState<VerifyTicketItem[]>([])
   // 核销记录视角：我的页入口（source=userNav）=核销员个人记录；管理后台入口=商家全量记录
@@ -527,23 +524,37 @@ export default function OrganizerPage() {
       const roleOverride = getOrganizerRoleOverride(params)
 
       if (!isEntryView && !isMerchantUser(userInfo, roleOverride)) {
-        try {
-          const audit = await fetchOrganizerAuditStatus()
-          setOrganizerType(audit.type === 'venue' ? 'venue' : 'party')
-          if (audit.status === 2 && Number(audit.enabled ?? 1) === 0) {
-            setDashboardView('accountStopped')
-            return
+        const audit = await fetchOrganizerAuditStatus().catch(() => null)
+        if (audit) setOrganizerType(audit.type === 'venue' ? 'venue' : 'party')
+        if (audit?.status === 2 && Number(audit.enabled ?? 1) === 0) {
+          setDashboardView('accountStopped')
+          return
+        }
+        if (audit?.status === 2) {
+          const nextUserInfo = { ...(userInfo || {}), is_merchant: true, merchant_status: 'approved' }
+          Taro.setStorageSync('userInfo', nextUserInfo)
+        } else {
+          // 非主办方主账号：再探子账号/核销员身份（organizer_staff 启用后后端自动归属组织，profile 能通即放行）
+          let isStaff = false
+          try {
+            await fetchOrganizerProfile()
+            isStaff = true
+          } catch {
+            isStaff = false
           }
-          if (audit.status === 2) {
+          if (isStaff) {
             const nextUserInfo = { ...(userInfo || {}), is_merchant: true, merchant_status: 'approved' }
             Taro.setStorageSync('userInfo', nextUserInfo)
+          } else if (audit?.status === 1) {
+            setDashboardView('settlementPending')
+            return
+          } else if (audit?.status === 3) {
+            setDashboardView('auditRejected')
+            return
           } else {
             setDashboardView('nonMerchant')
             return
           }
-        } catch {
-          setDashboardView('nonMerchant')
-          return
         }
       } else if (!isEntryView) {
         // 已登录商家走快捷通道时也要拿到入驻类型，创建向导按它锁定活动类型
@@ -570,39 +581,6 @@ export default function OrganizerPage() {
     } catch {
       setPageState('error')
       Taro.showToast({ title: '加载失败，请重试', icon: 'none' })
-    }
-  }
-
-  const handleOrganizerPasswordLogin = async () => {
-    const phone = organizerLoginPhone.trim()
-    const password = organizerLoginPassword.trim()
-    if (!phone || !password) {
-      Taro.showToast({ title: '请输入账号和密码', icon: 'none' })
-      return
-    }
-    setOrganizerLoginSubmitting(true)
-    try {
-      await loginOrganizerPassword(phone, password)
-      const audit = await fetchOrganizerAuditStatus()
-      setOrganizerType(audit.type === 'venue' ? 'venue' : 'party')
-      if (audit.status === 2 && Number(audit.enabled ?? 1) === 0) {
-        Taro.showToast({ title: '商家账号已停用', icon: 'none' })
-        setDashboardView('accountStopped')
-        return
-      }
-      if (audit.status !== 2) {
-        Taro.showToast({ title: '该账号尚未通过主办方审核', icon: 'none' })
-        setDashboardView(audit.status === 3 ? 'auditRejected' : 'auditPending')
-        return
-      }
-      Taro.showToast({ title: '登录成功', icon: 'success' })
-      setOrganizerLoginPassword('')
-      setDashboardView('home')
-      await loadDashboardData(getMockModeFromParams(Taro.getCurrentInstance().router?.params || {}))
-    } catch (error: any) {
-      Taro.showToast({ title: error?.message || '登录失败，请检查账号密码', icon: 'none' })
-    } finally {
-      setOrganizerLoginSubmitting(false)
     }
   }
 
@@ -1634,34 +1612,12 @@ export default function OrganizerPage() {
   const renderNonMerchantView = () => (
     <View className="non-merchant-state">
       <View className="non-merchant-card">
-        <Text className="non-merchant-title">商家账号登录</Text>
-        <Text className="non-merchant-desc">使用已审核通过的主办方账号密码进入管理后台。</Text>
-        <View className="organizer-login-form">
-          <Input
-            className="organizer-login-input"
-            value={organizerLoginPhone}
-            type="number"
-            maxlength={11}
-            placeholder="请输入手机号"
-            placeholderClass="organizer-login-placeholder"
-            onInput={(event) => setOrganizerLoginPhone(String(event.detail.value || ''))}
-          />
-          <Input
-            className="organizer-login-input"
-            value={organizerLoginPassword}
-            password
-            placeholder="请输入登录密码"
-            placeholderClass="organizer-login-placeholder"
-            onInput={(event) => setOrganizerLoginPassword(String(event.detail.value || ''))}
-          />
-        </View>
-        <Button
-          className="primary-pill-button"
-          loading={organizerLoginSubmitting}
-          disabled={organizerLoginSubmitting}
-          onClick={handleOrganizerPasswordLogin}
-        >
-          登录管理后台
+        <Text className="non-merchant-title">暂未关联商家账号</Text>
+        <Text className="non-merchant-desc">
+          当前微信账号还不是任何商家的主账号或子账号。商家主账号用入驻时的微信直接进入；子账号/核销员请联系商家在后台添加并启用后重试。
+        </Text>
+        <Button className="primary-pill-button" onClick={() => setDashboardView('settlementApply')}>
+          我要入驻
         </Button>
         <Button className="secondary-pill-button organizer-login-back" onClick={() => Taro.navigateBack({ delta: 1 })}>
           返回个人中心
@@ -1675,9 +1631,6 @@ export default function OrganizerPage() {
       <View className="non-merchant-card">
         <Text className="non-merchant-title">商家账号已停用</Text>
         <Text className="non-merchant-desc">该商家账号当前不可使用，请联系平台管理员处理。</Text>
-        <Button className="secondary-pill-button organizer-login-back" onClick={() => setDashboardView('nonMerchant')}>
-          切换其它商家账号
-        </Button>
         <Button className="secondary-pill-button organizer-login-back" onClick={() => Taro.navigateBack({ delta: 1 })}>
           返回个人中心
         </Button>
