@@ -320,6 +320,7 @@ export const createInitialDraft = (): CreateActivityDraft => ({
   businessHours: '',
   realNameRequired: false,
   minorCheckRequired: false,
+  supportRefund: false,
   summary: '',
   district: organizerDistricts[0],
   address: '天府三街',

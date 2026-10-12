@@ -2258,6 +2258,17 @@ export default function OrganizerPage() {
               onClick={() => updateDraft('minorCheckRequired', !draft.minorCheckRequired)}
             />
           </View>
+
+          <View className="toggle-card">
+            <View>
+              <Text className="toggle-title">支持退票</Text>
+              <Text className="toggle-desc">开启后用户可在订单详情申请退款；关闭后该活动订单不支持退票（已核销的订单任何情况下都不能退）。</Text>
+            </View>
+            <View
+              className={`fake-switch ${draft.supportRefund ? 'on' : ''}`}
+              onClick={() => updateDraft('supportRefund', !draft.supportRefund)}
+            />
+          </View>
         </>
       )}
 

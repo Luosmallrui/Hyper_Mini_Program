@@ -258,6 +258,8 @@ export interface CreateActivityDraft {
   businessHours: string
   realNameRequired: boolean
   minorCheckRequired: boolean
+  /** 支持退票开关（对应后端 support_refund：1 支持 / 0 不支持；新建默认关） */
+  supportRefund: boolean
   summary: string
   district: string
   address: string

@@ -105,6 +105,8 @@ interface MerchantDetail {
   tags?: Array<{ id?: number | string; name?: string }>
   /** 下架兜底详情：is_hidden=true 时已购票用户可只读查看，不提供票种/订阅/关注/下单 */
   is_hidden?: boolean
+  /** 支持退票：1/true 支持（存量活动默认 1），0/false 不支持 */
+  support_refund?: number | boolean
   type?: 'party' | 'venue' | string
   ticket_specs?: ActivityTicketSpec[]
   organizer?: {
@@ -1037,7 +1039,10 @@ export default function ActivityPage() {
                 <View className='drawer-info'>
                   <Text className='drawer-name'>{titleText}</Text>
                   <View className='drawer-tag-row'>
-                    <Text className='drawer-tag'>支持退票</Text>
+                    {/* 支持退票标记：仅活动开启 support_refund 时展示（缺省按存量默认 1） */}
+                    {(activity?.support_refund === true || Number(activity?.support_refund ?? 1) === 1) && (
+                      <Text className='drawer-tag'>支持退票</Text>
+                    )}
                   </View>
                   <View className='drawer-meta-row'>
                     <Text className='drawer-meta-label'>时间：</Text>

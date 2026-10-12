@@ -1222,6 +1222,8 @@ interface ActivityDetailRaw {
   business_hours?: string
   real_name_mode?: number
   minor_check?: number
+  /** 支持退票：1 支持 / 0 不支持（存量活动默认 1） */
+  support_refund?: number
   province?: string
   city?: string
   district?: string
@@ -1318,6 +1320,8 @@ const mapActivityDetailToDraft = (detail: ActivityDetailRaw): CreateActivityDraf
     businessHours: detail.business_hours || '',
     realNameRequired: Number(detail.real_name_mode ?? 0) === 1,
     minorCheckRequired: Number(detail.minor_check ?? 0) === 1,
+    // 存量活动后端默认 support_refund=1（保持原有可退现状），新建默认关
+    supportRefund: Number(detail.support_refund ?? 1) === 1,
     summary: detail.description || '',
     district: detail.district || base.district,
     address: detail.address || '',
@@ -1441,6 +1445,7 @@ export const submitActivityDraft = async (
   }
   if (changed(draft.realNameRequired, orig?.realNameRequired)) step1Fields.real_name_mode = draft.realNameRequired ? 1 : 0
   if (changed(draft.minorCheckRequired, orig?.minorCheckRequired)) step1Fields.minor_check = draft.minorCheckRequired ? 1 : 0
+  if (changed(draft.supportRefund, orig?.supportRefund)) step1Fields.support_refund = draft.supportRefund ? 1 : 0
   if (changed(draft.tagIds, orig?.tagIds ?? [])) step1Fields.tag_ids = draft.tagIds
   if (changed(draft.marker_icon, orig?.marker_icon ?? '')) step1Fields.marker_icon = draft.marker_icon
   if (changed(draft.summary, orig?.summary)) step1Fields.description = draft.summary
