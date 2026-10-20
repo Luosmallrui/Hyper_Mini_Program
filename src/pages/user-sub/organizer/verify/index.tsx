@@ -61,6 +61,8 @@ const renderTicketCard = (ticket: VerifyTicketItem, onOpenOrder?: (ticket: Verif
 export default function OrganizerVerifyView(props: OrganizerVerifyViewProps) {
   const { initialAddVerifierOpen = false, initialManualInputOpen = false, initialModalStatus, initialScan, recordsScope = 'organizer', onShowAllRecords, onBack } = props
   const [verifiedTickets, setVerifiedTickets] = useState<VerifyTicketItem[]>([])
+  // 核销总数（后端 total；兜底为已加载条数）
+  const [verifiedTotal, setVerifiedTotal] = useState(0)
   const [verifiedLoading, setVerifiedLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(Boolean(initialModalStatus))
   const [modalStatus, setModalStatus] = useState<VerifyStatus>(initialModalStatus || 'recognized')
@@ -87,10 +89,11 @@ export default function OrganizerVerifyView(props: OrganizerVerifyViewProps) {
   const loadVerifiedTickets = async () => {
     setVerifiedLoading(true)
     try {
-      const list = recordsScope === 'personal'
+      const result = recordsScope === 'personal'
         ? await fetchVerifyRecords()
         : await fetchOrganizerVerificationRecords()
-      setVerifiedTickets(list)
+      setVerifiedTickets(result.list)
+      setVerifiedTotal(result.total || result.list.length)
     } catch (error: any) {
       setVerifiedTickets([])
       Taro.showToast({ title: error?.message || '核销记录加载失败', icon: 'none' })
@@ -122,7 +125,7 @@ export default function OrganizerVerifyView(props: OrganizerVerifyViewProps) {
   }, [initialAddVerifierOpen, initialManualInputOpen, initialModalStatus])
 
   const visibleTickets = verifiedTickets.slice(0, 4)
-  const verifiedCount = verifiedTickets.length
+  const verifiedCount = verifiedTotal || verifiedTickets.length
 
   // 点击已核销卡片：优先跳订单详情（后端已固定返回 order_no），缺失时回退活动详情
   const handleOpenTicketOrder = (ticket: VerifyTicketItem) => {

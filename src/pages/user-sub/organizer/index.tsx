@@ -301,6 +301,8 @@ export default function OrganizerPage() {
   // 管理后台入口不再使用账号密码登录：微信登录态 + 后端 staff 身份校验直接放行
   const [verifyRecordsState, setVerifyRecordsState] = useState<VerifyRecordsState>('loading')
   const [verifyRecords, setVerifyRecords] = useState<VerifyTicketItem[]>([])
+  // 核销总数（后端 total；兜底为已加载条数）
+  const [verifyRecordsTotal, setVerifyRecordsTotal] = useState(0)
   // 核销记录视角：我的页入口（source=userNav）=核销员个人记录；管理后台入口=商家全量记录
   const [verifyRecordsScope, setVerifyRecordsScope] = useState<'personal' | 'organizer'>('organizer')
   const [navMetrics, setNavMetrics] = useState({
@@ -625,7 +627,7 @@ export default function OrganizerPage() {
     if (activityTab === 'orders') void loadOrganizerOrders()
   }, [dashboardView, activityTab, orderWithdrawStatus, orderSalesChannel])
 
-  const loadVerifyRecords = async (mode = '', scope: 'personal' | 'organizer' = verifyRecordsScope) => {
+  const loadVerifyRecords = async (mode = '', scope: 'personal' | 'organizer' = verifyRecordsScope, page = 1) => {
     setVerifyRecordsState('loading')
     try {
       if (mode === 'empty') {
@@ -633,16 +635,24 @@ export default function OrganizerPage() {
         setVerifyRecordsState('empty')
         return
       }
-      const list = scope === 'personal'
-        ? await fetchVerifyRecords()
-        : await fetchOrganizerVerificationRecords()
-      setVerifyRecords(list)
-      setVerifyRecordsState(list.length > 0 ? 'loaded' : 'empty')
+      const result = scope === 'personal'
+        ? await fetchVerifyRecords(page)
+        : await fetchOrganizerVerificationRecords(page)
+      setVerifyRecords((prev) => (page === 1 ? result.list : [...prev, ...result.list]))
+      setVerifyRecordsTotal(result.total || result.list.length)
+      setVerifyRecordsState(result.list.length > 0 ? 'loaded' : 'empty')
     } catch {
       setVerifyRecords([])
       setVerifyRecordsState('error')
       Taro.showToast({ title: '核销记录加载失败', icon: 'none' })
     }
+  }
+
+  // 加载更多：total 大于已加载条数时翻页追加
+  const handleLoadMoreVerifyRecords = () => {
+    if (verifyRecordsTotal <= verifyRecords.length) return
+    const nextPage = Math.floor(verifyRecords.length / 50) + 1
+    void loadVerifyRecords('', verifyRecordsScope, nextPage)
   }
 
   const filteredActivities = useMemo(() => {
@@ -2081,7 +2091,7 @@ export default function OrganizerPage() {
       <ScrollView className="verify-records-scroll" scrollY>
         <View className="verify-records-header">
           <Text className="verify-records-title">核销记录</Text>
-          <Text className="verify-records-count">{verifyRecords.length ? `已核销（${verifyRecords.length}）` : ''}</Text>
+          <Text className="verify-records-count">{verifyRecordsTotal ? `已核销（${verifyRecordsTotal}）` : ''}</Text>
         </View>
 
         {verifyRecordsState === 'loading' && <Text className="verify-records-state">加载中...</Text>}
@@ -2119,6 +2129,11 @@ export default function OrganizerPage() {
             </View>
           </View>
         ))}
+        {verifyRecordsState === 'loaded' && verifyRecordsTotal > verifyRecords.length && (
+          <View className="verify-records-load-more" onClick={handleLoadMoreVerifyRecords}>
+            <Text>加载更多</Text>
+          </View>
+        )}
         <View className="organizer-safe-bottom" />
       </ScrollView>
     </View>

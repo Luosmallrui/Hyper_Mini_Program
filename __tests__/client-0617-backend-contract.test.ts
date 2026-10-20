@@ -20,7 +20,7 @@ describe('client 0617 backend contract alignment', () => {
     expect(source).toContain('formatFeeRate')
     expect(source).toContain('value * 100')
     expect(source).toContain('item?.service_fee_rate ?? item?.fee_rate')
-    expect(source).toContain('/api/v1/verifier/verified-list?page=1&size=50')
+    expect(source).toContain('/api/v1/verifier/verified-list?page=${page}&size=50')
   })
 
   it('queries points records with cursor/limit for all tab and filters income/expense client-side', () => {
